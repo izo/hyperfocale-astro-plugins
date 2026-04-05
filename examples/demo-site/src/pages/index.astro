@@ -1,0 +1,115 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="Accueil">
+  <section class="hero">
+    <h1>Bienvenue sur Hyperfocale Demo</h1>
+    <p class="subtitle">
+      Un site exemple qui consomme le plugin <code>hyperfocale</code> pour Astro 6.
+      Explorez les séries photo ci-dessous ou visitez la page des séries.
+    </p>
+    <a href="/series/" class="cta">Voir toutes les séries →</a>
+  </section>
+
+  <section class="features">
+    <h2>Ce que démontre ce site</h2>
+    <ul>
+      <li>
+        <strong>Routes automatiques</strong> — <code>/series/</code>, <code>/series/[slug]/</code>,
+        <code>/series/[slug]/[page]/</code> injectées par le plugin sans configuration supplémentaire.
+      </li>
+      <li>
+        <strong>Content Collection</strong> — La collection <code>series</code> est définie
+        via le module virtuel <code>virtual:hyperfocale/collection</code>.
+      </li>
+      <li>
+        <strong>Composants réutilisables</strong> — <code>SeriesCard</code>, <code>SeriesList</code>,
+        <code>SeriesGallery</code>, <code>SeriesLightbox</code> importables depuis
+        <code>hyperfocale/components</code>.
+      </li>
+      <li>
+        <strong>Thème CSS</strong> — Custom properties <code>--hf-*</code> injectées automatiquement,
+        mode clair/sombre/auto selon l'OS.
+      </li>
+      <li>
+        <strong>Helpers TypeScript</strong> — <code>getSeriesList()</code>, <code>getSeriesBySlug()</code>,
+        <code>getSeriesImages()</code>, <code>paginateImages()</code> disponibles via
+        <code>hyperfocale/helpers</code>.
+      </li>
+    </ul>
+  </section>
+</Layout>
+
+<style>
+  .hero {
+    text-align: center;
+    padding: 4rem 1rem 3rem;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 1rem;
+  }
+
+  .subtitle {
+    font-size: 1.1rem;
+    opacity: 0.7;
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    line-height: 1.6;
+  }
+
+  .cta {
+    display: inline-block;
+    padding: 0.75rem 1.75rem;
+    background: var(--hf-color-accent, #0066ff);
+    color: white;
+    text-decoration: none;
+    border-radius: var(--hf-card-radius, 4px);
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+
+  .cta:hover {
+    opacity: 0.85;
+  }
+
+  .features {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem 0;
+  }
+
+  .features h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    letter-spacing: -0.02em;
+  }
+
+  .features ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .features li {
+    padding: 1rem 1.25rem;
+    border: 1px solid color-mix(in srgb, currentColor 15%, transparent);
+    border-radius: var(--hf-card-radius, 4px);
+    line-height: 1.5;
+    font-size: 0.95rem;
+  }
+
+  code {
+    background: color-mix(in srgb, currentColor 10%, transparent);
+    padding: 0.15em 0.4em;
+    border-radius: 3px;
+    font-size: 0.85em;
+    font-family: monospace;
+  }
+</style>

@@ -28,16 +28,6 @@ prefixes:
 
 ## Backlog
 
-- [ ] #DOC-001 [P3] Écrire un exemple complet de site consommateur #docs #effort-l
-
-  **Zone** : `examples/demo-site/`
-  **Effort** : L (4-8h)
-
-  **Checklist** :
-  - [ ] Créer un mini-site Astro 6 qui consomme le plugin en local
-  - [ ] Ajouter 2-3 séries photo fictives avec vraies images
-  - [ ] Documenter les étapes dans un README d'exemple
-
 - [ ] #DOC-002 [P3] Documenter l'API d'extensibilité du schéma #docs #effort-s
 
   **Zone** : `docs/`
@@ -81,6 +71,20 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #DOC-001 [P3] Écrire un exemple complet de site consommateur #docs #effort-l
+  > ✅ **Terminé** le 2026-04-05
+
+  **Zone** : `examples/demo-site/`
+  **Effort** : L (4-8h)
+
+  **Checklist** :
+  - [x] Créer un mini-site Astro 6 qui consomme le plugin en local
+  - [x] Ajouter 2-3 séries photo fictives avec vraies images (bretagne-2024, tokyo-automne, islande-2023)
+  - [x] Documenter les étapes dans un README d'exemple
+
+  **Résumé** : Mini-site complet avec astro.config.mjs, content.config.ts, layout, page d'accueil, 3 séries fictives (4 images PNG chacune) et README détaillé.
+  **Commits** : (voir ci-dessous)
 
 - [x] #SETUP-001 [P0] Initialiser la structure du package `hyperfocale` #setup #effort-m
 
