@@ -28,16 +28,6 @@ prefixes:
 
 ## Backlog
 
-- [ ] #DOC-002 [P3] Documenter l'API d'extensibilité du schéma #docs #effort-s
-
-  **Zone** : `docs/`
-  **Effort** : S (1-2h)
-  **Dépendances** : #DATA-001
-
-  **Checklist** :
-  - [ ] Documenter comment surcharger la collection `series`
-  - [ ] Exemples : tags, draft, camera, externalUrl
-
 - [ ] #TEST-003 [P3] Tests e2e des routes automatiques #tests #effort-xl
 
   **Zone** : `tests/e2e/`
@@ -71,6 +61,19 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #DOC-002 [P3] Documenter l'API d'extensibilité du schéma #docs #effort-s
+  > ✅ **Terminé** le 2026-04-05
+
+  **Zone** : `docs/`
+  **Effort** : S (1-2h)
+  **Dépendances** : #DATA-001
+
+  **Checklist** :
+  - [x] Documenter comment surcharger la collection `series`
+  - [x] Exemples : tags, draft, camera, externalUrl
+
+  **Résumé** : Fichier `docs/schema-extensibility.md` avec guide complet, 5 exemples d'extensions, typage TypeScript et limites.
 
 - [x] #DOC-001 [P3] Écrire un exemple complet de site consommateur #docs #effort-l
   > ✅ **Terminé** le 2026-04-05
