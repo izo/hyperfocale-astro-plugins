@@ -5,6 +5,14 @@
   "description": "Plugin Astro 6 pour sites de photographie — gestion de séries photo",
   "license": "UNLICENSED",
   "private": true,
+  "keywords": [
+    "astro",
+    "astro-integration",
+    "photography",
+    "gallery",
+    "series",
+    "lightbox"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -25,12 +33,17 @@
     "dist",
     "src"
   ],
+  "sideEffects": false,
   "scripts": {
-    "dev": "tsc --watch",
+    "dev": "tsup --watch",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:unit": "vitest run tests/unit",
+    "test:e2e": "vitest run tests/e2e",
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run typecheck && npm run build && npm run test:unit",
+    "pack:dry": "npm pack --dry-run"
   },
   "peerDependencies": {
     "astro": "^6.0.0",

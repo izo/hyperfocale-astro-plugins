@@ -27,32 +27,6 @@ prefixes:
 ---
 
 ## Backlog
-  > ✅ **Terminé** le 2026-04-05
-
-  **Zone** : `tests/e2e/`
-  **Effort** : XL (1-2j)
-  **Dépendances** : #ARCH-002, #MVP-001, #MVP-002
-
-  **Checklist** :
-  - [x] Setup environnement de test Astro (vitest + build statique)
-  - [x] Tester `/series/` renvoie la liste (HTML généré, CSS thème, composant SeriesList)
-  - [x] Tester `/index.html` page d'accueil (lien vers /series/, CSS thème)
-  - [x] Tester la structure du build plugin (dist/routes, dist/theme, dist/components)
-  - [x] Tester 404 sur slug inexistant (pas de fichier HTML généré)
-  - [x] Tester absence de page 2 quand pageSize >= images
-
-  **Résumé** : 24 tests e2e dans `tests/e2e/routes.test.ts`. Stratégie : `astro build` via `execFileSync` dans `beforeAll`, puis analyse des fichiers HTML générés. Correction de bugs au passage : tsup copie maintenant les .astro dans dist/, schéma utilise zod au lieu d'astro:content, syntaxe import.meta.env corrigée dans les routes.
-
-- [ ] #DEPLOY-001 [P3] Préparer le packaging npm privé #distribution #effort-m
-
-  **Zone** : `package.json`, `tsup.config.ts`
-  **Effort** : M (2-4h)
-  **Dépendances** : #SETUP-001, #ARCH-001
-
-  **Checklist** :
-  - [ ] Configurer les exports `package.json` (`hyperfocale/components`, `hyperfocale/helpers`)
-  - [ ] Configurer tsup ou unbuild pour bundler le plugin
-  - [ ] Vérifier que le package fonctionne en lien local (`npm link` ou workspace)
 
 ## Todo
 
@@ -63,6 +37,20 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #DEPLOY-001 [P3] Préparer le packaging npm privé #distribution #effort-m
+  > ✅ **Terminé** le 2026-04-05
+
+  **Zone** : `package.json`, `tsup.config.ts`
+  **Effort** : M (2-4h)
+  **Dépendances** : #SETUP-001, #ARCH-001
+
+  **Checklist** :
+  - [x] Configurer les exports `package.json` (`hyperfocale/components`, `hyperfocale/helpers`)
+  - [x] Configurer tsup pour bundler le plugin (avec copie des .astro dans dist/)
+  - [x] Vérifier que le package fonctionne en lien local (symlink `node_modules/hyperfocale -> ../../..`)
+
+  **Résumé** : package.json enrichi (keywords, sideEffects, scripts test:unit/test:e2e, prepublishOnly, pack:dry). Package : 29 fichiers, 11.6 kB. Lien local via `"hyperfocale": "../../"` vérifié fonctionnel.
 
 - [x] #TEST-003 [P3] Tests e2e des routes automatiques #tests #effort-xl
   > ✅ **Terminé** le 2026-04-05
