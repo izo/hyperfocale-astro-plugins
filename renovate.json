@@ -1,0 +1,38 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "schedule": ["before 6am on monday"],
+  "timezone": "Europe/Paris",
+  "labels": ["dependencies"],
+  "packageRules": [
+    {
+      "description": "Grouper les mises à jour des devDependencies en un seul PR",
+      "matchDepTypes": ["devDependencies"],
+      "groupName": "devDependencies",
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "description": "PRs séparés pour les peer dependencies (astro, zod) — breaking changes possibles",
+      "matchDepTypes": ["peerDependencies"],
+      "groupName": null,
+      "automerge": false
+    },
+    {
+      "description": "Astro — major uniquement sur approbation explicite",
+      "matchPackageNames": ["astro"],
+      "matchUpdateTypes": ["major"],
+      "automerge": false,
+      "labels": ["dependencies", "breaking-change"]
+    },
+    {
+      "description": "Ignorer les versions pre-release",
+      "matchPackagePatterns": ["*"],
+      "ignoreUnstable": true
+    }
+  ],
+  "ignorePaths": [
+    "examples/demo-site/node_modules/**",
+    "examples/demo-site/package-lock.json"
+  ]
+}
