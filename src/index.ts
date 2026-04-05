@@ -5,6 +5,9 @@ import type { Plugin } from 'vite';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
+const VIRTUAL_MODULE_ID = 'virtual:hyperfocale/collection';
+const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
+
 /**
  * Options de configuration du plugin `hyperfocale`.
  */
@@ -41,20 +44,21 @@ export interface NormalizedHyperfocaleOptions {
  * Normalise et valide les options du plugin.
  */
 function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfocaleOptions {
-  const prefix = options.prefix ?? '/series';
+  const rawPrefix = options.prefix ?? '/series';
   const pageSize = options.pageSize ?? 12;
   const theme = options.theme ?? 'auto';
 
-  if (typeof prefix !== 'string' || !prefix.startsWith('/')) {
-    throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${prefix}`);
+  if (!rawPrefix.startsWith('/')) {
+    throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${rawPrefix}`);
   }
-  if (typeof pageSize !== 'number' || pageSize < 1) {
+  if (pageSize < 1) {
     throw new Error(`[hyperfocale] L'option "pageSize" doit être un entier >= 1. Reçu: ${pageSize}`);
   }
   if (!['light', 'dark', 'auto'].includes(theme)) {
     throw new Error(`[hyperfocale] L'option "theme" doit être 'light', 'dark' ou 'auto'. Reçu: ${theme}`);
   }
 
+  const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
   return { prefix, pageSize, theme };
 }
 
@@ -67,67 +71,63 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
-  const normalizedOptions = normalizeOptions(options);
-  const { prefix, theme } = normalizedOptions;
-
-  // Normalise le préfixe : retire le slash final
-  const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+  const { prefix, pageSize, theme } = normalizeOptions(options);
+  const routesDir = resolve(__dirname, 'routes');
+  const themeFile = resolve(__dirname, 'theme', 'base.css');
 
   return {
     name: 'hyperfocale',
     hooks: {
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, logger }) => {
-        logger.info(`Initialisation hyperfocale (prefix: ${normalizedPrefix}, theme: ${theme})`);
-
-        // Injection des routes automatiques
-        const routesDir = resolve(__dirname, 'routes');
+        logger.info(`Initialisation hyperfocale (prefix: ${prefix}, theme: ${theme})`);
 
         injectRoute({
-          pattern: `${normalizedPrefix}/`,
+          pattern: `${prefix}/`,
           entrypoint: resolve(routesDir, 'series-list.astro'),
           prerender: true,
         });
 
         injectRoute({
-          pattern: `${normalizedPrefix}/[slug]/`,
+          pattern: `${prefix}/[slug]/`,
           entrypoint: resolve(routesDir, 'series-detail.astro'),
           prerender: true,
         });
 
         injectRoute({
-          pattern: `${normalizedPrefix}/[slug]/[page]/`,
+          pattern: `${prefix}/[slug]/[page]/`,
           entrypoint: resolve(routesDir, 'series-page.astro'),
           prerender: true,
         });
 
-        // Injection du CSS thème
-        const themeFile = resolve(__dirname, 'theme', 'base.css');
         injectScript('page-ssr', `import "${themeFile}";`);
 
-        // Plugin Vite : module virtuel `virtual:hyperfocale/collection`
-        // Permet à l'utilisateur d'importer la définition de collection prête à l'emploi.
-        // Usage dans src/content.config.ts :
+        // Usage dans src/content.config.ts du projet consommateur :
         //   import { seriesCollection } from 'virtual:hyperfocale/collection';
         //   export const collections = { series: seriesCollection };
         const virtualModulePlugin: Plugin = {
           name: 'vite-plugin-hyperfocale-virtual',
           resolveId(id) {
-            if (id === 'virtual:hyperfocale/collection') {
-              return '\0virtual:hyperfocale/collection';
+            if (id === VIRTUAL_MODULE_ID) {
+              return RESOLVED_VIRTUAL_MODULE_ID;
             }
             return undefined;
           },
           load(id) {
-            if (id === '\0virtual:hyperfocale/collection') {
-              // Chemin absolu vers le fichier schema.ts compilé
-              const schemaPath = resolve(__dirname, 'schema.js').replace(/\\/g, '/');
+            if (id === RESOLVED_VIRTUAL_MODULE_ID) {
+              // Le schéma est inliné pour éviter les problèmes de résolution
+              // de chemin entre src/ et dist/ au runtime Astro.
               return `
-import { defineCollection } from 'astro:content';
-import { seriesSchema } from '${schemaPath}';
+import { defineCollection, z } from 'astro:content';
 
 export const seriesCollection = defineCollection({
   type: 'content',
-  schema: seriesSchema,
+  schema: ({ image }) => z.object({
+    title: z.string(),
+    date: z.coerce.date(),
+    description: z.string().optional(),
+    cover: image().optional(),
+    location: z.string().optional(),
+  }),
 });
 `;
             }
@@ -135,13 +135,12 @@ export const seriesCollection = defineCollection({
           },
         };
 
-        // Partage des options normalisées via les define Vite
         updateConfig({
           vite: {
             plugins: [virtualModulePlugin],
             define: {
-              'import.meta.env.HYPERFOCALE_PREFIX': JSON.stringify(normalizedPrefix),
-              'import.meta.env.HYPERFOCALE_PAGE_SIZE': JSON.stringify(normalizedOptions.pageSize),
+              'import.meta.env.HYPERFOCALE_PREFIX': JSON.stringify(prefix),
+              'import.meta.env.HYPERFOCALE_PAGE_SIZE': JSON.stringify(pageSize),
               'import.meta.env.HYPERFOCALE_THEME': JSON.stringify(theme),
             },
           },
@@ -151,6 +150,5 @@ export const seriesCollection = defineCollection({
   };
 }
 
-// Re-exports pour utilisation par le site consommateur
 export { seriesSchema } from './schema.js';
 export type { SeriesData } from './schema.js';

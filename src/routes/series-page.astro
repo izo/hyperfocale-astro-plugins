@@ -3,8 +3,8 @@ import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index
 import SeriesGallery from '../components/SeriesGallery.astro';
 
 export async function getStaticPaths() {
-  const prefix = import.meta.env['HYPERFOCALE_PREFIX'] ?? '/series';
-  const pageSize = Number(import.meta.env['HYPERFOCALE_PAGE_SIZE'] ?? 12);
+  const prefix = import.meta.env.HYPERFOCALE_PREFIX ?? '/series';
+  const pageSize = Number(import.meta.env.HYPERFOCALE_PAGE_SIZE ?? 12);
   const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 
   const series = await getSeriesList();
@@ -27,8 +27,8 @@ export async function getStaticPaths() {
   return paths;
 }
 
-const prefix = import.meta.env['HYPERFOCALE_PREFIX'] ?? '/series';
-const pageSize = Number(import.meta.env['HYPERFOCALE_PAGE_SIZE'] ?? 12);
+const prefix = import.meta.env.HYPERFOCALE_PREFIX ?? '/series';
+const pageSize = Number(import.meta.env.HYPERFOCALE_PAGE_SIZE ?? 12);
 
 const { slug, page: pageParam } = Astro.params;
 const { series } = Astro.props;

@@ -51,32 +51,24 @@ export interface ImageMetadata {
 
 /**
  * Retourne toutes les images d'une série, triées alphabétiquement par nom de fichier.
- * Utilise import.meta.glob pour récupérer les images du dossier `media/`.
  */
 export async function getSeriesImages(slug: string): Promise<ImageMetadata[]> {
-  // On utilise import.meta.glob eager pour charger toutes les images
-  // Le pattern est relatif au dossier content/series/<slug>/media/
   const allImages = import.meta.glob<{ default: ImageMetadata }>(
     '/src/content/series/*/media/*.{jpg,jpeg,png,webp,avif}',
     { eager: true }
   );
 
-  // Filtre les images de la série demandée et trie par nom de fichier
-  const seriesImages = Object.entries(allImages)
+  return Object.entries(allImages)
     .filter(([path]) => {
-      // Extrait le slug depuis le chemin : /src/content/series/<slug>/media/<file>
       const match = path.match(/\/src\/content\/series\/([^/]+)\/media\//);
       return match !== null && match[1] === slug;
     })
     .sort(([pathA], [pathB]) => {
-      // Tri alphabétique par nom de fichier
       const fileA = pathA.split('/').pop() ?? '';
       const fileB = pathB.split('/').pop() ?? '';
       return fileA.localeCompare(fileB);
     })
     .map(([, module]) => module.default);
-
-  return seriesImages;
 }
 
 /**

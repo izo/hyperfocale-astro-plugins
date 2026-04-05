@@ -10,8 +10,8 @@ export async function getStaticPaths() {
   }));
 }
 
-const prefix = import.meta.env['HYPERFOCALE_PREFIX'] ?? '/series';
-const pageSize = Number(import.meta.env['HYPERFOCALE_PAGE_SIZE'] ?? 12);
+const prefix = import.meta.env.HYPERFOCALE_PREFIX ?? '/series';
+const pageSize = Number(import.meta.env.HYPERFOCALE_PAGE_SIZE ?? 12);
 
 const { slug } = Astro.params;
 const { series } = Astro.props;

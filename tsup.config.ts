@@ -1,4 +1,6 @@
 import { defineConfig } from 'tsup';
+import { cpSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 export default defineConfig({
   entry: {
@@ -10,6 +12,16 @@ export default defineConfig({
   dts: true,
   clean: true,
   external: ['astro', 'astro:content', 'astro:assets', 'zod'],
-  // Astro .astro files are not bundled by tsup — they ship as-is from src/
-  // Only TypeScript files are compiled
+  // Copier les fichiers .astro (routes, composants, thème) dans dist/
+  // car tsup ne compile que les fichiers TypeScript
+  onSuccess: async () => {
+    const dirs = ['routes', 'components', 'theme'];
+    for (const dir of dirs) {
+      cpSync(resolve('src', dir), resolve('dist', dir), {
+        recursive: true,
+        filter: (src) => !src.endsWith('.ts'),
+      });
+    }
+    console.log('[tsup] .astro et .css copiés dans dist/');
+  },
 });

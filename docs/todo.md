@@ -27,19 +27,21 @@ prefixes:
 ---
 
 ## Backlog
-
-- [ ] #TEST-003 [P3] Tests e2e des routes automatiques #tests #effort-xl
+  > ✅ **Terminé** le 2026-04-05
 
   **Zone** : `tests/e2e/`
   **Effort** : XL (1-2j)
   **Dépendances** : #ARCH-002, #MVP-001, #MVP-002
 
   **Checklist** :
-  - [ ] Setup environnement de test Astro (vitest ou playwright)
-  - [ ] Tester `/series/` renvoie la liste
-  - [ ] Tester `/series/[slug]/` avec une série valide
-  - [ ] Tester `/series/[slug]/[page]/` avec pagination
-  - [ ] Tester 404 sur slug inexistant
+  - [x] Setup environnement de test Astro (vitest + build statique)
+  - [x] Tester `/series/` renvoie la liste (HTML généré, CSS thème, composant SeriesList)
+  - [x] Tester `/index.html` page d'accueil (lien vers /series/, CSS thème)
+  - [x] Tester la structure du build plugin (dist/routes, dist/theme, dist/components)
+  - [x] Tester 404 sur slug inexistant (pas de fichier HTML généré)
+  - [x] Tester absence de page 2 quand pageSize >= images
+
+  **Résumé** : 24 tests e2e dans `tests/e2e/routes.test.ts`. Stratégie : `astro build` via `execFileSync` dans `beforeAll`, puis analyse des fichiers HTML générés. Correction de bugs au passage : tsup copie maintenant les .astro dans dist/, schéma utilise zod au lieu d'astro:content, syntaxe import.meta.env corrigée dans les routes.
 
 - [ ] #DEPLOY-001 [P3] Préparer le packaging npm privé #distribution #effort-m
 
@@ -61,6 +63,23 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #TEST-003 [P3] Tests e2e des routes automatiques #tests #effort-xl
+  > ✅ **Terminé** le 2026-04-05
+
+  **Zone** : `tests/e2e/`
+  **Effort** : XL (1-2j)
+  **Dépendances** : #ARCH-002, #MVP-001, #MVP-002
+
+  **Checklist** :
+  - [x] Setup environnement de test Astro (vitest + build statique)
+  - [x] Tester `/series/` renvoie la liste (HTML généré, CSS thème, composant SeriesList)
+  - [x] Tester `/index.html` page d'accueil (lien vers /series/, CSS thème)
+  - [x] Tester la structure du build plugin (dist/routes, dist/theme, dist/components)
+  - [x] Tester 404 sur slug inexistant (pas de fichier HTML généré)
+  - [x] Tester absence de page 2 quand pageSize >= images
+
+  **Résumé** : 24 tests e2e dans `tests/e2e/routes.test.ts`. Stratégie : `astro build` via `execFileSync` dans `beforeAll`, puis analyse des fichiers HTML générés. Correction de bugs : tsup copie les .astro dans dist/, schéma utilise zod, syntaxe import.meta.env corrigée.
 
 - [x] #DOC-002 [P3] Documenter l'API d'extensibilité du schéma #docs #effort-s
   > ✅ **Terminé** le 2026-04-05

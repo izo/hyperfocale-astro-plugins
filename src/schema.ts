@@ -1,4 +1,4 @@
-import { z } from 'astro:content';
+import { z } from 'zod';
 import type { SchemaContext } from 'astro:content';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -13,7 +13,8 @@ export function seriesSchema({ image }: SchemaContext): AnyZodObject {
     title: z.string(),
     date: z.coerce.date(),
     description: z.string().optional(),
-    cover: image().optional(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cover: (image() as any).optional(),
     location: z.string().optional(),
   });
 }

@@ -4,6 +4,9 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
     environment: 'node',
+    // Les tests e2e lancent un vrai build Astro — timeout plus long
+    testTimeout: 180_000,
+    hookTimeout: 180_000,
   },
   resolve: {
     alias: {
