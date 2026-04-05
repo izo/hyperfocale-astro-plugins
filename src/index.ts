@@ -1,4 +1,5 @@
 import type { AstroIntegration } from 'astro';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
@@ -78,8 +79,17 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
   return {
     name: 'hyperfocale',
     hooks: {
-      'astro:config:setup': ({ injectRoute, injectScript, updateConfig, logger }) => {
+      'astro:config:setup': ({ injectRoute, injectScript, updateConfig, logger, config }) => {
         logger.info(`Initialisation hyperfocale (prefix: ${prefix}, theme: ${theme})`);
+
+        // Vérifier que src/content.config.ts référence la collection series
+        const contentConfig = resolve(fileURLToPath(config.root), 'src/content.config.ts');
+        if (!existsSync(contentConfig) || !readFileSync(contentConfig, 'utf-8').includes('seriesCollection')) {
+          logger.warn(
+            `La collection "series" n'est pas enregistrée.\n` +
+            `  → Lancez : npx hyperfocale init`,
+          );
+        }
 
         injectRoute({
           pattern: `${prefix}/`,

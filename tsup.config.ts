@@ -7,6 +7,7 @@ export default defineConfig({
     index: 'src/index.ts',
     'components/index': 'src/components/index.ts',
     'helpers/index': 'src/helpers/index.ts',
+    'cli/init': 'src/cli/init.ts',
   },
   format: ['esm'],
   dts: true,
