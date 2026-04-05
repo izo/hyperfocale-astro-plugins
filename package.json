@@ -52,6 +52,9 @@
     "astro": "^6.0.0",
     "zod": "^3.0.0"
   },
+  "overrides": {
+    "esbuild": ">=0.25.0"
+  },
   "devDependencies": {
     "@types/node": "^25.5.2",
     "astro": "^6.0.0",
