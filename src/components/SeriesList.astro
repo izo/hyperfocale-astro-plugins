@@ -1,0 +1,50 @@
+---
+import SeriesCard from './SeriesCard.astro';
+import type { Series } from '../helpers/index.js';
+
+interface Props {
+  series: Series[];
+  columns?: number;
+  prefix?: string;
+}
+
+const { series, columns = 3, prefix = '/series' } = Astro.props;
+---
+
+<section class="hf-series-list" style={`--hf-columns: ${columns}`}>
+  {series.length === 0 ? (
+    <p class="hf-series-list__empty">Aucune série disponible pour le moment.</p>
+  ) : (
+    series.map((s) => (
+      <SeriesCard series={s} prefix={prefix} />
+    ))
+  )}
+</section>
+
+<style>
+  .hf-series-list {
+    display: grid;
+    grid-template-columns: repeat(var(--hf-columns, 3), 1fr);
+    gap: var(--hf-gallery-gap, 0.5rem);
+  }
+
+  @media (max-width: 900px) {
+    .hf-series-list {
+      grid-template-columns: repeat(min(var(--hf-columns, 3), 2), 1fr);
+    }
+  }
+
+  @media (max-width: 600px) {
+    .hf-series-list {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .hf-series-list__empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--hf-color-text-muted, #666);
+    font-family: var(--hf-font-sans, system-ui);
+    padding: 2rem;
+  }
+</style>

@@ -1,0 +1,92 @@
+---
+import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
+import SeriesGallery from '../components/SeriesGallery.astro';
+
+export async function getStaticPaths() {
+  const prefix = import.meta.env['HYPERFOCALE_PREFIX'] ?? '/series';
+  const pageSize = Number(import.meta.env['HYPERFOCALE_PAGE_SIZE'] ?? 12);
+  const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+
+  const series = await getSeriesList();
+
+  const paths: Array<{ params: { slug: string; page: string }; props: { series: (typeof series)[number] } }> = [];
+
+  for (const s of series) {
+    const images = await getSeriesImages(s.id);
+    const { totalPages } = paginateImages(images, pageSize, 1);
+
+    // Génère les pages 2..N (la page 1 est gérée par series-detail.astro)
+    for (let p = 2; p <= totalPages; p++) {
+      paths.push({
+        params: { slug: s.id, page: String(p) },
+        props: { series: s },
+      });
+    }
+  }
+
+  return paths;
+}
+
+const prefix = import.meta.env['HYPERFOCALE_PREFIX'] ?? '/series';
+const pageSize = Number(import.meta.env['HYPERFOCALE_PAGE_SIZE'] ?? 12);
+
+const { slug, page: pageParam } = Astro.params;
+const { series } = Astro.props;
+
+if (!slug || !pageParam || !series) {
+  return Astro.redirect('/404');
+}
+
+const pageNumber = parseInt(pageParam, 10);
+
+if (isNaN(pageNumber) || pageNumber < 2) {
+  return Astro.redirect('/404');
+}
+
+const allImages = await getSeriesImages(slug);
+const { items: pageImages, totalPages, currentPage } = paginateImages(allImages, pageSize, pageNumber);
+
+if (pageNumber > totalPages) {
+  return Astro.redirect('/404');
+}
+
+const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+const baseUrl = `${normalizedPrefix}/${slug}`;
+
+const { Content } = await series.render();
+---
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{series.data.title} — Page {currentPage}</title>
+  {series.data.description && <meta name="description" content={series.data.description} />}
+</head>
+<body>
+  <main>
+    <header>
+      <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
+      <h1>{series.data.title} <small>— Page {currentPage}</small></h1>
+      <time datetime={series.data.date.toISOString()}>
+        {series.data.date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </time>
+      {series.data.location && <p class="location">{series.data.location}</p>}
+    </header>
+
+    {/* Body markdown affiché aussi sur les pages suivantes */}
+    <div class="hf-series-body">
+      <Content />
+    </div>
+
+    <SeriesGallery
+      images={pageImages}
+      allImages={allImages}
+      page={currentPage}
+      totalPages={totalPages}
+      baseUrl={baseUrl}
+    />
+  </main>
+</body>
+</html>

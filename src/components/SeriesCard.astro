@@ -1,0 +1,133 @@
+---
+import { Image } from 'astro:assets';
+import type { Series } from '../helpers/index.js';
+
+interface Props {
+  series: Series;
+  prefix?: string;
+}
+
+const { series, prefix = '/series' } = Astro.props;
+const { title, date, description, cover } = series.data;
+const slug = series.id;
+
+// Formatage de la date
+const formattedDate = date.toLocaleDateString('fr-FR', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+
+const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+const seriesUrl = `${normalizedPrefix}/${slug}/`;
+---
+
+<article class="hf-card">
+  <a href={seriesUrl} class="hf-card__link" aria-label={`Voir la série : ${title}`}>
+    <div class="hf-card__cover">
+      {cover ? (
+        <Image
+          src={cover}
+          alt={`Couverture de la série ${title}`}
+          width={600}
+          height={400}
+          class="hf-card__image"
+          loading="lazy"
+        />
+      ) : (
+        <div class="hf-card__placeholder" aria-hidden="true">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+      )}
+    </div>
+    <div class="hf-card__body">
+      <h2 class="hf-card__title">{title}</h2>
+      <time class="hf-card__date" datetime={date.toISOString()}>{formattedDate}</time>
+      {description && <p class="hf-card__description">{description}</p>}
+    </div>
+  </a>
+</article>
+
+<style>
+  .hf-card {
+    background: var(--hf-color-surface, #f5f5f5);
+    border-radius: var(--hf-card-radius, 4px);
+    overflow: hidden;
+    box-shadow: var(--hf-card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
+    transition: transform var(--hf-transition, 200ms ease),
+                box-shadow var(--hf-transition, 200ms ease);
+  }
+
+  .hf-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
+
+  .hf-card__link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .hf-card__cover {
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    background: var(--hf-color-border, #e0e0e0);
+  }
+
+  .hf-card__image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform var(--hf-transition, 200ms ease);
+  }
+
+  .hf-card:hover .hf-card__image {
+    transform: scale(1.03);
+  }
+
+  .hf-card__placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  .hf-card__body {
+    padding: 1rem;
+  }
+
+  .hf-card__title {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--hf-color-text, #111);
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  .hf-card__date {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--hf-color-text-muted, #666);
+    margin-bottom: 0.5rem;
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  .hf-card__description {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--hf-color-text-muted, #666);
+    line-height: 1.5;
+    font-family: var(--hf-font-sans, system-ui);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+</style>

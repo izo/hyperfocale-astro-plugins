@@ -1,0 +1,217 @@
+---
+import { Image } from 'astro:assets';
+import SeriesLightbox from './SeriesLightbox.astro';
+import type { ImageMetadata } from '../helpers/index.js';
+
+interface Props {
+  /** Images de la page courante */
+  images: ImageMetadata[];
+  /** Toutes les images de la série (pour la lightbox) */
+  allImages: ImageMetadata[];
+  /** Numéro de page courant (1-indexed) */
+  page: number;
+  /** Nombre total de pages */
+  totalPages: number;
+  /** URL de base pour la pagination, ex: /series/bretagne-2024 */
+  baseUrl: string;
+}
+
+const { images, allImages, page, totalPages, baseUrl } = Astro.props;
+
+// Normalise l'URL de base : retire le slash final
+const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+
+// Calcule l'offset d'index pour la lightbox (pour ouvrir à la bonne image globale)
+// On ne connait pas pageSize ici mais on peut calculer depuis allImages et images
+const pageStartIndex = allImages.findIndex(
+  (img) => img.src === (images[0]?.src ?? '')
+);
+const safePageStartIndex = pageStartIndex >= 0 ? pageStartIndex : 0;
+
+function pageUrl(p: number): string {
+  if (p === 1) return `${base}/`;
+  return `${base}/${p}/`;
+}
+---
+
+<section class="hf-gallery" aria-label="Galerie photos">
+  <div class="hf-gallery__grid">
+    {images.map((image, i) => {
+      const globalIndex = safePageStartIndex + i;
+      return (
+        <button
+          class="hf-gallery__item"
+          type="button"
+          aria-label={`Ouvrir l'image ${globalIndex + 1}`}
+          data-lightbox-index={globalIndex}
+        >
+          <Image
+            src={image as Parameters<typeof Image>[0]['src']}
+            alt={`Photo ${globalIndex + 1}`}
+            width={600}
+            height={400}
+            class="hf-gallery__img"
+            loading="lazy"
+          />
+        </button>
+      );
+    })}
+  </div>
+
+  {totalPages > 1 && (
+    <nav class="hf-pagination" aria-label="Pagination de la galerie">
+      {page > 1 ? (
+        <a href={pageUrl(page - 1)} class="hf-pagination__btn" rel="prev" aria-label="Page précédente">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </a>
+      ) : (
+        <span class="hf-pagination__btn hf-pagination__btn--disabled" aria-disabled="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </span>
+      )}
+
+      <div class="hf-pagination__pages">
+        {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((p) => (
+          p === page ? (
+            <span class="hf-pagination__page hf-pagination__page--current" aria-current="page">{p}</span>
+          ) : (
+            <a href={pageUrl(p)} class="hf-pagination__page" aria-label={`Page ${p}`}>{p}</a>
+          )
+        ))}
+      </div>
+
+      {page < totalPages ? (
+        <a href={pageUrl(page + 1)} class="hf-pagination__btn" rel="next" aria-label="Page suivante">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </a>
+      ) : (
+        <span class="hf-pagination__btn hf-pagination__btn--disabled" aria-disabled="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </span>
+      )}
+    </nav>
+  )}
+</section>
+
+<SeriesLightbox images={allImages} />
+
+<script>
+  // Délégation d'événements sur les boutons de la galerie
+  document.querySelectorAll<HTMLButtonElement>('.hf-gallery__item').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const index = parseInt(btn.dataset['lightboxIndex'] ?? '0', 10);
+      const lb = (window as typeof window & { hfLightbox?: { open: (i: number) => void } }).hfLightbox;
+      lb?.open(index);
+    });
+  });
+</script>
+
+<style>
+  .hf-gallery__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--hf-gallery-gap, 0.5rem);
+  }
+
+  .hf-gallery__item {
+    display: block;
+    cursor: pointer;
+    padding: 0;
+    border: none;
+    background: var(--hf-color-border, #e0e0e0);
+    border-radius: var(--hf-card-radius, 4px);
+    overflow: hidden;
+    aspect-ratio: 1;
+    transition: opacity var(--hf-transition, 200ms ease);
+  }
+
+  .hf-gallery__item:hover,
+  .hf-gallery__item:focus-visible {
+    opacity: 0.85;
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  .hf-gallery__img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* ─── Pagination ────────────────────────────────────────────────────── */
+  .hf-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .hf-pagination__btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: var(--hf-card-radius, 4px);
+    color: var(--hf-color-text, #111);
+    text-decoration: none;
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  .hf-pagination__btn:hover,
+  .hf-pagination__btn:focus-visible {
+    background: var(--hf-color-surface, #f5f5f5);
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  .hf-pagination__btn--disabled {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
+  }
+
+  .hf-pagination__pages {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .hf-pagination__page {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    padding: 0 0.5rem;
+    border-radius: var(--hf-card-radius, 4px);
+    font-size: 0.9rem;
+    font-family: var(--hf-font-sans, system-ui);
+    color: var(--hf-color-text, #111);
+    text-decoration: none;
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  .hf-pagination__page:hover,
+  .hf-pagination__page:focus-visible {
+    background: var(--hf-color-surface, #f5f5f5);
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  .hf-pagination__page--current {
+    background: var(--hf-color-accent, #0066ff);
+    color: #fff;
+    font-weight: 600;
+  }
+</style>

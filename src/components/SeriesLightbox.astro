@@ -1,0 +1,247 @@
+---
+import type { ImageMetadata } from '../helpers/index.js';
+
+interface Props {
+  images: ImageMetadata[];
+}
+
+const { images } = Astro.props;
+---
+
+<div
+  class="hf-lightbox"
+  id="hf-lightbox"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Visionneuse d'images"
+  aria-hidden="true"
+>
+  <button
+    class="hf-lightbox__close"
+    id="hf-lightbox-close"
+    aria-label="Fermer la visionneuse"
+    type="button"
+  >
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  </button>
+
+  <button
+    class="hf-lightbox__nav hf-lightbox__nav--prev"
+    id="hf-lightbox-prev"
+    aria-label="Image précédente"
+    type="button"
+  >
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  </button>
+
+  <div class="hf-lightbox__stage">
+    <img
+      class="hf-lightbox__img"
+      id="hf-lightbox-img"
+      src=""
+      alt=""
+      loading="eager"
+    />
+  </div>
+
+  <button
+    class="hf-lightbox__nav hf-lightbox__nav--next"
+    id="hf-lightbox-next"
+    aria-label="Image suivante"
+    type="button"
+  >
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  </button>
+
+  <div class="hf-lightbox__counter" id="hf-lightbox-counter" aria-live="polite" aria-atomic="true"></div>
+</div>
+
+<!-- Données des images sérialisées pour le JS côté client -->
+<script type="application/json" id="hf-lightbox-data">
+  {JSON.stringify(images.map((img) => ({ src: img.src, width: img.width, height: img.height })))}
+</script>
+
+<script>
+  (() => {
+    const lightbox = document.getElementById('hf-lightbox') as HTMLElement | null;
+    const img = document.getElementById('hf-lightbox-img') as HTMLImageElement | null;
+    const counter = document.getElementById('hf-lightbox-counter') as HTMLElement | null;
+    const btnClose = document.getElementById('hf-lightbox-close') as HTMLButtonElement | null;
+    const btnPrev = document.getElementById('hf-lightbox-prev') as HTMLButtonElement | null;
+    const btnNext = document.getElementById('hf-lightbox-next') as HTMLButtonElement | null;
+    const dataEl = document.getElementById('hf-lightbox-data') as HTMLElement | null;
+
+    if (!lightbox || !img || !counter || !btnClose || !btnPrev || !btnNext || !dataEl) return;
+
+    type ImageInfo = { src: string; width: number; height: number };
+    const images: ImageInfo[] = JSON.parse(dataEl.textContent ?? '[]');
+    let current = 0;
+    let previousFocus: HTMLElement | null = null;
+
+    function show(index: number) {
+      current = ((index % images.length) + images.length) % images.length;
+      const image = images[current];
+      if (!image) return;
+      img!.src = image.src;
+      img!.alt = `Image ${current + 1} sur ${images.length}`;
+      counter!.textContent = `${current + 1} / ${images.length}`;
+      btnPrev!.style.display = images.length <= 1 ? 'none' : '';
+      btnNext!.style.display = images.length <= 1 ? 'none' : '';
+    }
+
+    function open(index: number) {
+      previousFocus = document.activeElement as HTMLElement;
+      show(index);
+      lightbox!.setAttribute('aria-hidden', 'false');
+      lightbox!.classList.add('hf-lightbox--open');
+      document.body.style.overflow = 'hidden';
+      btnClose!.focus();
+    }
+
+    function close() {
+      lightbox!.setAttribute('aria-hidden', 'true');
+      lightbox!.classList.remove('hf-lightbox--open');
+      document.body.style.overflow = '';
+      previousFocus?.focus();
+    }
+
+    // Boutons
+    btnClose.addEventListener('click', close);
+    btnPrev.addEventListener('click', () => show(current - 1));
+    btnNext.addEventListener('click', () => show(current + 1));
+
+    // Clic overlay pour fermer
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox) close();
+    });
+
+    // Clavier
+    document.addEventListener('keydown', (e) => {
+      if (!lightbox.classList.contains('hf-lightbox--open')) return;
+      if (e.key === 'Escape') close();
+      if (e.key === 'ArrowLeft') show(current - 1);
+      if (e.key === 'ArrowRight') show(current + 1);
+      // Focus trap
+      if (e.key === 'Tab') {
+        const focusable = lightbox.querySelectorAll<HTMLElement>(
+          'button, [tabindex]:not([tabindex="-1"])'
+        );
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    });
+
+    // Exposition de l'API publique pour la galerie
+    (window as typeof window & { hfLightbox: { open: (i: number) => void } }).hfLightbox = { open };
+  })();
+</script>
+
+<style>
+  .hf-lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: var(--hf-color-overlay, rgba(0, 0, 0, 0.85));
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+  }
+
+  .hf-lightbox--open {
+    display: flex;
+  }
+
+  .hf-lightbox__stage {
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .hf-lightbox__img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 2px;
+  }
+
+  .hf-lightbox__close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  .hf-lightbox__close:hover,
+  .hf-lightbox__close:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .hf-lightbox__nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    padding: 0.75rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  .hf-lightbox__nav:hover,
+  .hf-lightbox__nav:focus-visible {
+    background: rgba(255, 255, 255, 0.15);
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+  }
+
+  .hf-lightbox__nav--prev {
+    left: 1rem;
+  }
+
+  .hf-lightbox__nav--next {
+    right: 1rem;
+  }
+
+  .hf-lightbox__counter {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 0.875rem;
+    font-family: var(--hf-font-sans, system-ui);
+  }
+</style>

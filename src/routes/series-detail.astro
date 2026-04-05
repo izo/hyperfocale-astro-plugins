@@ -1,0 +1,65 @@
+---
+import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
+import SeriesGallery from '../components/SeriesGallery.astro';
+
+export async function getStaticPaths() {
+  const series = await getSeriesList();
+  return series.map((s) => ({
+    params: { slug: s.id },
+    props: { series: s },
+  }));
+}
+
+const prefix = import.meta.env['HYPERFOCALE_PREFIX'] ?? '/series';
+const pageSize = Number(import.meta.env['HYPERFOCALE_PAGE_SIZE'] ?? 12);
+
+const { slug } = Astro.params;
+const { series } = Astro.props;
+
+if (!slug || !series) {
+  return Astro.redirect('/404');
+}
+
+const allImages = await getSeriesImages(slug);
+const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1);
+
+const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+const baseUrl = `${normalizedPrefix}/${slug}`;
+
+const { Content } = await series.render();
+---
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{series.data.title}</title>
+  {series.data.description && <meta name="description" content={series.data.description} />}
+</head>
+<body>
+  <main>
+    <header>
+      <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
+      <h1>{series.data.title}</h1>
+      <time datetime={series.data.date.toISOString()}>
+        {series.data.date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </time>
+      {series.data.location && <p class="location">{series.data.location}</p>}
+    </header>
+
+    {/* Body markdown avant la galerie */}
+    <div class="hf-series-body">
+      <Content />
+    </div>
+
+    <SeriesGallery
+      images={pageImages}
+      allImages={allImages}
+      page={1}
+      totalPages={totalPages}
+      baseUrl={baseUrl}
+    />
+  </main>
+</body>
+</html>
