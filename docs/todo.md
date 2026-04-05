@@ -38,6 +38,22 @@ prefixes:
 
 ## Done
 
+- [x] #DEPLOY-002 [P2] Ajouter le CLI `hyperfocale init` #cli #effort-s
+  > ✅ **Terminé** le 2026-04-05
+
+  **Zone** : `src/cli/init.ts`, `package.json`, `tsup.config.ts`
+  **Effort** : S (1-2h)
+  **Dépendances** : #DEPLOY-001
+
+  **Checklist** :
+  - [x] Créer `src/cli/init.ts` avec shebang `#!/usr/bin/env node`
+  - [x] Déclarer `"bin": { "hyperfocale": "./dist/cli/init.js" }` dans `package.json`
+  - [x] Ajouter l'entry `'cli/init': 'src/cli/init.ts'` dans `tsup.config.ts`
+  - [x] Comportements : créer / patcher / no-op (idempotent)
+  - [x] Intégration : avertissement dans `astro:config:setup` si collection absente
+
+  **Résumé** : CLI `npx hyperfocale init` qui crée ou met à jour `src/content.config.ts` du projet consommateur. Gère 3 cas : fichier absent (création), export collections existant (injection de series), pas d'export (ajout en fin de fichier).
+
 - [x] #DEPLOY-001 [P3] Préparer le packaging npm privé #distribution #effort-m
   > ✅ **Terminé** le 2026-04-05
 

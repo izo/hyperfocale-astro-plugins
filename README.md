@@ -9,6 +9,13 @@ Plugin Astro 6 pour sites de photographie. Gestion complète de **séries photo*
 npm link
 ```
 
+```bash
+# Initialiser la content collection (à lancer une seule fois dans le projet consommateur)
+npx hyperfocale init
+```
+
+Le CLI crée ou met à jour `src/content.config.ts` pour enregistrer la collection `series`. Idempotent : relancer sans risque si le fichier existe déjà.
+
 ```ts
 // astro.config.mjs
 import { defineConfig } from 'astro/config';

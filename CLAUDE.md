@@ -44,6 +44,20 @@ dist/               ← build tsup (gitignored)
 
 **Peer deps** : `astro` et `zod` sont des peer dependencies. Ne pas les ajouter en dépendances directes.
 
+## CLI
+
+```bash
+npx hyperfocale init
+```
+
+Crée ou met à jour `src/content.config.ts` dans le projet consommateur pour enregistrer la collection `series`. Trois comportements :
+1. Fichier absent → crée le fichier avec le template minimal.
+2. Fichier existant sans `series` → injecte l'import et l'entrée dans l'export collections existant.
+3. Collection déjà présente → no-op (idempotent).
+
+Point d'entrée : `src/cli/init.ts` → `dist/cli/init.js` (entry tsup `cli/init`).
+Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`.
+
 ## Exports
 
 | Import | Source |
@@ -52,3 +66,4 @@ dist/               ← build tsup (gitignored)
 | `import { ... } from 'hyperfocale/components'` | `src/components/index.ts` |
 | `import { ... } from 'hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
+| `npx hyperfocale init` | `src/cli/init.ts` — CLI d'initialisation |

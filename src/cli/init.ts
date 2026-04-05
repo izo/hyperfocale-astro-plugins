@@ -15,8 +15,7 @@ const VIRTUAL_IMPORT = `import { seriesCollection } from 'virtual:hyperfocale/co
 const COLLECTION_EXPORT = `series: seriesCollection`;
 const CONFIG_PATH = resolve(process.cwd(), 'src/content.config.ts');
 
-const TEMPLATE = `\
-import { seriesCollection } from 'virtual:hyperfocale/collection';
+const TEMPLATE = `${VIRTUAL_IMPORT}
 
 export const collections = {
   series: seriesCollection,
@@ -33,7 +32,6 @@ function error(msg: string) {
 }
 
 function init() {
-  // Fichier absent → créer
   if (!existsSync(CONFIG_PATH)) {
     mkdirSync(dirname(CONFIG_PATH), { recursive: true });
     writeFileSync(CONFIG_PATH, TEMPLATE, 'utf-8');
@@ -42,7 +40,6 @@ function init() {
     return;
   }
 
-  // Fichier existant → vérifier si déjà configuré
   const existing = readFileSync(CONFIG_PATH, 'utf-8');
 
   if (existing.includes(COLLECTION_EXPORT)) {
@@ -51,13 +48,11 @@ function init() {
     return;
   }
 
-  // Import manquant → ajouter en tête
   let updated = existing;
   if (!existing.includes(VIRTUAL_IMPORT)) {
     updated = `${VIRTUAL_IMPORT}\n${updated}`;
   }
 
-  // Export collections existant → injecter series dedans
   const exportMatch = updated.match(/export\s+const\s+collections\s*=\s*\{([^}]*)\}/s);
   if (exportMatch?.[1] !== undefined) {
     const inner = exportMatch[1].trimEnd();
@@ -72,7 +67,6 @@ function init() {
     return;
   }
 
-  // Pas d'export collections → ajouter à la fin
   updated += `\nexport const collections = {\n  ${COLLECTION_EXPORT},\n};\n`;
   writeFileSync(CONFIG_PATH, updated, 'utf-8');
   log(`✓ Mis à jour : src/content.config.ts`);
