@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.1.0"
-updated: 2026-04-05
+updated: 2026-04-06
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -28,13 +28,162 @@ prefixes:
 
 ## Backlog
 
+- [ ] #DATA-004 [P2] API d'extension du schéma — champs métadonnées personnalisés #schema #effort-s
+  **Zone** : `src/schema.ts`, `docs/schema-extensibility.md`
+  **Effort** : S (1-2h)
+  **Dépendances** : #DATA-002
+
+  **Contexte** : le plugin expose un schéma minimal. Les sites consommateurs ont des besoins variés (musique, mode, voyage…). L'extension doit rester simple sans fork du plugin.
+
+  **Checklist** :
+  - [ ] Exporter `baseSeriesSchema` (champs fondamentaux uniquement) en plus du schéma complet
+  - [ ] Documenter le pattern d'extension via `seriesCollection.extend({...})` dans `src/content.config.ts`
+  - [ ] Exemple dans `docs/schema-extensibility.md` : ajout de `camera`, `film`, `location`, `tags` libres
+  - [ ] S'assurer que les helpers (`getSeriesList`, `getSeriesBySlug`) fonctionnent avec les champs étendus via generics TypeScript
+
+- [ ] #DATA-005 [P2] Ajouter `getAllTags()` et `getAllCollections()` aux helpers #helpers #effort-s
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : S (1-2h)
+  **Dépendances** : #DATA-002, #ARCH-003
+
+  **Checklist** :
+  - [ ] `getAllTags()` : retourne `{ name: string, count: number }[]` trié par count décroissant — ne fonctionne que si le schéma étendu inclut `tags: z.array(z.string())`
+  - [ ] `getAllCollections()` : retourne `{ slug: string, name: string, count: number }[]` en extrayant le premier segment du chemin de chaque série
+  - [ ] Documenter que `getAllTags()` est un no-op si `tags` n'est pas dans le schéma du site consommateur
+
+- [ ] #FE-006 [P2] Renforcer le système de design tokens CSS #theme #effort-m
+  **Zone** : `src/theme/base.css`, `src/components/`
+  **Effort** : M (2-4h)
+  **Dépendances** : #FE-005
+
+  **Contexte** : le thème actuel expose des tokens `--hf-*` avec des valeurs hex hardcodées dans les composants. Un site consommateur doit pouvoir brancher son propre design system sans surcharger chaque token.
+
+  **Checklist** :
+  - [ ] Supprimer toutes les valeurs hex hardcodées des composants `.astro` (tout passe par les variables `--hf-*`)
+  - [ ] Découper en couches : `base.css` (reset + structure) / `theme-light.css` / `theme-dark.css` (valeurs séparées)
+  - [ ] Ajouter une classe `.hf-root` sur le wrapper de chaque composant pour limiter la cascade
+  - [ ] Documenter la liste complète des variables surchargeables dans `README.md`
+
+- [ ] #FE-007 [P2] Créer un composant `<SeriesMasonry>` (layout masonry CSS) #composants #effort-m
+  **Zone** : `src/components/`
+  **Effort** : M (2-4h)
+  **Dépendances** : #FE-003
+
+  **Checklist** :
+  - [ ] Layout CSS columns (pas de JS, pas de librairie externe)
+  - [ ] Props : `images: ImageMetadata[]`, `columns?: number` (défaut : 3)
+  - [ ] Aspect ratio préservé sur chaque image
+  - [ ] Transitions `opacity` et `transform` uniquement
+  - [ ] Alternative à `<SeriesGallery>` (grille uniforme) — exposé dans `hyperfocale/components`
+
+- [ ] #MVP-005 [P2] Sérialisation JSON-safe pour islands interactives (`serializeSeries`) #helpers #effort-xs
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : XS (< 30min)
+  **Dépendances** : #MVP-001
+
+  **Contexte** : dans une architecture Islands (React, Vue, Svelte), les props passées depuis Astro doivent être JSON-serialisables. `Date` n'est pas sérialisable → erreur silencieuse au runtime.
+
+  **Checklist** :
+  - [ ] `serializeSeries(series)` : convertit `Date` → `string` ISO, retourne un objet plain JSON
+  - [ ] `serializeSeriesList(series[])` : variante tableau
+  - [ ] Exporter les types `SerializedSeries` correspondants
+  - [ ] Tester que le résultat passe `JSON.stringify` / `JSON.parse` sans perte
+
+- [ ] #ARCH-004 [P3] Adapter les images pour les déploiements avec optimisation côté serveur #images #effort-s
+  **Zone** : `src/helpers/index.ts`, `src/components/`
+  **Effort** : S (1-2h)
+  **Dépendances** : #MVP-001
+
+  **Contexte** : certains hébergeurs (Vercel, Netlify Image CDN, Cloudflare) optimisent les images à la volée. En dev local, les endpoints d'optimisation n'existent pas → 404. Ce comportement doit être détecté automatiquement.
+
+  **Checklist** :
+  - [ ] Détecter `import.meta.env.DEV` → désactiver srcSet dynamique en dev
+  - [ ] Option `imageOptimization?: 'auto' | 'disabled'` dans `HyperfocaleOptions` (défaut : `'auto'`)
+  - [ ] Documenter la limitation dans `README.md` (section "Déploiement")
+
+- [ ] #ARCH-005 [P3] Cache build-time pour `getCollection` #performance #effort-m
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : M (2-4h)
+  **Dépendances** : #MVP-003
+
+  **Contexte** : sur de grands catalogues (500+ séries), chaque route appellera `getCollection` séparément si le cache singleton du module n'est pas partagé entre les workers Vite. Évaluer et documenter les limites.
+
+  **Checklist** :
+  - [ ] Mesurer le nombre d'appels `getCollection` sur un build avec 100+ séries (via log de debug)
+  - [ ] Documenter le comportement réel du cache module-level dans le contexte SSG d'Astro 6
+  - [ ] Si nécessaire : proposer un helper `warmSeriesCache()` à appeler explicitement en `getStaticPaths`
+
 ## Todo
+
+- [ ] #DATA-003 [P1] `querySeries()` — API de requête avec filtres et pagination #helpers #effort-m
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : M (2-4h)
+  **Dépendances** : #DATA-002, #MVP-003
+
+  **Contexte** : `getSeriesList()` retourne toutes les séries triées. Dès qu'un site a des pages de collection, de tag, ou de la pagination, il a besoin de filtres. Remplacer par `querySeries(options)` tout en gardant `getSeriesList()` comme alias simplifié.
+
+  **Checklist** :
+  - [ ] Filtre `collection?: string` — premier segment du chemin (si hiérarchie activée)
+  - [ ] Filtre `tags?: string[]` — ET logique (toutes les tags doivent être présentes)
+  - [ ] Filtre `featured?: boolean | 'first'` — `'first'` remonte les featured en tête de liste
+  - [ ] Filtre `exclude?: string[]` — exclut des slugs précis
+  - [ ] Filtre `published?: boolean` (défaut `true`), `draft?: boolean` (défaut `false`)
+  - [ ] Sort : `'date'` (défaut), `'title'`, `'random'`
+  - [ ] Pagination : `limit?`, `offset?` → retourner `{ items, pagination: { currentPage, totalPages, totalItems, hasNext, hasPrev } }`
+
+- [ ] #DATA-002 [P0] Enrichir le schéma Zod — champs communs à tout site de galerie #schema #effort-s
+  **Zone** : `src/schema.ts`, `src/index.ts` (module virtuel)
+  **Effort** : S (1-2h)
+  **Dépendances** : #DATA-001
+
+  **Contexte** : le schéma actuel (`title`, `date`, `description`, `cover`, `location`) est minimal. Ces champs supplémentaires sont utiles pour n'importe quel site de galerie photo, indépendamment du domaine (musique, mode, voyage…).
+
+  **Checklist** :
+  - [ ] `published: z.boolean().default(true)` — contrôle la visibilité publique
+  - [ ] `draft: z.boolean().default(false)` — masque une série en cours d'édition
+  - [ ] `featured: z.boolean().default(false)` — mise en avant éditoriale
+  - [ ] `tags: z.array(z.string()).default([])` — catégorisation libre (actuellement absent du schéma)
+  - [ ] `alt_description: z.string().optional()` — description alternative pour l'accessibilité des images
+  - [ ] `private: z.boolean().default(false)` — série protégée (accès restreint, la logique de gate est à implémenter côté site consommateur)
+  - [ ] `download: z.boolean().default(false)` — autorise le téléchargement des originaux (la génération du ZIP est à implémenter côté site consommateur)
+  - [ ] Mettre à jour le module virtuel Vite et le type `SeriesData` exporté
+
+- [ ] #ARCH-003 [P0] Routes catch-all pour collections hiérarchiques #routes #effort-m
+  **Zone** : `src/routes/`, `src/index.ts`
+  **Effort** : M (2-4h)
+  **Dépendances** : #ARCH-002
+
+  **Contexte** : le routing actuel suppose un seul niveau de slug (`/series/mon-slug`). Un site réel organise souvent le contenu en catégories imbriquées (ex: `/series/voyages/asie/tokyo-2024`). Le catch-all Astro (`[...slug].astro`) gère nativement cette arborescence.
+
+  **Checklist** :
+  - [ ] Remplacer la route `/series/[slug]/` par `/series/[...slug]/` (catch-all multi-niveaux)
+  - [ ] Adapter `getSeriesBySlug` pour accepter les IDs hiérarchiques (chemin complet depuis `series/`)
+  - [ ] Helper `getParentCollection(id)` : extrait le premier segment du chemin pour les pages de collection
+  - [ ] Tester avec des slugs à 1, 2 et 3 niveaux de profondeur
+
+- [ ] #MVP-003 [P0] Cache singleton — éviter N appels `getCollection` par page #performance #effort-s
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : S (1-2h)
+  **Dépendances** : #MVP-001
+
+  **Checklist** :
+  - [ ] Variable module-level `_allSeries: Series[] | null = null`
+  - [ ] `getAllSeriesCached()` : retourne le cache ou appelle `getCollection` une seule fois
+  - [ ] `resetSeriesCache()` exportée pour les tests (évite les effets de bord entre suites)
+  - [ ] Ajouter au mock `tests/__mocks__/` si nécessaire
+
+- [ ] #MVP-004 [P1] Cover fallback — première image alphabétique si `cover` absent #helpers #effort-xs
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : XS (< 30min)
+  **Dépendances** : #MVP-001
+
+  **Checklist** :
+  - [ ] `getSeriesCover(slug, coverPath?)` : retourne `coverPath` si défini, sinon la première image alphabétique du glob
+  - [ ] Utiliser dans `SeriesCard.astro` et `series-detail.astro` pour remplacer le placeholder SVG par une vraie image quand possible
 
 ## In Progress
 
 ## Blocked
-
-## Review
 
 ## Done
 
