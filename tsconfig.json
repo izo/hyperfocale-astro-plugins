@@ -17,7 +17,8 @@
     "rootDir": "./src",
     "jsx": "preserve",
     "jsxImportSource": "astro",
-    "types": ["node", "vite/client", "astro/client"]
+    "types": ["node", "vite/client", "astro/client"],
+    "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "tests"]
