@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/izo/hyperfocale-astro-plugins.git"
+    "url": "git+https://github.com/izo/hyperfocale-astro-plugins.git"
   },
   "homepage": "https://github.com/izo/hyperfocale-astro-plugins#readme",
   "bugs": {
@@ -45,7 +45,7 @@
     "src"
   ],
   "bin": {
-    "hyperfocale": "./dist/cli/init.js"
+    "hyperfocale": "dist/cli/init.js"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
