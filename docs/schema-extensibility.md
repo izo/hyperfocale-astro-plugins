@@ -10,7 +10,7 @@ Ce guide explique comment l'étendre pour ajouter des champs custom sans modifie
 Le plugin exporte `seriesSchema` depuis son point d'entrée principal :
 
 ```ts
-import { seriesSchema } from 'hyperfocale';
+import { seriesSchema } from '@izo/hyperfocale';
 ```
 
 Ce schéma couvre les champs fondamentaux :
@@ -41,7 +41,7 @@ Pour étendre le schéma, remplacer par une définition manuelle qui appelle `.e
 ```ts
 // src/content.config.ts — avec extension du schéma
 import { defineCollection } from 'astro:content';
-import { seriesSchema } from 'hyperfocale';
+import { seriesSchema } from '@izo/hyperfocale';
 import { z } from 'zod';
 
 export const collections = {
@@ -161,7 +161,7 @@ Toutes les extensions peuvent être combinées en un seul appel `.extend()` :
 ```ts
 // src/content.config.ts — exemple complet
 import { defineCollection } from 'astro:content';
-import { seriesSchema } from 'hyperfocale';
+import { seriesSchema } from '@izo/hyperfocale';
 import { z } from 'zod';
 
 export const collections = {

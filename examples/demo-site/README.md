@@ -10,7 +10,7 @@ Il démontre l'intégration complète : routes automatiques, content collection,
 ```
 examples/demo-site/
 ├── astro.config.mjs          ← intégration hyperfocale configurée
-├── package.json              ← dépendance sur "hyperfocale": "../../"
+├── package.json              ← dépendance sur "@izo/hyperfocale": "../../"
 ├── tsconfig.json
 └── src/
     ├── content.config.ts     ← enregistrement de la collection `series`
@@ -47,7 +47,7 @@ cd examples/demo-site
 npm install
 ```
 
-La dépendance `"hyperfocale": "../../"` dans `package.json` pointe directement  
+La dépendance `"@izo/hyperfocale": "../../"` dans `package.json` pointe directement  
 vers la racine du repo — npm crée automatiquement un lien local lors du `npm install`.
 
 ### 3. Démarrer le serveur de développement
@@ -98,8 +98,8 @@ Les composants peuvent être importés dans n'importe quelle page custom :
 
 ```astro
 ---
-import { SeriesList, SeriesCard } from 'hyperfocale/components';
-import { getSeriesList } from 'hyperfocale/helpers';
+import { SeriesList, SeriesCard } from '@izo/hyperfocale/components';
+import { getSeriesList } from '@izo/hyperfocale/helpers';
 
 const series = await getSeriesList();
 ---
@@ -110,7 +110,7 @@ const series = await getSeriesList();
 ### Utilisation des helpers
 
 ```ts
-import { getSeriesList, getSeriesBySlug, getSeriesImages, paginateImages } from 'hyperfocale/helpers';
+import { getSeriesList, getSeriesBySlug, getSeriesImages, paginateImages } from '@izo/hyperfocale/helpers';
 
 // Toutes les séries (tri date décroissante)
 const allSeries = await getSeriesList();
@@ -166,7 +166,7 @@ Pour ajouter des champs custom (non inclus dans le plugin) :
 ```ts
 // src/content.config.ts
 import { defineCollection } from 'astro:content';
-import { seriesSchema } from 'hyperfocale';
+import { seriesSchema } from '@izo/hyperfocale';
 import { z } from 'zod';
 
 const extendedSchema = ({ image }: { image: () => import('zod').ZodType }) =>

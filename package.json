@@ -1,10 +1,17 @@
 {
-  "name": "hyperfocale",
-  "version": "0.1.0",
+  "name": "@izo/hyperfocale",
+  "version": "0.1.1",
   "type": "module",
   "description": "Plugin Astro 6 pour sites de photographie — gestion de séries photo",
-  "license": "UNLICENSED",
-  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/izo/hyperfocale-astro-plugins.git"
+  },
+  "homepage": "https://github.com/izo/hyperfocale-astro-plugins#readme",
+  "bugs": {
+    "url": "https://github.com/izo/hyperfocale-astro-plugins/issues"
+  },
   "keywords": [
     "astro",
     "astro-integration",
@@ -36,6 +43,9 @@
   "bin": {
     "hyperfocale": "./dist/cli/init.js"
   },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "sideEffects": false,
   "scripts": {
     "dev": "tsup --watch",
@@ -45,7 +55,8 @@
     "test:unit": "vitest run tests/unit",
     "test:e2e": "vitest run tests/e2e",
     "test:watch": "vitest",
-    "prepublishOnly": "npm run typecheck && npm run build && npm run test:unit",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run typecheck && npm run test:unit",
     "pack:dry": "npm pack --dry-run"
   },
   "peerDependencies": {
@@ -57,10 +68,10 @@
   },
   "devDependencies": {
     "@types/node": "^25.5.2",
-    "astro": "^6.0.0",
+    "astro": "^6.1.6",
     "tsup": "^8.0.0",
     "typescript": "^5.0.0",
-    "vitest": "^2.0.0",
+    "vitest": "^4.0.0",
     "zod": "^3.23.0"
   }
 }

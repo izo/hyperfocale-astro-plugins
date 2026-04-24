@@ -1,5 +1,5 @@
 import { defineConfig } from 'astro/config';
-import hyperfocale from 'hyperfocale';
+import hyperfocale from '@izo/hyperfocale';
 
 export default defineConfig({
   integrations: [

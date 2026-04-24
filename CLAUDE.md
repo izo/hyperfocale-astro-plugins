@@ -1,6 +1,6 @@
 # hyperfocale — Plugin Astro 6
 
-Plugin d'intégration Astro pour galeries photo (séries). Distribué en privé via npm link / workspace.
+Plugin d'intégration Astro pour galeries photo (séries). Publié sur GitHub Packages : `@izo/hyperfocale`.
 
 ## Commandes
 
@@ -62,8 +62,8 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 
 | Import | Source |
 |--------|--------|
-| `import hyperfocale from 'hyperfocale'` | `src/index.ts` — intégration Astro |
-| `import { ... } from 'hyperfocale/components'` | `src/components/index.ts` |
-| `import { ... } from 'hyperfocale/helpers'` | `src/helpers/index.ts` |
+| `import hyperfocale from '@izo/hyperfocale'` | `src/index.ts` — intégration Astro |
+| `import { ... } from '@izo/hyperfocale/components'` | `src/components/index.ts` |
+| `import { ... } from '@izo/hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
 | `npx hyperfocale init` | `src/cli/init.ts` — CLI d'initialisation |

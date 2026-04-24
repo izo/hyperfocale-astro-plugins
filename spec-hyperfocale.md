@@ -135,7 +135,7 @@ import {
   SeriesList,
   SeriesGallery,
   SeriesLightbox,
-} from 'hyperfocale/components';
+} from '@izo/hyperfocale/components';
 ```
 
 ### `<SeriesCard>`
@@ -184,7 +184,7 @@ import {
   getSeriesBySlug,
   getSeriesImages,
   paginateImages,
-} from 'hyperfocale/helpers';
+} from '@izo/hyperfocale/helpers';
 ```
 
 ### `getSeriesList()`
