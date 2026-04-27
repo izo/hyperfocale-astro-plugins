@@ -30,6 +30,20 @@ export interface HyperfocaleOptions {
    * @default 'auto'
    */
   theme?: 'light' | 'dark' | 'auto';
+
+  /**
+   * Nom de la collection Astro Content dans content.config.ts.
+   * Permet d'utiliser le plugin pour des collections non-photo (ex: `brands-fr`).
+   * @default 'series'
+   */
+  collectionName?: string;
+
+  /**
+   * Si `false`, le champ `date` du schéma devient optionnel.
+   * Utile pour des collections dont le contenu n'est pas lié à une date (marques, produits…).
+   * @default true
+   */
+  dateRequired?: boolean;
 }
 
 /**
@@ -39,6 +53,8 @@ export interface NormalizedHyperfocaleOptions {
   prefix: string;
   pageSize: number;
   theme: 'light' | 'dark' | 'auto';
+  collectionName: string;
+  dateRequired: boolean;
 }
 
 /**
@@ -48,6 +64,8 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const rawPrefix = options.prefix ?? '/series';
   const pageSize = options.pageSize ?? 12;
   const theme = options.theme ?? 'auto';
+  const collectionName = options.collectionName ?? 'series';
+  const dateRequired = options.dateRequired ?? true;
 
   if (!rawPrefix.startsWith('/')) {
     throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${rawPrefix}`);
@@ -58,21 +76,24 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   if (!['light', 'dark', 'auto'].includes(theme)) {
     throw new Error(`[hyperfocale] L'option "theme" doit être 'light', 'dark' ou 'auto'. Reçu: ${theme}`);
   }
+  if (!collectionName || collectionName.trim() === '') {
+    throw new Error(`[hyperfocale] L'option "collectionName" ne peut pas être vide.`);
+  }
 
   const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
-  return { prefix, pageSize, theme };
+  return { prefix, pageSize, theme, collectionName, dateRequired };
 }
 
 /**
  * Intégration Astro `hyperfocale`.
  *
  * Ajoute :
- * - La collection `series` (schéma Zod automatique)
- * - Les routes `/series/`, `/series/[slug]/`, `/series/[slug]/[page]/`
+ * - La collection `series` (ou nom personnalisé via `collectionName`)
+ * - Les routes `/{prefix}/`, `/{prefix}/[slug]/`, `/{prefix}/[slug]/[page]/`
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
-  const { prefix, pageSize, theme } = normalizeOptions(options);
+  const { prefix, pageSize, theme, collectionName, dateRequired } = normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
 
@@ -80,9 +101,9 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
     name: 'hyperfocale',
     hooks: {
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, logger, config }) => {
-        logger.info(`Initialisation hyperfocale (prefix: ${prefix}, theme: ${theme})`);
+        logger.info(`Initialisation hyperfocale (prefix: ${prefix}, collection: ${collectionName}, theme: ${theme})`);
 
-        // Vérifier que src/content.config.ts référence la collection series
+        // Vérifier que src/content.config.ts référence la collection
         const contentConfig = resolve(fileURLToPath(config.root), 'src/content.config.ts');
         if (!existsSync(contentConfig) || !readFileSync(contentConfig, 'utf-8').includes('seriesCollection')) {
           logger.warn(
@@ -114,6 +135,8 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
         // Usage dans src/content.config.ts du projet consommateur :
         //   import { seriesCollection } from 'virtual:hyperfocale/collection';
         //   export const collections = { series: seriesCollection };
+        // Si collectionName est personnalisé, déclarez la collection avec le bon nom :
+        //   export const collections = { 'brands-fr': seriesCollection };
         const virtualModulePlugin: Plugin = {
           name: 'vite-plugin-hyperfocale-virtual',
           resolveId(id) {
@@ -126,6 +149,11 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
             if (id === RESOLVED_VIRTUAL_MODULE_ID) {
               // Le schéma est inliné pour éviter les problèmes de résolution
               // de chemin entre src/ et dist/ au runtime Astro.
+              // dateRequired contrôle si la date est obligatoire ou optionnelle.
+              const dateField = dateRequired
+                ? `date: z.coerce.date(),`
+                : `date: z.coerce.date().optional(),`;
+
               return `
 import { defineCollection, z } from 'astro:content';
 
@@ -133,7 +161,7 @@ export const seriesCollection = defineCollection({
   type: 'content',
   schema: ({ image }) => z.object({
     title: z.string(),
-    date: z.coerce.date(),
+    ${dateField}
     description: z.string().optional(),
     cover: image().optional(),
     location: z.string().optional(),
@@ -152,6 +180,8 @@ export const seriesCollection = defineCollection({
               'import.meta.env.HYPERFOCALE_PREFIX': JSON.stringify(prefix),
               'import.meta.env.HYPERFOCALE_PAGE_SIZE': JSON.stringify(pageSize),
               'import.meta.env.HYPERFOCALE_THEME': JSON.stringify(theme),
+              'import.meta.env.HYPERFOCALE_COLLECTION_NAME': JSON.stringify(collectionName),
+              'import.meta.env.HYPERFOCALE_DATE_REQUIRED': JSON.stringify(dateRequired),
             },
           },
         });

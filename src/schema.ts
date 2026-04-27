@@ -5,13 +5,46 @@ import type { SchemaContext } from 'astro:content';
 type AnyZodObject = ReturnType<typeof z.object<any>>;
 
 /**
+ * Options de génération du schéma series.
+ */
+export interface SeriesSchemaOptions {
+  /**
+   * Si `false`, le champ `date` est optionnel dans le schéma.
+   * Utile pour des collections non temporelles (marques, produits…).
+   * @default true
+   */
+  dateRequired?: boolean;
+}
+
+/**
  * Schéma Zod de la collection `series`.
  * Injecté automatiquement par le plugin via l'API Astro 6.
+ *
+ * @param context - Contexte Astro (fournit `image()`)
+ * @param options - Options du schéma (ex: `dateRequired: false`)
+ *
+ * @example Usage standard (date obligatoire) :
+ * ```ts
+ * const series = defineCollection({ schema: seriesSchema });
+ * ```
+ *
+ * @example Sans date (marques, produits) :
+ * ```ts
+ * const brands = defineCollection({
+ *   schema: (ctx) => seriesSchema(ctx, { dateRequired: false }).extend({
+ *     logo: ctx.image().optional(),
+ *   }),
+ * });
+ * ```
  */
-export function seriesSchema({ image }: SchemaContext): AnyZodObject {
+export function seriesSchema(
+  { image }: SchemaContext,
+  options: SeriesSchemaOptions = {},
+): AnyZodObject {
+  const dateRequired = options.dateRequired ?? true;
   return z.object({
     title: z.string(),
-    date: z.coerce.date(),
+    date: dateRequired ? z.coerce.date() : z.coerce.date().optional(),
     description: z.string().optional(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     cover: (image() as any).optional(),
@@ -22,6 +55,9 @@ export function seriesSchema({ image }: SchemaContext): AnyZodObject {
 /**
  * Type des données d'une série (frontmatter).
  * Défini manuellement pour éviter les conflits de types zod entre versions.
+ *
+ * Quand `dateRequired: false` est passé à `seriesSchema()`, `date` sera `undefined`
+ * pour les entrées sans date. Utilisez `SeriesDataOptionalDate` dans ce cas.
  */
 export interface SeriesData {
   title: string;
@@ -34,4 +70,12 @@ export interface SeriesData {
     format: string;
   };
   location?: string;
+}
+
+/**
+ * Variante de `SeriesData` pour les collections où `date` est optionnelle
+ * (`dateRequired: false`).
+ */
+export interface SeriesDataOptionalDate extends Omit<SeriesData, 'date'> {
+  date?: Date;
 }
