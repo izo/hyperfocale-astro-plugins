@@ -11,6 +11,15 @@ const seriesSchemaForTest = z.object({
   location: z.string().optional(),
 });
 
+// Schéma avec date optionnelle (dateRequired: false)
+const seriesSchemaOptionalDate = z.object({
+  title: z.string(),
+  date: z.coerce.date().optional(),
+  description: z.string().optional(),
+  cover: z.string().optional(),
+  location: z.string().optional(),
+});
+
 describe('schéma series', () => {
   it('valide un objet minimal (title + date)', () => {
     const result = seriesSchemaForTest.safeParse({
@@ -100,6 +109,55 @@ describe('schéma series', () => {
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.cover).toBeUndefined();
+    }
+  });
+});
+
+describe('schéma series — dateRequired: false', () => {
+  it('accepte un objet sans date (collection non temporelle)', () => {
+    const result = seriesSchemaOptionalDate.safeParse({
+      title: 'Château de Laubade',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.date).toBeUndefined();
+    }
+  });
+
+  it('accepte une date si fournie (rétrocompat)', () => {
+    const result = seriesSchemaOptionalDate.safeParse({
+      title: 'Château de Laubade',
+      date: '2024-01-01',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.date).toBeInstanceOf(Date);
+    }
+  });
+
+  it('valide tous les autres champs normalement', () => {
+    const result = seriesSchemaOptionalDate.safeParse({
+      title: 'Calvados Roger Groult',
+      description: 'Artisans de grands Calvados depuis 1860',
+      location: 'Pays d\'Auge, Normandie',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.title).toBe('Calvados Roger Groult');
+      expect(result.data.description).toBe('Artisans de grands Calvados depuis 1860');
+      expect(result.data.location).toBe('Pays d\'Auge, Normandie');
+      expect(result.data.date).toBeUndefined();
+    }
+  });
+
+  it('rejette si title est manquant (obligatoire dans tous les cas)', () => {
+    const result = seriesSchemaOptionalDate.safeParse({
+      description: 'Sans titre',
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join('.'));
+      expect(paths).toContain('title');
     }
   });
 });

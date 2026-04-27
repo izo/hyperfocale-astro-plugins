@@ -7,6 +7,26 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.2.0] — 2026-04-27
+
+### Ajouté
+- Option `collectionName` : permet de nommer la collection Astro Content (défaut : `'series'`).
+  Utile pour des collections non-photo comme `brands-fr`, `products`, etc.
+  La variable d'environnement `HYPERFOCALE_COLLECTION_NAME` est exposée au build.
+- Option `dateRequired` : si `false`, le champ `date` du schéma devient optionnel (défaut : `true`).
+  Rétrocompatible — les projets existants ne sont pas affectés.
+- Type `SeriesDataOptionalDate` : variante de `SeriesData` exportée pour les collections sans date.
+- `seriesSchema()` accepte un 2e paramètre `options: { dateRequired? }` pour l'extensibilité via `.extend()`.
+- Tests unitaires pour `dateRequired: false` (4 nouveaux cas dans `schema.test.ts`).
+- Logs intégration mis à jour : affiche `collection` en plus de `prefix` et `theme`.
+
+### Cas d'usage motivant (Maison Léda)
+Ces options ont été conçues pour des collections de marques (vins, spiritueux) qui ont :
+un `nom`, un `texte` (markdown), un `logo`, des `images` et des `pdfs` — mais pas de `date`.
+Voir `examples/demo-brands/` (à venir).
+
+---
+
 ## [0.1.1] — 2026-04-24
 
 ### Corrigé
