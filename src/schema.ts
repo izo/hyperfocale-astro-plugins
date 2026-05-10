@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import type { SchemaContext } from 'astro:content';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyZodObject = ReturnType<typeof z.object<any>>;
-
 /**
  * Options de génération du schéma series.
  */
@@ -19,6 +16,9 @@ export interface SeriesSchemaOptions {
 /**
  * Schéma Zod de la collection `series`.
  * Injecté automatiquement par le plugin via l'API Astro 6.
+ *
+ * Le type de retour est inféré directement depuis `z.object()` afin que
+ * `.extend()` bénéficie d'une inférence complète dans les projets consommateurs.
  *
  * @param context - Contexte Astro (fournit `image()`)
  * @param options - Options du schéma (ex: `dateRequired: false`)
@@ -40,14 +40,13 @@ export interface SeriesSchemaOptions {
 export function seriesSchema(
   { image }: SchemaContext,
   options: SeriesSchemaOptions = {},
-): AnyZodObject {
+) {
   const dateRequired = options.dateRequired ?? true;
   return z.object({
     title: z.string(),
     date: dateRequired ? z.coerce.date() : z.coerce.date().optional(),
     description: z.string().optional(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    cover: (image() as any).optional(),
+    cover: (image() as z.ZodTypeAny).optional(),
     location: z.string().optional(),
   });
 }
