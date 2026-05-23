@@ -13,12 +13,45 @@ export interface SeriesSchemaOptions {
   dateRequired?: boolean;
 }
 
+/** Schéma du bloc `iptc.*` (spec §1.3). */
+const iptcSchema = z.object({
+  creator: z.string().optional(),
+  credit: z.string().optional(),
+  copyright: z.string().optional(),
+  keywords: z.array(z.string()).optional(),
+  city: z.string().optional(),
+  province: z.string().optional(),
+  country: z.string().optional(),
+  country_code: z.string().optional(),
+  camera: z.string().optional(),
+  lens: z.string().optional(),
+  film: z.string().optional(),
+  headline: z.string().optional(),
+  instructions: z.string().optional(),
+  source: z.string().optional(),
+  gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
+}).passthrough();
+
+/** Schéma d'une image en mode distant (spec §1.5). */
+const remoteImageSchema = z.object({
+  url: z.string().url(),
+  alt: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
 /**
  * Schéma Zod de la collection `series`.
  * Injecté automatiquement par le plugin via l'API Astro 6.
  *
- * Le type de retour est inféré directement depuis `z.object()` afin que
- * `.extend()` bénéficie d'une inférence complète dans les projets consommateurs.
+ * v0.3.0 — Conformité spec Hyperfocale v2.1 :
+ * - `lang` : code ISO 639-1 de la langue de la série
+ * - `draft` : masqué en production si `true`
+ * - `featured` : mise en avant dans les listings
+ * - `tags` : tags éditoriaux libres (distincts de `iptc.keywords`)
+ * - `iptc` : bloc structuré de métadonnées IPTC + `passthrough()` pour `iptc.custom.*`
+ * - `images` : mode distant — URLs CDN à la place de `media/` local
+ * - `.passthrough()` racine : champs inconnus transmis sans erreur
  *
  * @param context - Contexte Astro (fournit `image()`)
  * @param options - Options du schéma (ex: `dateRequired: false`)
@@ -48,12 +81,17 @@ export function seriesSchema(
     description: z.string().optional(),
     cover: (image() as z.ZodTypeAny).optional(),
     location: z.string().optional(),
-  });
+    lang: z.string().optional(),
+    draft: z.boolean().default(false),
+    featured: z.boolean().default(false),
+    tags: z.array(z.string()).optional(),
+    iptc: iptcSchema.optional(),
+    images: z.array(remoteImageSchema).optional(),
+  }).passthrough();
 }
 
 /**
  * Type des données d'une série (frontmatter).
- * Défini manuellement pour éviter les conflits de types zod entre versions.
  *
  * Quand `dateRequired: false` est passé à `seriesSchema()`, `date` sera `undefined`
  * pour les entrées sans date. Utilisez `SeriesDataOptionalDate` dans ce cas.
@@ -69,6 +107,17 @@ export interface SeriesData {
     format: string;
   };
   location?: string;
+  lang?: string;
+  draft: boolean;
+  featured: boolean;
+  tags?: string[];
+  iptc?: Record<string, unknown>;
+  images?: Array<{
+    url: string;
+    alt?: string;
+    width?: number;
+    height?: number;
+  }>;
 }
 
 /**

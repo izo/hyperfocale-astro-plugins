@@ -157,6 +157,31 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
               return `
 import { defineCollection, z } from 'astro:content';
 
+const iptcSchema = z.object({
+  creator: z.string().optional(),
+  credit: z.string().optional(),
+  copyright: z.string().optional(),
+  keywords: z.array(z.string()).optional(),
+  city: z.string().optional(),
+  province: z.string().optional(),
+  country: z.string().optional(),
+  country_code: z.string().optional(),
+  camera: z.string().optional(),
+  lens: z.string().optional(),
+  film: z.string().optional(),
+  headline: z.string().optional(),
+  instructions: z.string().optional(),
+  source: z.string().optional(),
+  gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
+}).passthrough();
+
+const remoteImageSchema = z.object({
+  url: z.string().url(),
+  alt: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
 export const seriesCollection = defineCollection({
   type: 'content',
   schema: ({ image }) => z.object({
@@ -165,7 +190,13 @@ export const seriesCollection = defineCollection({
     description: z.string().optional(),
     cover: image().optional(),
     location: z.string().optional(),
-  }),
+    lang: z.string().optional(),
+    draft: z.boolean().default(false),
+    featured: z.boolean().default(false),
+    tags: z.array(z.string()).optional(),
+    iptc: iptcSchema.optional(),
+    images: z.array(remoteImageSchema).optional(),
+  }).passthrough(),
 });
 `;
             }

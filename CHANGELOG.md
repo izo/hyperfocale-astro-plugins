@@ -7,6 +7,32 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.3.0] — 2026-05-23
+
+### Ajouté
+- **Conformité spec Hyperfocale v2.1** — schéma étendu sur `seriesCollection` (virtual module) et `seriesSchema()` :
+  - `lang` : code ISO 639-1 de la langue de la série
+  - `draft` : masqué en production si `true` (défaut `false`)
+  - `featured` : mise en avant dans les listings (défaut `false`)
+  - `tags` : tags éditoriaux libres, distincts de `iptc.keywords`
+  - `iptc` : bloc structuré de métadonnées IPTC (`creator`, `credit`, `copyright`, `keywords`, `city`, `province`, `country`, `country_code`, `camera`, `lens`, `film`, `headline`, `instructions`, `source`, `gps`) + `.passthrough()` pour `iptc.custom.*`
+  - `images` : mode distant — URLs CDN (format `{ url, alt?, width?, height? }`) à la place des fichiers `media/` locaux
+  - `.passthrough()` racine : champs inconnus transmis sans erreur de validation
+- **Mode distant** (`getSeriesImages`) : si `images[]` est présent dans le frontmatter, ces URLs sont retournées directement (priorité sur `media/`). Les deux modes sont mutuellement exclusifs par série.
+- **Filtrage `draft`** (`getSeriesList`) : les séries `draft: true` sont exclues en production (toujours visibles en `DEV`).
+- **Format `.tiff`** ajouté au glob `media/` dans `getSeriesImages`.
+- **Normalisation slug** dans `getSeriesImages` : le suffixe `/index` est retiré pour compatibilité avec les collections legacy Astro (`type: 'content'`).
+
+### Corrigé
+- `series-detail.astro` et `series-page.astro` : `render()` migré vers l'API Astro moderne (`import { render } from 'astro:content'` à la place de `entry.render()`). Compatibilité assurée avec les content loaders Astro 5+.
+- `getSeriesImages(slug, series?)` : le second argument `series` est maintenant passé depuis les routes pour activer le mode distant.
+
+### Types exportés
+- `SeriesSchemaOptions` — options de `seriesSchema()` (existe depuis 0.2.0, maintenant documenté)
+- `SeriesDataOptionalDate` — variante sans `date` (inchangé)
+
+---
+
 ## [0.2.0] — 2026-04-27
 
 ### Ajouté

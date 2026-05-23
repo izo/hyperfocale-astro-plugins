@@ -16,13 +16,27 @@ export interface PaginationResult<T> {
 }
 
 /**
+ * Métadonnées d'image (mode local via import.meta.glob, ou mode distant via `images[]`).
+ */
+export interface ImageMetadata {
+  src: string;
+  width: number;
+  height: number;
+  format: string;
+}
+
+/**
  * Retourne toutes les séries triées par date décroissante (les plus récentes en premier).
+ * Les séries `draft: true` sont exclues en production (spec §1.6).
  */
 export async function getSeriesList(): Promise<Series[]> {
-  const all = await getCollection('series');
+  const all = await getCollection('series', (entry) => {
+    if (import.meta.env.DEV) return true;
+    return !entry.data.draft;
+  });
   return all.sort((a: Series, b: Series) => {
-    const dateA = a.data.date.getTime();
-    const dateB = b.data.date.getTime();
+    const dateA = (a.data.date as Date | undefined)?.getTime() ?? 0;
+    const dateB = (b.data.date as Date | undefined)?.getTime() ?? 0;
     return dateB - dateA;
   });
 }
@@ -40,28 +54,40 @@ export async function getSeriesBySlug(slug: string): Promise<Series> {
 }
 
 /**
- * Métadonnées d'image importée dynamiquement.
- */
-export interface ImageMetadata {
-  src: string;
-  width: number;
-  height: number;
-  format: string;
-}
-
-/**
  * Retourne toutes les images d'une série, triées alphabétiquement par nom de fichier.
+ *
+ * v0.3.0 — Mode distant (spec §1.5) :
+ * Si le frontmatter de la série contient un tableau `images`, ces URLs sont retournées
+ * directement à la place des fichiers locaux dans `media/`. Les deux modes sont
+ * mutuellement exclusifs par série (spec §1.5, règles du mode distant).
+ *
+ * v0.3.0 — Formats ajoutés : `.tiff` (spec §1.2).
  */
-export async function getSeriesImages(slug: string): Promise<ImageMetadata[]> {
+export async function getSeriesImages(slug: string, series?: Series): Promise<ImageMetadata[]> {
+  // Mode distant : `images[]` dans le frontmatter a priorité (spec §1.5)
+  if (series?.data.images && series.data.images.length > 0) {
+    return series.data.images.map((img: { url: string; alt?: string; width?: number; height?: number }) => ({
+      src: img.url,
+      width: img.width ?? 0,
+      height: img.height ?? 0,
+      format: img.url.split('.').pop() ?? 'jpg',
+    }));
+  }
+
+  // Mode local : scan de media/ trié alphabétiquement (spec §1.6)
   const allImages = import.meta.glob<{ default: ImageMetadata }>(
-    '/src/content/series/*/media/*.{jpg,jpeg,png,webp,avif}',
-    { eager: true }
+    '/src/content/series/*/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+    { eager: true },
   );
+
+  // Le slug peut contenir "/index" si la collection utilise type:'content' legacy.
+  // On normalise en extrayant uniquement le nom du dossier.
+  const dirSlug = slug.replace(/\/index$/, '');
 
   return Object.entries(allImages)
     .filter(([path]) => {
       const match = path.match(/\/src\/content\/series\/([^/]+)\/media\//);
-      return match !== null && match[1] === slug;
+      return match !== null && match[1] === dirSlug;
     })
     .sort(([pathA], [pathB]) => {
       const fileA = pathA.split('/').pop() ?? '';
@@ -81,7 +107,7 @@ export async function getSeriesImages(slug: string): Promise<ImageMetadata[]> {
 export function paginateImages<T>(
   items: T[],
   pageSize: number,
-  page: number
+  page: number,
 ): PaginationResult<T> {
   if (pageSize < 1) {
     throw new Error(`[hyperfocale] pageSize doit être >= 1. Reçu: ${pageSize}`);
