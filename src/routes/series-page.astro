@@ -1,4 +1,5 @@
 ---
+import { render } from 'astro:content';
 import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 
@@ -12,7 +13,7 @@ export async function getStaticPaths() {
   const paths: Array<{ params: { slug: string; page: string }; props: { series: (typeof series)[number] } }> = [];
 
   for (const s of series) {
-    const images = await getSeriesImages(s.id);
+    const images = await getSeriesImages(s.id, s);
     const { totalPages } = paginateImages(images, pageSize, 1);
 
     // Génère les pages 2..N (la page 1 est gérée par series-detail.astro)

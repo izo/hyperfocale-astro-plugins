@@ -1,4 +1,5 @@
 ---
+import { render } from 'astro:content';
 import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 
@@ -20,13 +21,13 @@ if (!slug || !series) {
   return Astro.redirect('/404');
 }
 
-const allImages = await getSeriesImages(slug);
+const allImages = await getSeriesImages(slug, series);
 const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1);
 
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const baseUrl = `${normalizedPrefix}/${slug}`;
 
-const { Content } = await series.render();
+const { Content } = await render(series);
 ---
 
 <!DOCTYPE html>
