@@ -27,13 +27,16 @@ beforeAll(async () => {
   // 1. Builder le plugin (génère dist/)
   execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: 'pipe' });
 
-  // 2. Builder le demo-site (génère examples/demo-site/dist/)
+  // 2. Installer les deps du demo-site (crée le symlink @izo/hyperfocale → ../../)
+  execFileSync('npm', ['install', '--prefer-offline'], { cwd: DEMO_SITE, stdio: 'pipe' });
+
+  // 3. Builder le demo-site (génère examples/demo-site/dist/)
   execFileSync('npm', ['run', 'build'], {
     cwd: DEMO_SITE,
     stdio: 'pipe',
     env: { ...process.env, NODE_ENV: 'production' },
   });
-}, 120_000);
+}, 180_000);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

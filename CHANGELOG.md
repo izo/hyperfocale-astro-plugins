@@ -7,6 +7,21 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.4.0] — 2026-06-06
+
+### Changements cassants
+- **Zod 3 n'est plus supporté** : la peer dependency `zod` passe de `^3.0.0 || ^4.0.0` à `^4.0.0`. Les sites consommateurs encore en zod 3 doivent migrer vers zod 4 avant de mettre à jour ce plugin.
+
+### Modifié
+- **Schéma modernisé pour zod 4** (équivalences fonctionnelles, aucun changement de comportement de validation) :
+  - `iptcSchema` et `seriesSchema()` : `.passthrough()` → `z.looseObject()`
+  - `remoteImageSchema.url` : `z.string().url()` → `z.url()`
+
+### Corrigé
+- **Build/typecheck cassés sur installation propre** : le callback de filtre dans `getSeriesList` (`getCollection('series', …)`) était inféré en `any` implicite sous `strict` (la collection `series` n'est pas définie côté plugin). Param typé explicitement `(entry: Series)`.
+
+---
+
 ## [0.3.0] — 2026-05-23
 
 ### Ajouté
