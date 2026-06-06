@@ -4,3 +4,5 @@ dist/
 .DS_Store
 *.log
 .remember/
+.claude/
+.ulk-reports/

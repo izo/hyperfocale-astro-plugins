@@ -1,6 +1,6 @@
 {
   "name": "@izo/hyperfocale",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Plugin Astro 6 pour sites de photographie — gestion de séries photo",
   "license": "MIT",
@@ -65,7 +65,7 @@
   },
   "peerDependencies": {
     "astro": "^6.0.0",
-    "zod": "^3.0.0 || ^4.0.0"
+    "zod": "^4.0.0"
   },
   "overrides": {
     "esbuild": ">=0.25.0"

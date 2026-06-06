@@ -30,7 +30,7 @@ export interface ImageMetadata {
  * Les séries `draft: true` sont exclues en production (spec §1.6).
  */
 export async function getSeriesList(): Promise<Series[]> {
-  const all = await getCollection('series', (entry) => {
+  const all = await getCollection('series', (entry: Series) => {
     if (import.meta.env.DEV) return true;
     return !entry.data.draft;
   });

@@ -14,7 +14,7 @@ export interface SeriesSchemaOptions {
 }
 
 /** Schéma du bloc `iptc.*` (spec §1.3). */
-const iptcSchema = z.object({
+const iptcSchema = z.looseObject({
   creator: z.string().optional(),
   credit: z.string().optional(),
   copyright: z.string().optional(),
@@ -30,11 +30,11 @@ const iptcSchema = z.object({
   instructions: z.string().optional(),
   source: z.string().optional(),
   gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
-}).passthrough();
+});
 
 /** Schéma d'une image en mode distant (spec §1.5). */
 const remoteImageSchema = z.object({
-  url: z.string().url(),
+  url: z.url(),
   alt: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
@@ -49,9 +49,9 @@ const remoteImageSchema = z.object({
  * - `draft` : masqué en production si `true`
  * - `featured` : mise en avant dans les listings
  * - `tags` : tags éditoriaux libres (distincts de `iptc.keywords`)
- * - `iptc` : bloc structuré de métadonnées IPTC + `passthrough()` pour `iptc.custom.*`
+ * - `iptc` : bloc structuré de métadonnées IPTC en `looseObject` pour `iptc.custom.*`
  * - `images` : mode distant — URLs CDN à la place de `media/` local
- * - `.passthrough()` racine : champs inconnus transmis sans erreur
+ * - `looseObject` racine : champs inconnus transmis sans erreur
  *
  * @param context - Contexte Astro (fournit `image()`)
  * @param options - Options du schéma (ex: `dateRequired: false`)
@@ -75,7 +75,7 @@ export function seriesSchema(
   options: SeriesSchemaOptions = {},
 ) {
   const dateRequired = options.dateRequired ?? true;
-  return z.object({
+  return z.looseObject({
     title: z.string(),
     date: dateRequired ? z.coerce.date() : z.coerce.date().optional(),
     description: z.string().optional(),
@@ -87,7 +87,7 @@ export function seriesSchema(
     tags: z.array(z.string()).optional(),
     iptc: iptcSchema.optional(),
     images: z.array(remoteImageSchema).optional(),
-  }).passthrough();
+  });
 }
 
 /**
