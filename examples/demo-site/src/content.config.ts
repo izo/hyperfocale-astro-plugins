@@ -1,3 +1,12 @@
 import { seriesCollection } from 'virtual:hyperfocale/collection';
+import { baseSeriesSchema } from '@izo/hyperfocale';
+import { defineCollection } from 'astro:content';
+import { glob } from 'astro/loaders';
 
-export const collections = { series: seriesCollection };
+export const collections = {
+  series: seriesCollection,
+  brands: defineCollection({
+    loader: glob({ pattern: '**/index.{md,mdx}', base: './src/content/brands' }),
+    schema: baseSeriesSchema({ dateRequired: false }),
+  }),
+};

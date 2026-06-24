@@ -147,17 +147,15 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
           },
           load(id) {
             if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-              // Le schéma est inliné pour éviter les problèmes de résolution
-              // de chemin entre src/ et dist/ au runtime Astro.
-              // dateRequired contrôle si la date est obligatoire ou optionnelle.
               const dateField = dateRequired
                 ? `date: z.coerce.date(),`
                 : `date: z.coerce.date().optional(),`;
 
               return `
 import { defineCollection, z } from 'astro:content';
+import { glob } from 'astro/loaders';
 
-const iptcSchema = z.object({
+const iptcSchema = z.looseObject({
   creator: z.string().optional(),
   credit: z.string().optional(),
   copyright: z.string().optional(),
@@ -173,18 +171,18 @@ const iptcSchema = z.object({
   instructions: z.string().optional(),
   source: z.string().optional(),
   gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
-}).passthrough();
+});
 
 const remoteImageSchema = z.object({
-  url: z.string().url(),
+  url: z.url(),
   alt: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
 });
 
 export const seriesCollection = defineCollection({
-  type: 'content',
-  schema: ({ image }) => z.object({
+  loader: glob({ pattern: '**/index.{md,mdx}', base: './src/content/${collectionName}' }),
+  schema: ({ image }) => z.looseObject({
     title: z.string(),
     ${dateField}
     description: z.string().optional(),
@@ -200,7 +198,7 @@ export const seriesCollection = defineCollection({
     download: z.boolean().default(false),
     iptc: iptcSchema.optional(),
     images: z.array(remoteImageSchema).optional(),
-  }).passthrough(),
+  }),
 });
 `;
             }

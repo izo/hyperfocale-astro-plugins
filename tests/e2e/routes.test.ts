@@ -188,6 +188,12 @@ describe('intégration hyperfocale (dist/index.js)', () => {
     expect(indexContent).toContain('HYPERFOCALE_PAGE_SIZE');
     expect(indexContent).toContain('HYPERFOCALE_THEME');
   });
+
+  it('utilise le loader Content Layer glob (pas de type: content)', () => {
+    expect(indexContent).not.toContain("type: 'content'");
+    expect(indexContent).toContain('astro/loaders');
+    expect(indexContent).toContain('loader: glob(');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

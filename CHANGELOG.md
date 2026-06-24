@@ -7,6 +7,33 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.6.0] — 2026-06-24
+
+### Changements cassants
+
+- **Astro 7 uniquement** : la peer dependency `astro` passe de `^6.0.0` à `^7.0.0`. Les sites encore en Astro 6 doivent d'abord migrer.
+- **`type: 'content'` supprimé** : le module virtuel `virtual:hyperfocale/collection` utilise désormais l'API Content Layer (`loader: glob(...)`). L'import `from 'virtual:hyperfocale/collection'` dans `src/content.config.ts` reste identique — seule la définition interne change.
+
+### Modifié
+
+- **Module virtuel** (`#ARCH-006`) : `defineCollection({ type: 'content', ... })` → `defineCollection({ loader: glob({ pattern: '**/index.{md,mdx}', base: './src/content/${collectionName}' }), ... })`. L'option `collectionName` contrôle désormais aussi le `base` du loader.
+- **Schéma inline** : cohérence avec `src/schema.ts` — `z.object({}).passthrough()` → `z.looseObject({})`, `z.string().url()` → `z.url()`.
+- `devDependencies.astro` et `peerDependencies.astro` passent en `^7.0.0`.
+- `examples/demo-site` : ajout de la collection `brands` (sans date) via `baseSeriesSchema({ dateRequired: false })` + `glob` loader — démontre l'usage multi-collection sans double instance du plugin.
+
+### IDs Content Layer
+
+Avec le `glob` loader d'Astro, `entry.id` est le chemin relatif à `base` sans extension, avec le suffixe `/index` retiré automatiquement :
+
+| Fichier | `entry.id` |
+|---------|------------|
+| `bretagne-2024/index.md` | `bretagne-2024` |
+| `voyages/asie/tokyo-2024/index.md` | `voyages/asie/tokyo-2024` |
+
+Les helpers (`getSeriesBySlug`, `getSeriesList`, `querySeries`) utilisaient déjà `entry.id` — aucune régression sur les slugs hiérarchiques.
+
+---
+
 ## [0.5.0] — 2026-06-24
 
 ### Ajouté
