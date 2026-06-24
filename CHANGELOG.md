@@ -7,6 +7,41 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.5.0] — 2026-06-24
+
+### Ajouté
+
+- **`querySeries(options)`** — API de requête flexible : filtres `collection`, `tags` (ET-logique), `featured`, `exclude`, `published`, `draft` ; tri `date` / `title` / `random` ; pagination avec `limit` / `offset` (#DATA-003)
+- **`getAllTags()`** — retourne tous les tags distincts avec leur fréquence (#DATA-005)
+- **`getAllCollections()`** — retourne les collections parentes (premier segment du slug) avec leur nombre de séries (#DATA-005)
+- **`getSeriesCover(slug, series?)`** — cover de fallback : première image alphabétique si `cover` absent du frontmatter (#MVP-004)
+- **`serializeSeries(series)`** + type `SerializedSeries` — version JSON-safe pour Astro Islands (Date → ISO string) (#MVP-005)
+- **`baseSeriesSchema(options?)`** — schéma de base sans `cover`, extensible via `.extend()` sans `SchemaContext` (#DATA-004)
+- **`<SeriesMasonry>`** — layout masonry CSS columns, sans JS, `prefers-reduced-motion` (#FE-007)
+- **`<SeriesMap>`** — carte SVG schématique depuis `iptc.gps`, marqueurs cliquables, fallback si aucune coordonnée (#FE-009)
+- **`<SeriesFilter>`** — filtrage client-side par tags / date / lieu, événement DOM `hf:filter-change` pour intégration custom (#FE-010)
+- **Champ `alt?`** dans `ImageMetadata` — propagé depuis `remoteImageSchema` et utilisé dans `SeriesLightbox` (#DATA-006)
+- **Nouveaux champs de schéma** : `published` (défaut `true`), `alt_description`, `private` (défaut `false`), `download` (défaut `false`) ; `tags` devient `string[]` avec défaut `[]` (#DATA-002)
+- **Routes catch-all** `[...slug]` — support des slugs hiérarchiques (`pays/ville/serie`) (#ARCH-003)
+- **`getParentCollection(id)`** — extrait le premier segment d'un slug hiérarchique (#ARCH-003)
+- **Cache singleton** `_seriesCache` — un seul appel `getCollection` par build SSG (#MVP-003)
+- **Design tokens CSS** : `--hf-color-text-overlay`, `--hf-color-text-overlay-muted`, `--hf-color-btn-overlay-hover`, `--hf-map-*`, `--hf-filter-*`, `--hf-masonry-*` (#FE-006)
+- **`docs/schema-extensibility.md`** — guide d'extension du schéma avec exemples (#DATA-004)
+
+### Modifié
+
+- `SeriesCard` : cover de fallback (première image) si `cover` absent ; garde `date instanceof Date` (#MVP-004)
+- `SeriesLightbox` : swipe tactile `touchstart`/`touchend` (seuil 50px, `{ passive: true }`) ; `alt` de l'image utilisé si disponible ; valeurs hex remplacées par variables CSS (#FE-008, #FE-006)
+- `seriesSchema()` délègue maintenant à `baseSeriesSchema().extend({ cover })` — aucun changement de comportement
+
+### Corrigé
+
+- `series.render()` → `render(series)` (API Astro 6) dans `series-page.astro`
+- Garde `date instanceof Date` dans les routes et composants (`dateRequired: false` supporté)
+- `getSeriesImages` passe `series` sur les pages ≥ 2 (mode distant CDN)
+
+---
+
 ## [0.4.0] — 2026-06-06
 
 ### Changements cassants
