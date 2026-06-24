@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.1.0"
-updated: 2026-04-06
+updated: 2026-06-24
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -76,6 +76,39 @@ prefixes:
   - [ ] Transitions `opacity` et `transform` uniquement
   - [ ] Alternative à `<SeriesGallery>` (grille uniforme) — exposé dans `hyperfocale/components`
 
+- [ ] #FE-009 [P2] Composant `<SeriesMap>` — carte des séries avec coordonnées GPS #composants #effort-l
+  **Zone** : `src/components/SeriesMap.astro`, `src/components/index.ts`
+  **Effort** : L (4-8h)
+  **Dépendances** : #DATA-002, #ARCH-003
+  **Spec** : §3.1 — `SeriesMap` SHOULD, utilise `iptc.gps` du schéma
+
+  **Contexte** : La spec §3.1 définit `SeriesMap` comme un composant de cartographie des séries géolocalisées. Utilise les coordonnées GPS issues des métadonnées IPTC. Absent du plugin actuellement.
+
+  **Checklist** :
+  - [ ] Props : `series: Series[]`, `height?: string` (défaut `400px`)
+  - [ ] Lire `series.data.iptc?.gps` (lat/lng) — filtrer les séries sans coordonnées
+  - [ ] Implémenter sans dépendance JS externe (CSS + marqueurs SVG inline) ou avec Leaflet en island optionnelle
+  - [ ] Marqueur cliquable → lien vers la série
+  - [ ] Fallback si aucune série n'a de coordonnées (message informatif)
+  - [ ] Exporter depuis `hyperfocale/components`
+
+- [ ] #FE-010 [P2] Composant `<SeriesFilter>` — filtrage par tags, date, lieu #composants #effort-l
+  **Zone** : `src/components/SeriesFilter.astro`, `src/components/index.ts`
+  **Effort** : L (4-8h)
+  **Dépendances** : #DATA-002, #DATA-003, #DATA-005
+  **Spec** : §3.1 — `SeriesFilter` SHOULD, filtres tags/date/lieu
+
+  **Contexte** : La spec §3.1 définit `SeriesFilter` comme un composant de filtrage interactif. Absent du plugin. Nécessite #DATA-002 (champs `tags`, `location`) et #DATA-003 (`querySeries` avec filtres).
+
+  **Checklist** :
+  - [ ] Props : `series: Series[]`, `filters?: ('tags' | 'date' | 'location')[]` (défaut : tous)
+  - [ ] Filtrage côté client (island Astro ou Web Component vanilla)
+  - [ ] Filtre tags : multi-sélection, ET logique
+  - [ ] Filtre date : année ou plage
+  - [ ] Filtre lieu : `location` textuel (recherche partielle)
+  - [ ] Émet un événement DOM `hf:filter-change` avec les séries filtrées pour intégration custom
+  - [ ] Exporter depuis `hyperfocale/components`
+
 - [ ] #MVP-005 [P2] Sérialisation JSON-safe pour islands interactives (`serializeSeries`) #helpers #effort-xs
   **Zone** : `src/helpers/index.ts`
   **Effort** : XS (< 30min)
@@ -115,7 +148,7 @@ prefixes:
 
 ## Todo
 
-- [ ] #DATA-003 [P1] `querySeries()` — API de requête avec filtres et pagination #helpers #effort-m
+- [x] #DATA-003 [P1] `querySeries()` — API de requête avec filtres et pagination #helpers #effort-m
   **Zone** : `src/helpers/index.ts`
   **Effort** : M (2-4h)
   **Dépendances** : #DATA-002, #MVP-003
@@ -131,7 +164,7 @@ prefixes:
   - [ ] Sort : `'date'` (défaut), `'title'`, `'random'`
   - [ ] Pagination : `limit?`, `offset?` → retourner `{ items, pagination: { currentPage, totalPages, totalItems, hasNext, hasPrev } }`
 
-- [ ] #DATA-002 [P0] Enrichir le schéma Zod — champs communs à tout site de galerie #schema #effort-s
+- [x] #DATA-002 [P0] Enrichir le schéma Zod — champs communs à tout site de galerie #schema #effort-s
   **Zone** : `src/schema.ts`, `src/index.ts` (module virtuel)
   **Effort** : S (1-2h)
   **Dépendances** : #DATA-001
@@ -148,7 +181,7 @@ prefixes:
   - [ ] `download: z.boolean().default(false)` — autorise le téléchargement des originaux (la génération du ZIP est à implémenter côté site consommateur)
   - [ ] Mettre à jour le module virtuel Vite et le type `SeriesData` exporté
 
-- [ ] #ARCH-003 [P0] Routes catch-all pour collections hiérarchiques #routes #effort-m
+- [x] #ARCH-003 [P0] Routes catch-all pour collections hiérarchiques #routes #effort-m
   **Zone** : `src/routes/`, `src/index.ts`
   **Effort** : M (2-4h)
   **Dépendances** : #ARCH-002
@@ -161,7 +194,7 @@ prefixes:
   - [ ] Helper `getParentCollection(id)` : extrait le premier segment du chemin pour les pages de collection
   - [ ] Tester avec des slugs à 1, 2 et 3 niveaux de profondeur
 
-- [ ] #MVP-003 [P0] Cache singleton — éviter N appels `getCollection` par page #performance #effort-s
+- [x] #MVP-003 [P0] Cache singleton — éviter N appels `getCollection` par page #performance #effort-s
   **Zone** : `src/helpers/index.ts`
   **Effort** : S (1-2h)
   **Dépendances** : #MVP-001
@@ -172,7 +205,35 @@ prefixes:
   - [ ] `resetSeriesCache()` exportée pour les tests (évite les effets de bord entre suites)
   - [ ] Ajouter au mock `tests/__mocks__/` si nécessaire
 
-- [ ] #MVP-004 [P1] Cover fallback — première image alphabétique si `cover` absent #helpers #effort-xs
+- [x] #DATA-006 [P1] Champ `alt` dans `ImageMetadata` — alt text par image pour la galerie et la lightbox #schema #effort-xs
+  **Zone** : `src/helpers/index.ts` (interface `ImageMetadata`), `src/components/SeriesGallery.astro`, `src/components/SeriesLightbox.astro`
+  **Effort** : XS (< 30min)
+  **Dépendances** : #DATA-002
+  **Spec** : §3.2 — `ImageMetadata.alt` requis par la spec Hyperfocale v2.4
+
+  **Contexte** : L'interface `ImageMetadata` ne porte pas de champ `alt`. Les composants génèrent des alt génériques (`Photo N`, `Image N sur M`) qui violent WCAG 1.1.1 et la spec §3.2. Le champ existe dans le schéma `remoteImageSchema` mais est perdu dans le type TypeScript.
+
+  **Checklist** :
+  - [ ] Ajouter `alt?: string` dans l'interface `ImageMetadata` (`src/helpers/index.ts`)
+  - [ ] Propager `alt` depuis `remoteImageSchema` dans le helper `getSeriesImages`
+  - [ ] Utiliser `image.alt ?? series.data.title` comme fallback dans `SeriesGallery.astro`
+  - [ ] Propager `alt` dans le JSON sérialisé transmis à `SeriesLightbox.astro`
+
+- [x] #FE-008 [P1] Swipe tactile dans `<SeriesLightbox>` #composants #effort-s
+  **Zone** : `src/components/SeriesLightbox.astro`
+  **Effort** : S (1-2h)
+  **Dépendances** : #FE-004
+  **Spec** : §3.3 — navigation tactile SHOULD dans la lightbox
+
+  **Contexte** : La lightbox gère clavier (←/→/Esc) et boutons, mais pas le touch. Sur mobile, l'utilisateur ne peut pas naviguer entre les images. Requis par la spec §3.3.
+
+  **Checklist** :
+  - [ ] Écouter `touchstart` / `touchend` sur l'overlay lightbox
+  - [ ] Seuil de swipe : 50px horizontaux → image précédente/suivante
+  - [ ] Pas de conflit avec le scroll vertical
+  - [ ] Respecter `prefers-reduced-motion` (pas d'animation de slide si désactivée)
+
+- [x] #MVP-004 [P1] Cover fallback — première image alphabétique si `cover` absent #helpers #effort-xs
   **Zone** : `src/helpers/index.ts`
   **Effort** : XS (< 30min)
   **Dépendances** : #MVP-001

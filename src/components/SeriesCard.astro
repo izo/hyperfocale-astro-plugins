@@ -1,6 +1,7 @@
 ---
 import { Image } from 'astro:assets';
 import type { Series } from '../helpers/index.js';
+import { getSeriesImages } from '../helpers/index.js';
 
 interface Props {
   series: Series;
@@ -11,12 +12,12 @@ const { series, prefix = '/series' } = Astro.props;
 const { title, date, description, cover } = series.data;
 const slug = series.id;
 
-// Formatage de la date
-const formattedDate = date.toLocaleDateString('fr-FR', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
+const formattedDate = date instanceof Date
+  ? date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
+  : undefined;
+
+// Cover fallback — première image si `cover` absent (spec §1.6, #MVP-004)
+const fallbackImage = !cover ? (await getSeriesImages(slug, series))[0] : undefined;
 
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const seriesUrl = `${normalizedPrefix}/${slug}/`;
@@ -34,6 +35,15 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
           class="hf-card__image"
           loading="lazy"
         />
+      ) : fallbackImage ? (
+        <img
+          src={fallbackImage.src}
+          alt={fallbackImage.alt ?? `Couverture de la série ${title}`}
+          width={600}
+          height={400}
+          class="hf-card__image"
+          loading="lazy"
+        />
       ) : (
         <div class="hf-card__placeholder" aria-hidden="true">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -46,7 +56,9 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     </div>
     <div class="hf-card__body">
       <h2 class="hf-card__title">{title}</h2>
-      <time class="hf-card__date" datetime={date.toISOString()}>{formattedDate}</time>
+      {date instanceof Date && (
+        <time class="hf-card__date" datetime={date.toISOString()}>{formattedDate}</time>
+      )}
       {description && <p class="hf-card__description">{description}</p>}
     </div>
   </a>
@@ -60,6 +72,13 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     box-shadow: var(--hf-card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
     transition: transform var(--hf-transition, 200ms ease),
                 box-shadow var(--hf-transition, 200ms ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hf-card,
+    .hf-card__image {
+      transition: none;
+    }
   }
 
   .hf-card:hover {

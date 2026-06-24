@@ -44,7 +44,8 @@ if (isNaN(pageNumber) || pageNumber < 2) {
   return Astro.redirect('/404');
 }
 
-const allImages = await getSeriesImages(slug);
+// Passe `series` pour activer le mode distant si `images[]` est défini (spec §1.5)
+const allImages = await getSeriesImages(slug, series);
 const { items: pageImages, totalPages, currentPage } = paginateImages(allImages, pageSize, pageNumber);
 
 if (pageNumber > totalPages) {
@@ -54,7 +55,7 @@ if (pageNumber > totalPages) {
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const baseUrl = `${normalizedPrefix}/${slug}`;
 
-const { Content } = await series.render();
+const { Content } = await render(series);
 ---
 
 <!DOCTYPE html>
@@ -70,13 +71,14 @@ const { Content } = await series.render();
     <header>
       <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
       <h1>{series.data.title} <small>— Page {currentPage}</small></h1>
-      <time datetime={series.data.date.toISOString()}>
-        {series.data.date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-      </time>
+      {series.data.date && (
+        <time datetime={(series.data.date as Date).toISOString()}>
+          {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </time>
+      )}
       {series.data.location && <p class="location">{series.data.location}</p>}
     </header>
 
-    {/* Body markdown affiché aussi sur les pages suivantes */}
     <div class="hf-series-body">
       <Content />
     </div>

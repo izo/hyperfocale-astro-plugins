@@ -82,9 +82,13 @@ export function seriesSchema(
     cover: (image() as z.ZodTypeAny).optional(),
     location: z.string().optional(),
     lang: z.string().optional(),
+    published: z.boolean().default(true),
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
-    tags: z.array(z.string()).optional(),
+    tags: z.array(z.string()).default([]),
+    alt_description: z.string().optional(),
+    private: z.boolean().default(false),
+    download: z.boolean().default(false),
     iptc: iptcSchema.optional(),
     images: z.array(remoteImageSchema).optional(),
   });
@@ -108,9 +112,13 @@ export interface SeriesData {
   };
   location?: string;
   lang?: string;
+  published: boolean;
   draft: boolean;
   featured: boolean;
-  tags?: string[];
+  tags: string[];
+  alt_description?: string;
+  private: boolean;
+  download: boolean;
   iptc?: Record<string, unknown>;
   images?: Array<{
     url: string;

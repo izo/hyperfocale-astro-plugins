@@ -1,52 +1,69 @@
-import { getCollection, getEntry } from 'astro:content';
+import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
 
-/**
- * Type représentant une entrée de la collection `series`.
- */
 export type Series = CollectionEntry<'series'>;
 
-/**
- * Résultat de la pagination d'images.
- */
 export interface PaginationResult<T> {
   items: T[];
   totalPages: number;
   currentPage: number;
 }
 
-/**
- * Métadonnées d'image (mode local via import.meta.glob, ou mode distant via `images[]`).
- */
 export interface ImageMetadata {
   src: string;
   width: number;
   height: number;
   format: string;
+  alt?: string;
+}
+
+// Cache module-level — évite N appels getCollection par build (#MVP-003)
+let _seriesCache: Series[] | null = null;
+
+// Glob hoissé — évalué une seule fois par Vite au build, supporte les slugs hiérarchiques (#ARCH-003)
+const _imageGlob = import.meta.glob<{ default: ImageMetadata }>(
+  '/src/content/series/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+  { eager: true },
+);
+
+async function getAllSeriesCached(): Promise<Series[]> {
+  if (_seriesCache !== null) return _seriesCache;
+  const result = await getCollection('series');
+  _seriesCache = result;
+  return result;
+}
+
+/** Réinitialise le cache — à appeler dans les teardowns de tests. */
+export function resetSeriesCache(): void {
+  _seriesCache = null;
 }
 
 /**
- * Retourne toutes les séries triées par date décroissante (les plus récentes en premier).
- * Les séries `draft: true` sont exclues en production (spec §1.6).
+ * Retourne toutes les séries publiées, triées par date décroissante.
+ * Exclut `draft: true` et `published: false` en production (spec §1.6).
  */
 export async function getSeriesList(): Promise<Series[]> {
-  const all = await getCollection('series', (entry: Series) => {
-    if (import.meta.env.DEV) return true;
-    return !entry.data.draft;
-  });
-  return all.sort((a: Series, b: Series) => {
-    const dateA = (a.data.date as Date | undefined)?.getTime() ?? 0;
-    const dateB = (b.data.date as Date | undefined)?.getTime() ?? 0;
-    return dateB - dateA;
-  });
+  const all = await getAllSeriesCached();
+  return all
+    .filter((entry: Series) => {
+      if (import.meta.env.DEV) return true;
+      const published = (entry.data as Record<string, unknown>).published ?? true;
+      return !entry.data.draft && published !== false;
+    })
+    .sort((a: Series, b: Series) => {
+      const dateA = (a.data.date as Date | undefined)?.getTime() ?? 0;
+      const dateB = (b.data.date as Date | undefined)?.getTime() ?? 0;
+      return dateB - dateA;
+    });
 }
 
 /**
- * Retourne une série par son slug.
+ * Retourne une série par son slug (plat ou hiérarchique).
  * Lève une erreur si la série est introuvable.
  */
 export async function getSeriesBySlug(slug: string): Promise<Series> {
-  const entry = await getEntry('series', slug);
+  const all = await getAllSeriesCached();
+  const entry = all.find((s) => s.id === slug);
   if (!entry) {
     throw new Error(`[hyperfocale] Série introuvable pour le slug : "${slug}"`);
   }
@@ -54,39 +71,26 @@ export async function getSeriesBySlug(slug: string): Promise<Series> {
 }
 
 /**
- * Retourne toutes les images d'une série, triées alphabétiquement par nom de fichier.
- *
- * v0.3.0 — Mode distant (spec §1.5) :
- * Si le frontmatter de la série contient un tableau `images`, ces URLs sont retournées
- * directement à la place des fichiers locaux dans `media/`. Les deux modes sont
- * mutuellement exclusifs par série (spec §1.5, règles du mode distant).
- *
- * v0.3.0 — Formats ajoutés : `.tiff` (spec §1.2).
+ * Retourne toutes les images d'une série, triées alphabétiquement.
+ * Mode distant prioritaire si `series.data.images` est défini (spec §1.5).
  */
 export async function getSeriesImages(slug: string, series?: Series): Promise<ImageMetadata[]> {
-  // Mode distant : `images[]` dans le frontmatter a priorité (spec §1.5)
-  if (series?.data.images && series.data.images.length > 0) {
-    return series.data.images.map((img: { url: string; alt?: string; width?: number; height?: number }) => ({
+  const remoteImages = series?.data.images as Array<{ url: string; alt?: string; width?: number; height?: number }> | undefined;
+  if (remoteImages && remoteImages.length > 0) {
+    return remoteImages.map((img) => ({
       src: img.url,
       width: img.width ?? 0,
       height: img.height ?? 0,
       format: img.url.split('.').pop() ?? 'jpg',
+      ...(img.alt !== undefined && { alt: img.alt }),
     }));
   }
 
-  // Mode local : scan de media/ trié alphabétiquement (spec §1.6)
-  const allImages = import.meta.glob<{ default: ImageMetadata }>(
-    '/src/content/series/*/media/*.{jpg,jpeg,png,webp,avif,tiff}',
-    { eager: true },
-  );
-
-  // Le slug peut contenir "/index" si la collection utilise type:'content' legacy.
-  // On normalise en extrayant uniquement le nom du dossier.
   const dirSlug = slug.replace(/\/index$/, '');
 
-  return Object.entries(allImages)
+  return Object.entries(_imageGlob)
     .filter(([path]) => {
-      const match = path.match(/\/src\/content\/series\/([^/]+)\/media\//);
+      const match = path.match(/\/src\/content\/series\/(.+)\/media\//);
       return match !== null && match[1] === dirSlug;
     })
     .sort(([pathA], [pathB]) => {
@@ -99,10 +103,6 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
 
 /**
  * Découpe un tableau d'éléments en pages et retourne la page demandée.
- *
- * @param items - Tableau complet d'éléments
- * @param pageSize - Nombre d'éléments par page
- * @param page - Numéro de la page demandée (1-indexed)
  */
 export function paginateImages<T>(
   items: T[],
@@ -119,11 +119,122 @@ export function paginateImages<T>(
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
   const currentPage = Math.min(page, totalPages);
   const start = (currentPage - 1) * pageSize;
-  const end = start + pageSize;
 
   return {
-    items: items.slice(start, end),
+    items: items.slice(start, start + pageSize),
     totalPages,
     currentPage,
   };
+}
+
+export interface QuerySeriesOptions {
+  /** Filtre sur le premier segment du slug (collection parente). */
+  collection?: string;
+  /** Filtre ET-logique sur les tags (toutes les tags doivent être présentes). */
+  tags?: string[];
+  /**
+   * `true` → uniquement les séries featured.
+   * `'first'` → toutes les séries, featured remontées en tête.
+   */
+  featured?: boolean | 'first';
+  /** Slugs à exclure explicitement. */
+  exclude?: string[];
+  /** Filtre sur `published` (défaut `true`). */
+  published?: boolean;
+  /** Filtre sur `draft` (défaut `false`). */
+  draft?: boolean;
+  /** Tri : `'date'` (défaut) | `'title'` | `'random'`. */
+  sort?: 'date' | 'title' | 'random';
+  /** Nombre maximum d'éléments retournés. */
+  limit?: number;
+  /** Index de départ (0-indexed). */
+  offset?: number;
+}
+
+export interface QueryResult<T> {
+  items: T[];
+  pagination: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+/**
+ * API de requête flexible sur la collection `series`.
+ * Remplace `getSeriesList()` pour les cas nécessitant filtres, tri ou pagination.
+ */
+export async function querySeries(options: QuerySeriesOptions = {}): Promise<QueryResult<Series>> {
+  const {
+    collection,
+    tags,
+    featured,
+    exclude,
+    published = true,
+    draft = false,
+    sort = 'date',
+    limit,
+    offset = 0,
+  } = options;
+
+  const d = (s: Series) => s.data as Record<string, unknown>;
+
+  const filtered = (await getAllSeriesCached()).filter((entry) => {
+    if ((d(entry).published ?? true) !== published) return false;
+    if ((d(entry).draft ?? false) !== draft) return false;
+    if (featured === true && !d(entry).featured) return false;
+    if (collection !== undefined && getParentCollection(entry.id) !== collection) return false;
+    if (tags && tags.length > 0) {
+      const entryTags = (d(entry).tags as string[]) ?? [];
+      if (!tags.every((t) => entryTags.includes(t))) return false;
+    }
+    if (exclude && exclude.includes(entry.id)) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (featured === 'first') {
+      const aF = d(a).featured ? 1 : 0;
+      const bF = d(b).featured ? 1 : 0;
+      if (aF !== bF) return bF - aF;
+    }
+    if (sort === 'title') return String(a.data.title).localeCompare(String(b.data.title));
+    if (sort === 'random') return Math.random() - 0.5;
+    const dateA = (a.data.date as Date | undefined)?.getTime() ?? 0;
+    const dateB = (b.data.date as Date | undefined)?.getTime() ?? 0;
+    return dateB - dateA;
+  });
+
+  const totalItems = filtered.length;
+  const items = filtered.slice(offset, limit !== undefined ? offset + limit : undefined);
+  const totalPages = limit !== undefined ? Math.max(1, Math.ceil(totalItems / limit)) : 1;
+  const currentPage = limit !== undefined ? Math.floor(offset / limit) + 1 : 1;
+
+  return {
+    items,
+    pagination: { currentPage, totalPages, totalItems, hasNext: currentPage < totalPages, hasPrev: currentPage > 1 },
+  };
+}
+
+/**
+ * Retourne la première image d'une série comme cover de fallback (spec §1.6).
+ * Retourne `undefined` si aucune image n'est trouvée.
+ */
+export async function getSeriesCover(slug: string, series?: Series): Promise<ImageMetadata | undefined> {
+  const images = await getSeriesImages(slug, series);
+  return images[0];
+}
+
+/**
+ * Extrait le nom de la collection parente depuis un slug hiérarchique.
+ * Retourne `null` pour un slug plat (un seul niveau).
+ *
+ * @example getParentCollection('voyages/asie/tokyo-2024') → 'voyages'
+ * @example getParentCollection('bretagne-2024') → null
+ */
+export function getParentCollection(id: string): string | null {
+  const slash = id.indexOf('/');
+  return slash !== -1 ? id.slice(0, slash) : null;
 }

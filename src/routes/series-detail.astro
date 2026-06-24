@@ -43,9 +43,11 @@ const { Content } = await render(series);
     <header>
       <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
       <h1>{series.data.title}</h1>
-      <time datetime={series.data.date.toISOString()}>
-        {series.data.date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-      </time>
+      {series.data.date && (
+        <time datetime={(series.data.date as Date).toISOString()}>
+          {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </time>
+      )}
       {series.data.location && <p class="location">{series.data.location}</p>}
     </header>
 

@@ -119,13 +119,13 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
         });
 
         injectRoute({
-          pattern: `${prefix}/[slug]/`,
+          pattern: `${prefix}/[...slug]/`,
           entrypoint: resolve(routesDir, 'series-detail.astro'),
           prerender: true,
         });
 
         injectRoute({
-          pattern: `${prefix}/[slug]/[page]/`,
+          pattern: `${prefix}/[...slug]/[page]/`,
           entrypoint: resolve(routesDir, 'series-page.astro'),
           prerender: true,
         });
@@ -191,9 +191,13 @@ export const seriesCollection = defineCollection({
     cover: image().optional(),
     location: z.string().optional(),
     lang: z.string().optional(),
+    published: z.boolean().default(true),
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
-    tags: z.array(z.string()).optional(),
+    tags: z.array(z.string()).default([]),
+    alt_description: z.string().optional(),
+    private: z.boolean().default(false),
+    download: z.boolean().default(false),
     iptc: iptcSchema.optional(),
     images: z.array(remoteImageSchema).optional(),
   }).passthrough(),

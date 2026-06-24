@@ -65,7 +65,7 @@ const { images } = Astro.props;
 
 <!-- Données des images sérialisées pour le JS côté client -->
 <script type="application/json" id="hf-lightbox-data">
-  {JSON.stringify(images.map((img) => ({ src: img.src, width: img.width, height: img.height })))}
+  {JSON.stringify(images.map((img) => ({ src: img.src, width: img.width, height: img.height, alt: img.alt })))}
 </script>
 
 <script>
@@ -80,7 +80,7 @@ const { images } = Astro.props;
 
     if (!lightbox || !img || !counter || !btnClose || !btnPrev || !btnNext || !dataEl) return;
 
-    type ImageInfo = { src: string; width: number; height: number };
+    type ImageInfo = { src: string; width: number; height: number; alt?: string };
     const images: ImageInfo[] = JSON.parse(dataEl.textContent ?? '[]');
     let current = 0;
     let previousFocus: HTMLElement | null = null;
@@ -90,7 +90,7 @@ const { images } = Astro.props;
       const image = images[current];
       if (!image) return;
       img!.src = image.src;
-      img!.alt = `Image ${current + 1} sur ${images.length}`;
+      img!.alt = image.alt ?? `Image ${current + 1} sur ${images.length}`;
       counter!.textContent = `${current + 1} / ${images.length}`;
       btnPrev!.style.display = images.length <= 1 ? 'none' : '';
       btnNext!.style.display = images.length <= 1 ? 'none' : '';
@@ -116,6 +116,18 @@ const { images } = Astro.props;
     btnClose.addEventListener('click', close);
     btnPrev.addEventListener('click', () => show(current - 1));
     btnNext.addEventListener('click', () => show(current + 1));
+
+    // Swipe tactile — { passive: true } pour ne pas bloquer le scroll natif (#FE-008)
+    let touchStartX = 0;
+    lightbox.addEventListener('touchstart', (e) => {
+      touchStartX = e.touches[0]?.clientX ?? 0;
+    }, { passive: true });
+    lightbox.addEventListener('touchend', (e) => {
+      const delta = touchStartX - (e.changedTouches[0]?.clientX ?? 0);
+      if (Math.abs(delta) < 50) return;
+      if (delta > 0) show(current + 1);
+      else show(current - 1);
+    }, { passive: true });
 
     // Clic overlay pour fermer
     lightbox.addEventListener('click', (e) => {
