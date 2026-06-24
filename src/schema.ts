@@ -41,45 +41,32 @@ const remoteImageSchema = z.object({
 });
 
 /**
- * Schéma Zod de la collection `series`.
- * Injecté automatiquement par le plugin via l'API Astro 6.
+ * Schéma de base sans `cover` — utilisable sans `SchemaContext` (#DATA-004).
  *
- * v0.3.0 — Conformité spec Hyperfocale v2.1 :
- * - `lang` : code ISO 639-1 de la langue de la série
- * - `draft` : masqué en production si `true`
- * - `featured` : mise en avant dans les listings
- * - `tags` : tags éditoriaux libres (distincts de `iptc.keywords`)
- * - `iptc` : bloc structuré de métadonnées IPTC en `looseObject` pour `iptc.custom.*`
- * - `images` : mode distant — URLs CDN à la place de `media/` local
- * - `looseObject` racine : champs inconnus transmis sans erreur
+ * Permet aux sites consommateurs d'étendre le schéma sans dépendance
+ * au contexte Astro :
  *
- * @param context - Contexte Astro (fournit `image()`)
- * @param options - Options du schéma (ex: `dateRequired: false`)
- *
- * @example Usage standard (date obligatoire) :
  * ```ts
- * const series = defineCollection({ schema: seriesSchema });
- * ```
+ * // src/content.config.ts du site consommateur
+ * import { baseSeriesSchema } from '@izo/hyperfocale';
  *
- * @example Sans date (marques, produits) :
- * ```ts
- * const brands = defineCollection({
- *   schema: (ctx) => seriesSchema(ctx, { dateRequired: false }).extend({
- *     logo: ctx.image().optional(),
+ * export const collections = {
+ *   series: defineCollection({
+ *     schema: (ctx) => baseSeriesSchema({ dateRequired: false }).extend({
+ *       cover: ctx.image().optional(),
+ *       camera: z.string().optional(),
+ *       film: z.string().optional(),
+ *     }),
  *   }),
- * });
+ * };
  * ```
  */
-export function seriesSchema(
-  { image }: SchemaContext,
-  options: SeriesSchemaOptions = {},
-) {
-  const dateRequired = options.dateRequired ?? true;
+export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
+  const { dateRequired = true } = options;
   return z.looseObject({
     title: z.string(),
     date: dateRequired ? z.coerce.date() : z.coerce.date().optional(),
     description: z.string().optional(),
-    cover: (image() as z.ZodTypeAny).optional(),
     location: z.string().optional(),
     lang: z.string().optional(),
     published: z.boolean().default(true),
@@ -92,6 +79,26 @@ export function seriesSchema(
     iptc: iptcSchema.optional(),
     images: z.array(remoteImageSchema).optional(),
   });
+}
+
+/**
+ * Schéma complet avec `cover` (image traitée par Astro).
+ * Nécessite `SchemaContext` car `image()` est fourni par `defineCollection`.
+ *
+ * @example Usage standard :
+ * ```ts
+ * const series = defineCollection({ schema: seriesSchema });
+ * ```
+ *
+ * @example Sans date (marques, produits) :
+ * ```ts
+ * const brands = defineCollection({
+ *   schema: (ctx) => seriesSchema(ctx, { dateRequired: false }),
+ * });
+ * ```
+ */
+export function seriesSchema({ image }: SchemaContext, options: SeriesSchemaOptions = {}) {
+  return baseSeriesSchema(options).extend({ cover: (image() as z.ZodTypeAny).optional() });
 }
 
 /**

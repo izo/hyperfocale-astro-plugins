@@ -199,7 +199,7 @@ const { images } = Astro.props;
     right: 1rem;
     background: none;
     border: none;
-    color: #fff;
+    color: var(--hf-color-text-overlay, #ffffff);
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 50%;
@@ -211,8 +211,8 @@ const { images } = Astro.props;
 
   .hf-lightbox__close:hover,
   .hf-lightbox__close:focus-visible {
-    background: rgba(255, 255, 255, 0.15);
-    outline: 2px solid #fff;
+    background: var(--hf-color-btn-overlay-hover, rgba(255, 255, 255, 0.15));
+    outline: 2px solid var(--hf-color-text-overlay, #ffffff);
     outline-offset: 2px;
   }
 
@@ -222,7 +222,7 @@ const { images } = Astro.props;
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: #fff;
+    color: var(--hf-color-text-overlay, #ffffff);
     cursor: pointer;
     padding: 0.75rem;
     border-radius: 50%;
@@ -234,8 +234,8 @@ const { images } = Astro.props;
 
   .hf-lightbox__nav:hover,
   .hf-lightbox__nav:focus-visible {
-    background: rgba(255, 255, 255, 0.15);
-    outline: 2px solid #fff;
+    background: var(--hf-color-btn-overlay-hover, rgba(255, 255, 255, 0.15));
+    outline: 2px solid var(--hf-color-text-overlay, #ffffff);
     outline-offset: 2px;
   }
 
@@ -252,7 +252,7 @@ const { images } = Astro.props;
     bottom: 1.25rem;
     left: 50%;
     transform: translateX(-50%);
-    color: rgba(255, 255, 255, 0.75);
+    color: var(--hf-color-text-overlay-muted, rgba(255, 255, 255, 0.75));
     font-size: 0.875rem;
     font-family: var(--hf-font-sans, system-ui);
   }

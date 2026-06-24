@@ -1,0 +1,69 @@
+---
+import type { ImageMetadata } from '../helpers/index.js';
+
+interface Props {
+  images: ImageMetadata[];
+  /** Nombre de colonnes (défaut 3). Surchargeable via --hf-masonry-columns. */
+  columns?: number;
+}
+
+const { images, columns = 3 } = Astro.props;
+---
+
+<div class="hf-masonry" style={`--hf-masonry-columns: ${columns}`}>
+  {images.map((img, i) => (
+    <div class="hf-masonry__item">
+      <img
+        src={img.src}
+        alt={img.alt ?? `Photo ${i + 1}`}
+        width={img.width || undefined}
+        height={img.height || undefined}
+        loading="lazy"
+        decoding="async"
+        class="hf-masonry__img"
+      />
+    </div>
+  ))}
+</div>
+
+<style>
+  .hf-masonry {
+    columns: var(--hf-masonry-columns, 3);
+    column-gap: var(--hf-masonry-gap, var(--hf-gallery-gap, 0.5rem));
+  }
+
+  .hf-masonry__item {
+    break-inside: avoid;
+    margin-bottom: var(--hf-masonry-gap, var(--hf-gallery-gap, 0.5rem));
+  }
+
+  .hf-masonry__img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: var(--hf-card-radius, 4px);
+    opacity: 0;
+    transition: opacity var(--hf-transition, 200ms ease);
+  }
+
+  .hf-masonry__img.hf-loaded {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hf-masonry__img {
+      opacity: 1;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLImageElement>('.hf-masonry__img').forEach((img) => {
+    if (img.complete) {
+      img.classList.add('hf-loaded');
+    } else {
+      img.addEventListener('load', () => img.classList.add('hf-loaded'), { once: true });
+    }
+  });
+</script>

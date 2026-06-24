@@ -225,5 +225,5 @@ export const seriesCollection = defineCollection({
   };
 }
 
-export { seriesSchema } from './schema.js';
-export type { SeriesData } from './schema.js';
+export { seriesSchema, baseSeriesSchema } from './schema.js';
+export type { SeriesData, SeriesDataOptionalDate } from './schema.js';

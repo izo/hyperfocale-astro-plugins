@@ -238,3 +238,61 @@ export function getParentCollection(id: string): string | null {
   const slash = id.indexOf('/');
   return slash !== -1 ? id.slice(0, slash) : null;
 }
+
+/**
+ * Retourne tous les tags distincts de la collection, triés par fréquence décroissante.
+ * No-op si `tags` n'est pas dans le schéma du site consommateur (#DATA-005).
+ */
+export async function getAllTags(): Promise<{ name: string; count: number }[]> {
+  const all = await getAllSeriesCached();
+  const counts = new Map<string, number>();
+  for (const entry of all) {
+    const tags = ((entry.data as Record<string, unknown>).tags as string[] | undefined) ?? [];
+    for (const tag of tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+}
+
+/**
+ * Retourne toutes les collections parentes (premier segment du slug),
+ * triées par nombre de séries décroissant (#DATA-005).
+ */
+export async function getAllCollections(): Promise<{ slug: string; name: string; count: number }[]> {
+  const all = await getAllSeriesCached();
+  const counts = new Map<string, number>();
+  for (const entry of all) {
+    const parent = getParentCollection(entry.id);
+    if (parent !== null) counts.set(parent, (counts.get(parent) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([slug, count]) => ({ slug, name: slug, count }))
+    .sort((a, b) => b.count - a.count || a.slug.localeCompare(b.slug));
+}
+
+/**
+ * Version JSON-sérialisable de `Series` pour les Astro Islands (React, Vue, Svelte…).
+ * Les `Date` sont converties en chaînes ISO ; la méthode `render` est omise (#MVP-005).
+ */
+export type SerializedSeries = {
+  id: string;
+  collection: string;
+  body?: string;
+  data: Record<string, unknown> & { date?: string };
+};
+
+export function serializeSeries(series: Series): SerializedSeries {
+  const { date, ...restData } = series.data as Record<string, unknown>;
+  return {
+    id: series.id,
+    collection: series.collection,
+    ...(series.body !== undefined ? { body: series.body } : {}),
+    data: {
+      ...restData,
+      ...(date instanceof Date ? { date: date.toISOString() } : {}),
+    },
+  };
+}

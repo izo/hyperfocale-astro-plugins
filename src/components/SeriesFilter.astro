@@ -1,0 +1,369 @@
+---
+import type { Series } from '../helpers/index.js';
+
+interface Props {
+  series: Series[];
+  filters?: Array<'tags' | 'date' | 'location'>;
+  prefix?: string;
+}
+
+const { series, filters = ['tags', 'date', 'location'], prefix = '/series' } = Astro.props;
+
+const showTags = filters.includes('tags');
+const showDate = filters.includes('date');
+const showLocation = filters.includes('location');
+
+const d = (s: Series) => s.data as Record<string, unknown>;
+const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+
+const allTags = [...new Set(series.flatMap((s) => (d(s).tags as string[] | undefined) ?? []))].sort();
+const allYears = [...new Set(
+  series
+    .map((s) => (d(s).date instanceof Date ? (d(s).date as Date).getFullYear() : null))
+    .filter((y): y is number => y !== null),
+)].sort((a, b) => b - a);
+
+type ItemData = {
+  id: string;
+  title: string;
+  date: number | null;
+  tags: string[];
+  location: string | null;
+  url: string;
+};
+
+const items: ItemData[] = series.map((s) => ({
+  id: s.id,
+  title: String(s.data.title),
+  date: d(s).date instanceof Date ? (d(s).date as Date).getFullYear() : null,
+  tags: (d(s).tags as string[] | undefined) ?? [],
+  location: (d(s).location as string | undefined) ?? null,
+  url: `${normalizedPrefix}/${s.id}/`,
+}));
+
+const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.length > 0) || showLocation;
+---
+
+<div class="hf-filter" id="hf-filter">
+  {hasControls && (
+    <form class="hf-filter__controls" id="hf-filter-form" novalidate>
+      {showTags && allTags.length > 0 && (
+        <fieldset class="hf-filter__group">
+          <legend class="hf-filter__legend">Tags</legend>
+          <div class="hf-filter__tag-grid">
+            {allTags.map((tag) => (
+              <label class="hf-filter__tag-label">
+                <input type="checkbox" name="tag" value={tag} class="hf-filter__checkbox" />
+                {tag}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+      <div class="hf-filter__row">
+        {showDate && allYears.length > 0 && (
+          <div class="hf-filter__group hf-filter__group--inline">
+            <label class="hf-filter__legend" for="hf-filter-year">Année</label>
+            <select id="hf-filter-year" name="year" class="hf-filter__select">
+              <option value="">Toutes</option>
+              {allYears.map((y) => <option value={String(y)}>{y}</option>)}
+            </select>
+          </div>
+        )}
+        {showLocation && (
+          <div class="hf-filter__group hf-filter__group--inline">
+            <label class="hf-filter__legend" for="hf-filter-location">Lieu</label>
+            <input
+              type="search"
+              id="hf-filter-location"
+              name="location"
+              class="hf-filter__input"
+              placeholder="Filtrer par lieu…"
+              autocomplete="off"
+            />
+          </div>
+        )}
+        <button type="reset" class="hf-filter__reset">Réinitialiser</button>
+      </div>
+    </form>
+  )}
+
+  <p
+    class="hf-filter__count"
+    id="hf-filter-count"
+    aria-live="polite"
+    aria-atomic="true"
+  ></p>
+
+  <ul class="hf-filter__list" id="hf-filter-list" role="list">
+    {items.map((item) => (
+      <li
+        class="hf-filter__item"
+        data-id={item.id}
+        data-tags={item.tags.join(',')}
+        data-year={item.date ?? ''}
+        data-location={(item.location ?? '').toLowerCase()}
+      >
+        <a href={item.url} class="hf-filter__link">
+          <span class="hf-filter__title">{item.title}</span>
+          {(item.date || item.location) && (
+            <span class="hf-filter__meta">
+              {item.date}{item.date && item.location ? ' · ' : ''}{item.location}
+            </span>
+          )}
+          {item.tags.length > 0 && (
+            <span class="hf-filter__chips" aria-label={`Tags : ${item.tags.join(', ')}`}>
+              {item.tags.map((t) => <span class="hf-filter__chip">{t}</span>)}
+            </span>
+          )}
+        </a>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<script type="application/json" id="hf-filter-data">
+  {JSON.stringify(items)}
+</script>
+
+<script>
+  (() => {
+    const form = document.getElementById('hf-filter-form') as HTMLFormElement | null;
+    const list = document.getElementById('hf-filter-list') as HTMLElement | null;
+    const countEl = document.getElementById('hf-filter-count') as HTMLElement | null;
+    const dataEl = document.getElementById('hf-filter-data') as HTMLElement | null;
+
+    if (!list || !dataEl) return;
+
+    type ItemData = { id: string; title: string; date: number | null; tags: string[]; location: string | null; url: string };
+    const allItems: ItemData[] = JSON.parse(dataEl.textContent ?? '[]');
+    const listItems = [...list.querySelectorAll<HTMLLIElement>('[data-id]')];
+
+    function getFilters() {
+      if (!form) return { tags: [] as string[], year: '', location: '' };
+      const data = new FormData(form);
+      return {
+        tags: data.getAll('tag') as string[],
+        year: (data.get('year') as string) ?? '',
+        location: ((data.get('location') as string) ?? '').trim().toLowerCase(),
+      };
+    }
+
+    function applyFilters() {
+      const { tags, year, location } = getFilters();
+      let shown = 0;
+      const visibleIds = new Set<string>();
+
+      listItems.forEach((li) => {
+        const item = allItems.find((i) => i.id === li.dataset.id);
+        if (!item) return;
+
+        const matchTags = tags.length === 0 || tags.every((t) => item.tags.includes(t));
+        const matchYear = !year || String(item.date) === year;
+        const matchLocation = !location || (item.location?.toLowerCase().includes(location) ?? false);
+        const visible = matchTags && matchYear && matchLocation;
+
+        li.hidden = !visible;
+        if (visible) { shown++; visibleIds.add(item.id); }
+      });
+
+      if (countEl) {
+        const total = allItems.length;
+        countEl.textContent = shown === total
+          ? ''
+          : `${shown} série${shown > 1 ? 's' : ''} affichée${shown > 1 ? 's' : ''} sur ${total}`;
+      }
+
+      // Événement DOM pour intégration custom (#FE-010)
+      list.dispatchEvent(new CustomEvent('hf:filter-change', {
+        bubbles: true,
+        detail: { series: allItems.filter((i) => visibleIds.has(i.id)) },
+      }));
+    }
+
+    form?.addEventListener('change', applyFilters);
+    form?.addEventListener('input', (e) => {
+      if ((e.target as HTMLInputElement).type === 'search') applyFilters();
+    });
+    form?.addEventListener('reset', () => setTimeout(applyFilters, 0));
+  })();
+</script>
+
+<style>
+  .hf-filter {
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  .hf-filter__controls {
+    background: var(--hf-filter-bg, var(--hf-color-surface, #f5f5f5));
+    border: 1px solid var(--hf-filter-border, var(--hf-color-border, #e0e0e0));
+    border-radius: var(--hf-filter-radius, var(--hf-card-radius, 4px));
+    padding: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .hf-filter__group {
+    border: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+  }
+
+  .hf-filter__group--inline {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .hf-filter__legend {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--hf-color-text-muted, #666);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.5rem;
+    display: block;
+  }
+
+  .hf-filter__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .hf-filter__tag-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .hf-filter__tag-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: var(--hf-color-text, #111);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border-radius: 999px;
+    transition: background var(--hf-transition, 200ms ease), border-color var(--hf-transition, 200ms ease);
+  }
+
+  .hf-filter__tag-label:has(.hf-filter__checkbox:checked) {
+    background: var(--hf-color-accent, #0066ff);
+    border-color: var(--hf-color-accent, #0066ff);
+    color: var(--hf-color-text-overlay, #fff);
+  }
+
+  .hf-filter__checkbox {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+
+  .hf-filter__select,
+  .hf-filter__input {
+    font-size: 0.875rem;
+    font-family: inherit;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border-radius: var(--hf-card-radius, 4px);
+    background: var(--hf-color-bg, #fff);
+    color: var(--hf-color-text, #111);
+  }
+
+  .hf-filter__select:focus,
+  .hf-filter__input:focus {
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  .hf-filter__reset {
+    font-size: 0.8rem;
+    font-family: inherit;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border-radius: var(--hf-card-radius, 4px);
+    background: transparent;
+    color: var(--hf-color-text-muted, #666);
+    cursor: pointer;
+    margin-left: auto;
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  .hf-filter__reset:hover {
+    background: var(--hf-color-border, #e0e0e0);
+  }
+
+  .hf-filter__count {
+    font-size: 0.85rem;
+    color: var(--hf-color-text-muted, #666);
+    margin: 0 0 0.75rem;
+    min-height: 1.2em;
+  }
+
+  .hf-filter__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .hf-filter__item {
+    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border-radius: var(--hf-card-radius, 4px);
+    background: var(--hf-color-surface, #f5f5f5);
+    transition: box-shadow var(--hf-transition, 200ms ease);
+  }
+
+  .hf-filter__item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  .hf-filter__link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem 1rem;
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .hf-filter__title {
+    font-weight: 600;
+    color: var(--hf-color-text, #111);
+  }
+
+  .hf-filter__meta {
+    font-size: 0.8rem;
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  .hf-filter__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.25rem;
+  }
+
+  .hf-filter__chip {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: var(--hf-color-border, #e0e0e0);
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hf-filter__tag-label,
+    .hf-filter__reset,
+    .hf-filter__item {
+      transition: none;
+    }
+  }
+</style>

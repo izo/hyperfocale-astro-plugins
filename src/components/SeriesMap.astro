@@ -1,0 +1,165 @@
+---
+import type { Series } from '../helpers/index.js';
+
+interface Props {
+  series: Series[];
+  height?: string;
+  prefix?: string;
+}
+
+const { series, height = '400px', prefix = '/series' } = Astro.props;
+
+const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+
+type GeoPoint = {
+  id: string;
+  title: string;
+  url: string;
+  lat: number;
+  lng: number;
+};
+
+const geoPoints: GeoPoint[] = series
+  .flatMap((s) => {
+    const iptc = (s.data as Record<string, unknown>).iptc as Record<string, unknown> | undefined;
+    const gps = iptc?.gps as { lat: number; lng: number } | undefined;
+    if (!gps) return [];
+    return [{ id: s.id, title: String(s.data.title), url: `${normalizedPrefix}/${s.id}/`, lat: gps.lat, lng: gps.lng }];
+  });
+
+const VIEW_W = 800;
+const VIEW_H = 500;
+const PAD = 0.15;
+const MARKER_R = 8;
+
+type PlottedPoint = GeoPoint & { x: number; y: number };
+let points: PlottedPoint[] = [];
+
+if (geoPoints.length > 0) {
+  const lats = geoPoints.map((p) => p.lat);
+  const lngs = geoPoints.map((p) => p.lng);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+
+  const rangeLat = maxLat - minLat || 1;
+  const rangeLng = maxLng - minLng || 1;
+  const pMinLat = minLat - rangeLat * PAD;
+  const pMaxLat = maxLat + rangeLat * PAD;
+  const pMinLng = minLng - rangeLng * PAD;
+  const pMaxLng = maxLng + rangeLng * PAD;
+
+  points = geoPoints.map((p) => ({
+    ...p,
+    x: Math.round(((p.lng - pMinLng) / (pMaxLng - pMinLng)) * VIEW_W),
+    y: Math.round(((pMaxLat - p.lat) / (pMaxLat - pMinLat)) * VIEW_H),
+  }));
+}
+---
+
+<div class="hf-map" style={`height: ${height}`} aria-label="Carte géographique des séries">
+  {points.length === 0 ? (
+    <p class="hf-map__empty">Aucune série avec coordonnées GPS.</p>
+  ) : (
+    <svg
+      class="hf-map__svg"
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      role="img"
+      aria-label={`${points.length} série${points.length > 1 ? 's' : ''} géolocalisée${points.length > 1 ? 's' : ''}`}
+    >
+      <title>{points.length} série{points.length > 1 ? 's' : ''} géolocalisée{points.length > 1 ? 's' : ''}</title>
+      <rect width={VIEW_W} height={VIEW_H} class="hf-map__bg" rx="4" />
+      {points.map((p) => (
+        <a href={p.url} class="hf-map__marker-link">
+          <title>{p.title}</title>
+          <circle
+            cx={p.x}
+            cy={p.y}
+            r={MARKER_R}
+            class="hf-map__marker"
+          />
+          <text
+            x={p.x}
+            y={p.y - MARKER_R - 4}
+            text-anchor="middle"
+            class="hf-map__label"
+          >{p.title}</text>
+        </a>
+      ))}
+    </svg>
+  )}
+</div>
+
+<style>
+  .hf-map {
+    width: 100%;
+    border-radius: var(--hf-card-radius, 4px);
+    overflow: hidden;
+    border: 1px solid var(--hf-filter-border, var(--hf-color-border, #e0e0e0));
+  }
+
+  .hf-map__svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  .hf-map__bg {
+    fill: var(--hf-map-bg, #d4dde8);
+    stroke: var(--hf-map-stroke, #b0bec5);
+    stroke-width: 1;
+  }
+
+  .hf-map__marker {
+    fill: var(--hf-map-marker, var(--hf-color-accent, #0066ff));
+    transition: fill var(--hf-transition, 200ms ease), r var(--hf-transition, 200ms ease);
+  }
+
+  .hf-map__marker-link:hover .hf-map__marker,
+  .hf-map__marker-link:focus-visible .hf-map__marker {
+    fill: var(--hf-map-marker-hover, #004db3);
+    r: 11;
+  }
+
+  .hf-map__marker-link:focus-visible {
+    outline: none;
+  }
+
+  .hf-map__marker-link:focus-visible .hf-map__marker {
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 3px;
+  }
+
+  .hf-map__label {
+    font-family: var(--hf-font-sans, system-ui);
+    font-size: 11px;
+    fill: var(--hf-color-text, #111111);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--hf-transition, 200ms ease);
+  }
+
+  .hf-map__marker-link:hover .hf-map__label,
+  .hf-map__marker-link:focus-visible .hf-map__label {
+    opacity: 1;
+  }
+
+  .hf-map__empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    margin: 0;
+    color: var(--hf-color-text-muted, #666);
+    font-family: var(--hf-font-sans, system-ui);
+    font-size: 0.9rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hf-map__marker,
+    .hf-map__label {
+      transition: none;
+    }
+  }
+</style>

@@ -28,7 +28,7 @@ prefixes:
 
 ## Backlog
 
-- [ ] #DATA-004 [P2] API d'extension du schéma — champs métadonnées personnalisés #schema #effort-s
+- [x] #DATA-004 [P2] API d'extension du schéma — champs métadonnées personnalisés #schema #effort-s
   **Zone** : `src/schema.ts`, `docs/schema-extensibility.md`
   **Effort** : S (1-2h)
   **Dépendances** : #DATA-002
@@ -41,7 +41,7 @@ prefixes:
   - [ ] Exemple dans `docs/schema-extensibility.md` : ajout de `camera`, `film`, `location`, `tags` libres
   - [ ] S'assurer que les helpers (`getSeriesList`, `getSeriesBySlug`) fonctionnent avec les champs étendus via generics TypeScript
 
-- [ ] #DATA-005 [P2] Ajouter `getAllTags()` et `getAllCollections()` aux helpers #helpers #effort-s
+- [x] #DATA-005 [P2] Ajouter `getAllTags()` et `getAllCollections()` aux helpers #helpers #effort-s
   **Zone** : `src/helpers/index.ts`
   **Effort** : S (1-2h)
   **Dépendances** : #DATA-002, #ARCH-003
@@ -51,7 +51,7 @@ prefixes:
   - [ ] `getAllCollections()` : retourne `{ slug: string, name: string, count: number }[]` en extrayant le premier segment du chemin de chaque série
   - [ ] Documenter que `getAllTags()` est un no-op si `tags` n'est pas dans le schéma du site consommateur
 
-- [ ] #FE-006 [P2] Renforcer le système de design tokens CSS #theme #effort-m
+- [x] #FE-006 [P2] Renforcer le système de design tokens CSS #theme #effort-m
   **Zone** : `src/theme/base.css`, `src/components/`
   **Effort** : M (2-4h)
   **Dépendances** : #FE-005
@@ -64,7 +64,7 @@ prefixes:
   - [ ] Ajouter une classe `.hf-root` sur le wrapper de chaque composant pour limiter la cascade
   - [ ] Documenter la liste complète des variables surchargeables dans `README.md`
 
-- [ ] #FE-007 [P2] Créer un composant `<SeriesMasonry>` (layout masonry CSS) #composants #effort-m
+- [x] #FE-007 [P2] Créer un composant `<SeriesMasonry>` (layout masonry CSS) #composants #effort-m
   **Zone** : `src/components/`
   **Effort** : M (2-4h)
   **Dépendances** : #FE-003
@@ -76,7 +76,7 @@ prefixes:
   - [ ] Transitions `opacity` et `transform` uniquement
   - [ ] Alternative à `<SeriesGallery>` (grille uniforme) — exposé dans `hyperfocale/components`
 
-- [ ] #FE-009 [P2] Composant `<SeriesMap>` — carte des séries avec coordonnées GPS #composants #effort-l
+- [x] #FE-009 [P2] Composant `<SeriesMap>` — carte des séries avec coordonnées GPS #composants #effort-l
   **Zone** : `src/components/SeriesMap.astro`, `src/components/index.ts`
   **Effort** : L (4-8h)
   **Dépendances** : #DATA-002, #ARCH-003
@@ -92,7 +92,7 @@ prefixes:
   - [ ] Fallback si aucune série n'a de coordonnées (message informatif)
   - [ ] Exporter depuis `hyperfocale/components`
 
-- [ ] #FE-010 [P2] Composant `<SeriesFilter>` — filtrage par tags, date, lieu #composants #effort-l
+- [x] #FE-010 [P2] Composant `<SeriesFilter>` — filtrage par tags, date, lieu #composants #effort-l
   **Zone** : `src/components/SeriesFilter.astro`, `src/components/index.ts`
   **Effort** : L (4-8h)
   **Dépendances** : #DATA-002, #DATA-003, #DATA-005
@@ -109,7 +109,7 @@ prefixes:
   - [ ] Émet un événement DOM `hf:filter-change` avec les séries filtrées pour intégration custom
   - [ ] Exporter depuis `hyperfocale/components`
 
-- [ ] #MVP-005 [P2] Sérialisation JSON-safe pour islands interactives (`serializeSeries`) #helpers #effort-xs
+- [x] #MVP-005 [P2] Sérialisation JSON-safe pour islands interactives (`serializeSeries`) #helpers #effort-xs
   **Zone** : `src/helpers/index.ts`
   **Effort** : XS (< 30min)
   **Dépendances** : #MVP-001
