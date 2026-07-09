@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.1.0"
-updated: 2026-06-24
+updated: 2026-07-09
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -27,6 +27,47 @@ prefixes:
 ---
 
 ## Backlog
+
+- [ ] #DATA-007 [P1] Documents joints — schéma `attachments:` + `files[]` distant (spec v2.5 §1.9) #schema #effort-s
+  **Zone** : `src/schema.ts`, `src/index.ts` (module virtuel)
+  **Effort** : S (1-2h)
+  **Dépendances** : #DATA-002
+  **Spec** : §1.9 v2.5-draft — `media/` étendu à tous les types de documents (PDF, vidéo, audio…)
+
+  **Contexte** : la spec v2.5-draft (motivée par l'export SPIP → Hyperfocale du plugin spip2astro) fait de tout fichier non-image de `media/` un **document joint**. Le schéma doit accepter les métadonnées de pièces jointes sans casser l'existant (`z.looseObject` transmet déjà les blocs inconnus).
+
+  **Checklist** :
+  - [ ] Bloc frontmatter optionnel `attachments: z.array(z.object({ file: z.string(), title: z.string().optional(), description: z.string().optional() }))`
+  - [ ] Mode distant : `files: z.array(z.object({ url: z.url(), title: z.string().optional(), kind: z.enum(['video','audio','document','file']).optional(), size: z.number().optional() }))`
+  - [ ] Exporter le type `Attachment` (§3.2 : `src`, `kind`, `title?`, `description?`, `size?`) et l'ajouter à `SeriesData`
+  - [ ] Tests schéma : bloc valide, bloc absent, entrée minimale
+
+- [ ] #MVP-006 [P1] Helper `getSeriesAttachments()` — non-images de `media/` classés par type #helpers #effort-s
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : S (1-2h)
+  **Dépendances** : #DATA-007, #MVP-001
+  **Spec** : §1.9 v2.5-draft + §2.0 (obligation de conformité v2.5)
+
+  **Checklist** :
+  - [ ] Glob `media/*` complet (plus seulement les extensions image), exclure `index.md`
+  - [ ] Classification par extension : `video` / `audio` / `document` / `file` (tableau §1.9), insensible à la casse
+  - [ ] Tri alphabétique par nom de fichier ; ne jamais échouer sur une extension inconnue (classe `file`)
+  - [ ] Fusion des métadonnées du bloc `attachments:` (title/description) — libellé par défaut : nom de fichier
+  - [ ] Mode distant : si `files[]` présent, il a priorité sur les non-images de `media/`
+  - [ ] `serializeSeries` : inclure `attachments` dans la version JSON-safe
+
+- [ ] #FE-011 [P2] Composant `<SeriesAttachments>` — pièces jointes après la galerie #composants #effort-m
+  **Zone** : `src/components/SeriesAttachments.astro`, `src/components/index.ts`, `src/routes/series-detail.astro`
+  **Effort** : M (2-4h)
+  **Dépendances** : #MVP-006
+  **Spec** : §3.1 — `SeriesAttachments`, props `attachments: Attachment[]`
+
+  **Checklist** :
+  - [ ] Liste rendue **après** la galerie (invariant §1.9) dans `series-detail.astro`
+  - [ ] Classes `video` / `audio` : lecteurs natifs `<video>` / `<audio>` intégrés (PEUT, sinon lien)
+  - [ ] Classes `document` / `file` : lien de téléchargement avec titre, extension et taille formatée si connue
+  - [ ] Tokens `--hf-attachments-*` (pas de hex hardcodé), a11y (labels explicites, focus visible)
+  - [ ] Exporter depuis `hyperfocale/components` ; rien n'est rendu si la liste est vide
 
 - [x] #DATA-004 [P2] API d'extension du schéma — champs métadonnées personnalisés #schema #effort-s
   **Zone** : `src/schema.ts`, `docs/schema-extensibility.md`
