@@ -1,0 +1,149 @@
+---
+import type { Attachment } from '../helpers/index.js';
+
+interface Props {
+  attachments: Attachment[];
+  /** Titre de la section (défaut : « Documents »). */
+  heading?: string;
+}
+
+const { attachments, heading = 'Documents' } = Astro.props;
+
+function formatSize(bytes?: number): string | undefined {
+  if (bytes === undefined || bytes <= 0) return undefined;
+  if (bytes < 1024) return `${bytes} o`;
+  if (bytes < 1048576) return `${Math.round(bytes / 1024)} Ko`;
+  return `${(bytes / 1048576).toFixed(1)} Mo`;
+}
+
+function extensionOf(src: string): string {
+  const base = src.split('?')[0]?.split('/').pop() ?? '';
+  const dot = base.lastIndexOf('.');
+  return dot > 0 ? base.slice(dot + 1).toUpperCase() : '';
+}
+---
+
+{attachments.length > 0 && (
+  <section class="hf-attachments" aria-label={heading}>
+    <h2 class="hf-attachments__heading">{heading}</h2>
+    <ul class="hf-attachments__list">
+      {attachments.map((att) => (
+        <li class="hf-attachments__item">
+          {att.kind === 'video' ? (
+            <figure class="hf-attachments__player">
+              {/* captions éventuelles à fournir côté site consommateur */}
+              <video controls preload="metadata" src={att.src} title={att.title} />
+              {att.title && <figcaption>{att.title}</figcaption>}
+            </figure>
+          ) : att.kind === 'audio' ? (
+            <figure class="hf-attachments__player">
+              <audio controls preload="metadata" src={att.src} title={att.title} />
+              {att.title && <figcaption>{att.title}</figcaption>}
+            </figure>
+          ) : (
+            <a class="hf-attachments__link" href={att.src} download>
+              <span class="hf-attachments__kind" aria-hidden="true">{extensionOf(att.src)}</span>
+              <span class="hf-attachments__title">{att.title ?? att.src.split('/').pop()}</span>
+              {att.description && <span class="hf-attachments__description">{att.description}</span>}
+              {formatSize(att.size) && <span class="hf-attachments__size">{formatSize(att.size)}</span>}
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+<style>
+  .hf-attachments {
+    margin-top: var(--hf-attachments-gap, 2rem);
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  .hf-attachments__heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--hf-color-text, #111);
+    margin: 0 0 0.75rem;
+  }
+
+  .hf-attachments__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .hf-attachments__player video,
+  .hf-attachments__player audio {
+    width: 100%;
+    max-width: 100%;
+    border-radius: var(--hf-attachments-radius, 4px);
+  }
+
+  .hf-attachments__player {
+    margin: 0;
+  }
+
+  .hf-attachments__player figcaption {
+    font-size: 0.85rem;
+    color: var(--hf-color-text-muted, #666);
+    margin-top: 0.25rem;
+  }
+
+  .hf-attachments__link {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.6rem 0.85rem;
+    text-decoration: none;
+    background: var(--hf-attachments-bg, var(--hf-color-surface, #f5f5f5));
+    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border-radius: var(--hf-attachments-radius, 4px);
+    color: var(--hf-color-text, #111);
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hf-attachments__link {
+      transition: none;
+    }
+  }
+
+  .hf-attachments__link:hover,
+  .hf-attachments__link:focus-visible {
+    background: var(--hf-attachments-bg-hover, var(--hf-color-border, #e0e0e0));
+  }
+
+  .hf-attachments__link:focus-visible {
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  .hf-attachments__kind {
+    flex: none;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  .hf-attachments__title {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .hf-attachments__description {
+    font-size: 0.85rem;
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  .hf-attachments__size {
+    margin-left: auto;
+    flex: none;
+    font-size: 0.8rem;
+    color: var(--hf-color-text-muted, #666);
+  }
+</style>

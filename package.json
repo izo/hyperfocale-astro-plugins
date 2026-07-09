@@ -1,6 +1,6 @@
 {
   "name": "@izo/hyperfocale",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
   "license": "MIT",
@@ -33,6 +33,7 @@
     "./components/SeriesList.astro": "./dist/components/SeriesList.astro",
     "./components/SeriesGallery.astro": "./dist/components/SeriesGallery.astro",
     "./components/SeriesLightbox.astro": "./dist/components/SeriesLightbox.astro",
+    "./components/SeriesAttachments.astro": "./dist/components/SeriesAttachments.astro",
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"

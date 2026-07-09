@@ -28,7 +28,8 @@ prefixes:
 
 ## Backlog
 
-- [ ] #DATA-007 [P1] Documents joints — schéma `attachments:` + `files[]` distant (spec v2.5 §1.9) #schema #effort-s
+- [x] #DATA-007 [P1] Documents joints — schéma `attachments:` + `files[]` distant (spec v2.5 §1.9) #schema #effort-s
+  > ✅ **Terminé** le 2026-07-09
   **Zone** : `src/schema.ts`, `src/index.ts` (module virtuel)
   **Effort** : S (1-2h)
   **Dépendances** : #DATA-002
@@ -42,7 +43,8 @@ prefixes:
   - [ ] Exporter le type `Attachment` (§3.2 : `src`, `kind`, `title?`, `description?`, `size?`) et l'ajouter à `SeriesData`
   - [ ] Tests schéma : bloc valide, bloc absent, entrée minimale
 
-- [ ] #MVP-006 [P1] Helper `getSeriesAttachments()` — non-images de `media/` classés par type #helpers #effort-s
+- [x] #MVP-006 [P1] Helper `getSeriesAttachments()` — non-images de `media/` classés par type #helpers #effort-s
+  > ✅ **Terminé** le 2026-07-09
   **Zone** : `src/helpers/index.ts`
   **Effort** : S (1-2h)
   **Dépendances** : #DATA-007, #MVP-001
@@ -56,7 +58,8 @@ prefixes:
   - [ ] Mode distant : si `files[]` présent, il a priorité sur les non-images de `media/`
   - [ ] `serializeSeries` : inclure `attachments` dans la version JSON-safe
 
-- [ ] #FE-011 [P2] Composant `<SeriesAttachments>` — pièces jointes après la galerie #composants #effort-m
+- [x] #FE-011 [P2] Composant `<SeriesAttachments>` — pièces jointes après la galerie #composants #effort-m
+  > ✅ **Terminé** le 2026-07-09
   **Zone** : `src/components/SeriesAttachments.astro`, `src/components/index.ts`, `src/routes/series-detail.astro`
   **Effort** : M (2-4h)
   **Dépendances** : #MVP-006

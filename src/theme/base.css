@@ -53,6 +53,12 @@
   --hf-filter-bg: var(--hf-color-surface);
   --hf-filter-border: var(--hf-color-border);
   --hf-filter-radius: var(--hf-card-radius);
+
+  /* Documents joints (spec §1.9) */
+  --hf-attachments-gap: 2rem;
+  --hf-attachments-radius: var(--hf-card-radius);
+  --hf-attachments-bg: var(--hf-color-surface);
+  --hf-attachments-bg-hover: var(--hf-color-border);
 }
 
 /* ─── Thème sombre ──────────────────────────────────────────────────────── */
