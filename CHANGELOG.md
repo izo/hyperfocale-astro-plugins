@@ -7,6 +7,25 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.7.0] — 2026-07-09
+
+### Ajouté
+
+Documents joints — implémentation de la spec Hyperfocale **v2.5-draft §1.9** (`media/` étendu à tous les types de documents ; motivé par l'export SPIP → Hyperfocale du plugin spip2astro) :
+
+- **Schéma** (#DATA-007) : bloc frontmatter optionnel `attachments:` (`file`, `title?`, `description?`) et champ `files[]` en mode distant (`url`, `title?`, `kind?`, `size?`). Types `Attachment` et `AttachmentKind` exportés, `SeriesData` étendu.
+- **`classifyAttachment(filename)`** (#MVP-006) : classification par extension (`video` / `audio` / `document` / `file`), insensible à la casse ; retourne `null` pour les images et `index.md` ; toute extension inconnue tombe en `file` (ne lève jamais d'erreur).
+- **`getSeriesAttachments(slug, series?)`** (#MVP-006) : glob complet des non-images de `media/` (tri alphabétique), fusion des métadonnées du bloc `attachments:` (libellé par défaut : nom de fichier), priorité à `files[]` en mode distant.
+- **`<SeriesAttachments>`** (#FE-011) : liste des pièces jointes rendue **après** la galerie dans `series-detail.astro` (invariant §1.9) ; lecteurs natifs `<video>` / `<audio>` pour ces classes, lien de téléchargement (extension + taille formatée) pour `document` / `file` ; rien n'est rendu si la liste est vide ; `prefers-reduced-motion` et focus visible respectés.
+- **Design tokens** : `--hf-attachments-gap`, `--hf-attachments-radius`, `--hf-attachments-bg`, `--hf-attachments-bg-hover`.
+- **Tests** : `tests/unit/attachments.test.ts` (classification, mode distant, schéma).
+
+### Rétro-compatibilité
+
+Aucun changement cassant : les deux blocs de frontmatter sont optionnels, le glob d'images est inchangé, et les séries sans documents joints se comportent exactement comme avant.
+
+---
+
 ## [0.6.0] — 2026-06-24
 
 ### Changements cassants

@@ -1,7 +1,8 @@
 ---
 import { render } from 'astro:content';
-import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
+import { getSeriesList, getSeriesImages, getSeriesAttachments, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
+import SeriesAttachments from '../components/SeriesAttachments.astro';
 
 export async function getStaticPaths() {
   const series = await getSeriesList();
@@ -22,6 +23,7 @@ if (!slug || !series) {
 }
 
 const allImages = await getSeriesImages(slug, series);
+const attachments = await getSeriesAttachments(slug, series);
 const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1);
 
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
@@ -63,6 +65,9 @@ const { Content } = await render(series);
       totalPages={totalPages}
       baseUrl={baseUrl}
     />
+
+    {/* Documents joints après la galerie (spec §1.9) */}
+    <SeriesAttachments attachments={attachments} />
   </main>
 </body>
 </html>

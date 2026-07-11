@@ -1,7 +1,9 @@
 import { getCollection } from 'astro:content';
 import type { CollectionEntry } from 'astro:content';
+import type { Attachment, AttachmentKind } from '../schema.js';
 
 export type Series = CollectionEntry<'series'>;
+export type { Attachment, AttachmentKind } from '../schema.js';
 
 export interface PaginationResult<T> {
   items: T[];
@@ -24,6 +26,16 @@ let _seriesCache: Series[] | null = null;
 const _imageGlob = import.meta.glob<{ default: ImageMetadata }>(
   '/src/content/series/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
   { eager: true },
+);
+
+// Glob des documents joints — tout media/ sauf les extensions image (spec §1.9, #MVP-006).
+// `query: '?url'` fait servir les fichiers comme assets statiques et retourne leur URL.
+const _attachmentGlob = import.meta.glob<string>(
+  [
+    '/src/content/series/**/media/*',
+    '!/src/content/series/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+  ],
+  { eager: true, query: '?url', import: 'default' },
 );
 
 async function getAllSeriesCached(): Promise<Series[]> {
@@ -99,6 +111,80 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
       return fileA.localeCompare(fileB);
     })
     .map(([, module]) => module.default);
+}
+
+// Classes de documents joints par extension (spec §1.9)
+const ATTACHMENT_KIND_BY_EXTENSION: Record<string, AttachmentKind> = {
+  mp4: 'video', webm: 'video', mov: 'video', m4v: 'video',
+  mp3: 'audio', m4a: 'audio', ogg: 'audio', wav: 'audio', flac: 'audio',
+  pdf: 'document', epub: 'document', txt: 'document', md: 'document',
+};
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tiff']);
+
+/**
+ * Classe un fichier de `media/` selon la spec §1.9.
+ * Retourne `null` pour une image (qui alimente la galerie, pas les pièces jointes)
+ * et pour `index.md` (fichier de métadonnées, jamais un document joint).
+ * Toute extension inconnue tombe dans la classe `file` — ne lève jamais d'erreur.
+ */
+export function classifyAttachment(filename: string): AttachmentKind | null {
+  const base = filename.split('/').pop() ?? filename;
+  if (base.toLowerCase() === 'index.md') return null;
+  const dot = base.lastIndexOf('.');
+  if (dot <= 0) return 'file';
+  const ext = base.slice(dot + 1).toLowerCase();
+  if (IMAGE_EXTENSIONS.has(ext)) return null;
+  return ATTACHMENT_KIND_BY_EXTENSION[ext] ?? 'file';
+}
+
+/**
+ * Retourne les documents joints (non-images) d'une série, triés alphabétiquement (spec §1.9).
+ * Mode distant prioritaire si `series.data.files` est défini.
+ * Les métadonnées du bloc frontmatter `attachments:` (title/description) sont fusionnées
+ * par nom de fichier ; à défaut, le libellé est le nom de fichier.
+ */
+export async function getSeriesAttachments(slug: string, series?: Series): Promise<Attachment[]> {
+  const data = series?.data as Record<string, unknown> | undefined;
+
+  // Mode distant (spec §1.9) : `files[]` a priorité sur les non-images de media/
+  const remoteFiles = data?.files as Array<{ url: string; title?: string; kind?: AttachmentKind; size?: number }> | undefined;
+  if (remoteFiles && remoteFiles.length > 0) {
+    return remoteFiles.map((f) => ({
+      src: f.url,
+      kind: f.kind ?? classifyAttachment(f.url.split('?')[0] ?? f.url) ?? 'file',
+      title: f.title ?? (f.url.split('/').pop() ?? f.url),
+      ...(f.size !== undefined && { size: f.size }),
+    }));
+  }
+
+  // Métadonnées frontmatter indexées par nom de fichier (bloc `attachments:`)
+  const metaByFilename = new Map<string, { title?: string; description?: string }>();
+  const metaList = data?.attachments as Array<{ file: string; title?: string; description?: string }> | undefined;
+  for (const meta of metaList ?? []) {
+    const base = meta.file.split('/').pop();
+    if (base) metaByFilename.set(base, meta);
+  }
+
+  const dirSlug = slug.replace(/\/index$/, '');
+
+  return Object.entries(_attachmentGlob)
+    .filter(([path]) => {
+      const match = path.match(/\/src\/content\/series\/(.+)\/media\//);
+      return match !== null && match[1] === dirSlug;
+    })
+    .map(([path, url]) => ({ path, url, filename: path.split('/').pop() ?? path }))
+    .filter(({ filename }) => classifyAttachment(filename) !== null)
+    .sort((a, b) => a.filename.localeCompare(b.filename))
+    .map(({ url, filename }) => {
+      const meta = metaByFilename.get(filename);
+      return {
+        src: url,
+        kind: classifyAttachment(filename) ?? 'file',
+        title: meta?.title ?? filename,
+        ...(meta?.description !== undefined && { description: meta.description }),
+      };
+    });
 }
 
 /**

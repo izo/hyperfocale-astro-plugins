@@ -8,5 +8,7 @@ export type {
   QuerySeriesOptions,
   QueryResult,
   SerializedSeries,
+  Attachment,
+  AttachmentKind,
 } from '../helpers/index.js';
 export type { SeriesData, SeriesDataOptionalDate } from '../schema.js';

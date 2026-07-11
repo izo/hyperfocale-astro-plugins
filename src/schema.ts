@@ -40,6 +40,24 @@ const remoteImageSchema = z.object({
   height: z.number().optional(),
 });
 
+/** Classes de documents joints non-image (spec §1.9). */
+export const ATTACHMENT_KINDS = ['video', 'audio', 'document', 'file'] as const;
+
+/** Métadonnées optionnelles d'un document joint local — bloc `attachments:` (spec §1.9). */
+const attachmentMetaSchema = z.object({
+  file: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+});
+
+/** Schéma d'un document joint en mode distant — champ `files[]` (spec §1.9). */
+const remoteFileSchema = z.object({
+  url: z.url(),
+  title: z.string().optional(),
+  kind: z.enum(ATTACHMENT_KINDS).optional(),
+  size: z.number().optional(),
+});
+
 /**
  * Schéma de base sans `cover` — utilisable sans `SchemaContext` (#DATA-004).
  *
@@ -78,6 +96,8 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     download: z.boolean().default(false),
     iptc: iptcSchema.optional(),
     images: z.array(remoteImageSchema).optional(),
+    attachments: z.array(attachmentMetaSchema).optional(),
+    files: z.array(remoteFileSchema).optional(),
   });
 }
 
@@ -133,6 +153,32 @@ export interface SeriesData {
     width?: number;
     height?: number;
   }>;
+  attachments?: Array<{
+    file: string;
+    title?: string;
+    description?: string;
+  }>;
+  files?: Array<{
+    url: string;
+    title?: string;
+    kind?: AttachmentKind;
+    size?: number;
+  }>;
+}
+
+/** Classe d'un document joint (spec §1.9). */
+export type AttachmentKind = (typeof ATTACHMENT_KINDS)[number];
+
+/**
+ * Document joint résolu — retourné par `getSeriesAttachments()` (spec §3.2).
+ * `src` est un chemin relatif (mode local) ou une URL (mode distant).
+ */
+export interface Attachment {
+  src: string;
+  kind: AttachmentKind;
+  title?: string;
+  description?: string;
+  size?: number;
 }
 
 /**
