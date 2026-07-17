@@ -10,7 +10,10 @@ export default defineConfig({
     'cli/init': 'src/cli/init.ts',
   },
   format: ['esm'],
-  dts: true,
+  // Les déclarations .d.ts sont émises par `tsc --emitDeclarationOnly` (script build).
+  // rollup-plugin-dts (utilisé par tsup dts:true) dépend de l'API compilateur classique
+  // de TypeScript, absente du portage natif TypeScript 7 (tsgo).
+  dts: false,
   clean: true,
   external: ['astro', 'astro:content', 'astro:assets', 'zod'],
   // Copier les fichiers .astro (routes, composants, thème) dans dist/

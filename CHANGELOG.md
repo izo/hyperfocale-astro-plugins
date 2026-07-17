@@ -7,6 +7,19 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Corrigé
+
+- **Build cassé sous TypeScript 7** : le portage natif TypeScript 7 (tsgo) n'expose pas l'API compilateur classique (`createProgram`, `createCompilerHost`…) dont dépend `rollup-plugin-dts`, le générateur de types utilisé par `tsup` avec `dts: true`. `npm run build` échouait donc à l'émission des `.d.ts` (`Cannot read properties of undefined (reading 'useCaseSensitiveFileNames')`), rendant le package impubliable. Les déclarations sont désormais émises par `tsc --emitDeclarationOnly` (`tsup` passe en `dts: false`) ; la sortie `dist/` est identique.
+- **Composants absents du champ `exports`** : `<SeriesMasonry>`, `<SeriesMap>` et `<SeriesFilter>` étaient buildés dans `dist/` mais non déclarés dans `package.json#exports`, donc inaccessibles à l'import (`@izo/hyperfocale/components/SeriesMap.astro`, etc.) puisqu'un champ `exports` bloque tout sous-chemin non listé. Les trois entrées manquantes ont été ajoutées.
+
+### Modifié
+
+- Documentation (`README`, `CLAUDE.md`) : références « Astro 6 » → « Astro 7 », badges Astro 7.x / TypeScript 7.x.
+
+---
+
 ## [0.7.0] — 2026-07-09
 
 ### Ajouté

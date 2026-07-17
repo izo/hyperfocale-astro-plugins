@@ -1,4 +1,4 @@
-# hyperfocale — Plugin Astro 6
+# hyperfocale — Plugin Astro 7
 
 Plugin d'intégration Astro pour galeries photo (séries). Publié sur GitHub Packages : `@izo/hyperfocale`.
 
@@ -34,13 +34,13 @@ dist/               ← build tsup (gitignored)
 
 ## Gotchas
 
-**Build** : `tsup` ne compile que les `.ts`. Les fichiers `.astro` et `.css` sont copiés dans `dist/` via le hook `onSuccess` de `tsup.config.ts`. Ne pas oublier de relancer le build si un composant Astro change.
+**Build** : `tsup` ne compile que les `.ts` (bundle JS). Les fichiers `.astro` et `.css` sont copiés dans `dist/` via le hook `onSuccess` de `tsup.config.ts`. Ne pas oublier de relancer le build si un composant Astro change. Les déclarations `.d.ts` sont émises séparément par `tsc --emitDeclarationOnly` (voir `scripts.build`) : le portage natif TypeScript 7 (tsgo) n'expose pas l'API compilateur classique dont dépend `rollup-plugin-dts` (le générateur de types de `tsup dts:true`), d'où le split. `tsup` conserve donc `dts: false`.
 
 **Tests e2e** : stratégie build statique — pas de Playwright, pas de serveur. Les tests lancent `astro build` sur le demo-site, puis analysent les HTML générés. Timeout à 180s. Lancer `npm run test:unit` en dev, `npm test` uniquement avant commit.
 
 **Mocks Astro** : `astro:content` et `astro:assets` sont des modules virtuels inexistants hors du runtime Astro. Des mocks manuels dans `tests/__mocks__/` sont aliasés dans `vitest.config.ts`.
 
-**Module virtuel** : `virtual:hyperfocale/collection` expose le schéma Zod au site consommateur. L'import dans `src/content.config.ts` est obligatoire — l'injection automatique n'est pas supportée par l'API Astro 6.
+**Module virtuel** : `virtual:hyperfocale/collection` expose le schéma Zod au site consommateur. L'import dans `src/content.config.ts` est obligatoire — l'injection automatique n'est pas supportée par l'API Astro 7.
 
 **Peer deps** : `astro` et `zod` sont des peer dependencies. Ne pas les ajouter en dépendances directes.
 
