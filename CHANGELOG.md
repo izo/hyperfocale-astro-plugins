@@ -13,6 +13,11 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 - **Build cassé sous TypeScript 7** : le portage natif TypeScript 7 (tsgo) n'expose pas l'API compilateur classique (`createProgram`, `createCompilerHost`…) dont dépend `rollup-plugin-dts`, le générateur de types utilisé par `tsup` avec `dts: true`. `npm run build` échouait donc à l'émission des `.d.ts` (`Cannot read properties of undefined (reading 'useCaseSensitiveFileNames')`), rendant le package impubliable. Les déclarations sont désormais émises par `tsc --emitDeclarationOnly` (`tsup` passe en `dts: false`) ; la sortie `dist/` est identique.
 - **Composants absents du champ `exports`** : `<SeriesMasonry>`, `<SeriesMap>` et `<SeriesFilter>` étaient buildés dans `dist/` mais non déclarés dans `package.json#exports`, donc inaccessibles à l'import (`@izo/hyperfocale/components/SeriesMap.astro`, etc.) puisqu'un champ `exports` bloque tout sous-chemin non listé. Les trois entrées manquantes ont été ajoutées.
+- **Désynchronisation du schéma** : le module virtuel `virtual:hyperfocale/collection` inlinait une copie du schéma Zod qui ne contenait pas les champs `attachments` / `files` ajoutés en 0.7.0. Il se branche désormais sur la source unique `seriesSchema` de `src/schema.ts` (`schema: (ctx) => seriesSchema(ctx, { dateRequired })`), éliminant toute dérive future.
+- **Accessibilité (WCAG 2.1 AA)** :
+  - `<SeriesGallery>` : le texte alternatif des vignettes utilise désormais `image.alt` (mode distant / IPTC) avant de retomber sur le libellé ordinal `Photo N` (1.1.1).
+  - `<SeriesGallery>` : les boutons de pagination désactivés passent de `<span aria-disabled>` à `<button disabled>` natif, correctement restitué par les lecteurs d'écran (2.1.1, 4.1.2).
+  - `base.css` : règle globale `prefers-reduced-motion` scopée aux éléments `hf-*` (galerie, lightbox, pagination) — neutralise transitions/animations sans toucher aux styles du site consommateur (2.3.3).
 
 ### Modifié
 

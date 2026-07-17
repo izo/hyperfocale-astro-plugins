@@ -147,58 +147,17 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
           },
           load(id) {
             if (id === RESOLVED_VIRTUAL_MODULE_ID) {
-              const dateField = dateRequired
-                ? `date: z.coerce.date(),`
-                : `date: z.coerce.date().optional(),`;
-
+              // Source unique du schéma : `seriesSchema` de `src/schema.ts`.
+              // Le module virtuel s'y branche pour rester synchronisé (iptc, images,
+              // attachments, files, …) — pas de copie inline à maintenir en parallèle.
               return `
-import { defineCollection, z } from 'astro:content';
+import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
-
-const iptcSchema = z.looseObject({
-  creator: z.string().optional(),
-  credit: z.string().optional(),
-  copyright: z.string().optional(),
-  keywords: z.array(z.string()).optional(),
-  city: z.string().optional(),
-  province: z.string().optional(),
-  country: z.string().optional(),
-  country_code: z.string().optional(),
-  camera: z.string().optional(),
-  lens: z.string().optional(),
-  film: z.string().optional(),
-  headline: z.string().optional(),
-  instructions: z.string().optional(),
-  source: z.string().optional(),
-  gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
-});
-
-const remoteImageSchema = z.object({
-  url: z.url(),
-  alt: z.string().optional(),
-  width: z.number().optional(),
-  height: z.number().optional(),
-});
+import { seriesSchema } from '@izo/hyperfocale';
 
 export const seriesCollection = defineCollection({
   loader: glob({ pattern: '**/index.{md,mdx}', base: './src/content/${collectionName}' }),
-  schema: ({ image }) => z.looseObject({
-    title: z.string(),
-    ${dateField}
-    description: z.string().optional(),
-    cover: image().optional(),
-    location: z.string().optional(),
-    lang: z.string().optional(),
-    published: z.boolean().default(true),
-    draft: z.boolean().default(false),
-    featured: z.boolean().default(false),
-    tags: z.array(z.string()).default([]),
-    alt_description: z.string().optional(),
-    private: z.boolean().default(false),
-    download: z.boolean().default(false),
-    iptc: iptcSchema.optional(),
-    images: z.array(remoteImageSchema).optional(),
-  }),
+  schema: (ctx) => seriesSchema(ctx, { dateRequired: ${dateRequired} }),
 });
 `;
             }

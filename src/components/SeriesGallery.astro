@@ -47,7 +47,7 @@ function pageUrl(p: number): string {
         >
           <Image
             src={image as Parameters<typeof Image>[0]['src']}
-            alt={`Photo ${globalIndex + 1}`}
+            alt={image.alt ?? `Photo ${globalIndex + 1}`}
             width={600}
             height={400}
             class="hf-gallery__img"
@@ -67,11 +67,11 @@ function pageUrl(p: number): string {
           </svg>
         </a>
       ) : (
-        <span class="hf-pagination__btn hf-pagination__btn--disabled" aria-disabled="true">
+        <button type="button" class="hf-pagination__btn hf-pagination__btn--disabled" disabled aria-label="Page précédente">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
-        </span>
+        </button>
       )}
 
       <div class="hf-pagination__pages">
@@ -91,11 +91,11 @@ function pageUrl(p: number): string {
           </svg>
         </a>
       ) : (
-        <span class="hf-pagination__btn hf-pagination__btn--disabled" aria-disabled="true">
+        <button type="button" class="hf-pagination__btn hf-pagination__btn--disabled" disabled aria-label="Page suivante">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
-        </span>
+        </button>
       )}
     </nav>
   )}
@@ -167,6 +167,12 @@ function pageUrl(p: number): string {
     color: var(--hf-color-text, #111);
     text-decoration: none;
     transition: background var(--hf-transition, 200ms ease);
+    /* Reset pour les états désactivés rendus en <button> */
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
   }
 
   .hf-pagination__btn:hover,

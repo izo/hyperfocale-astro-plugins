@@ -101,3 +101,22 @@
 .hf-pagination {
   box-sizing: border-box;
 }
+
+/* ─── Mouvement réduit (WCAG 2.3.3) ─────────────────────────────────────────
+   Neutralise transitions/animations des composants hyperfocale (galerie,
+   lightbox, pagination, cards…) sans toucher aux styles du site consommateur. */
+@media (prefers-reduced-motion: reduce) {
+  .hf-gallery *,
+  .hf-series-list *,
+  .hf-card *,
+  .hf-lightbox *,
+  .hf-pagination *,
+  .hf-gallery__item,
+  .hf-pagination__btn,
+  .hf-pagination__page {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
