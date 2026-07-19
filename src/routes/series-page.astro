@@ -1,5 +1,6 @@
 ---
 import { render } from 'astro:content';
+import Layout from 'virtual:hyperfocale/layout';
 import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 
@@ -55,41 +56,43 @@ if (pageNumber > totalPages) {
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const baseUrl = `${normalizedPrefix}/${slug}`;
 
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'ImageGallery',
+  name: series.data.title,
+  ...(series.data.description ? { description: series.data.description } : {}),
+};
+
 const { Content } = await render(series);
 ---
 
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{series.data.title} — Page {currentPage}</title>
-  {series.data.description && <meta name="description" content={series.data.description} />}
-</head>
-<body>
-  <main>
-    <header>
-      <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
-      <h1>{series.data.title} <small>— Page {currentPage}</small></h1>
-      {series.data.date && (
-        <time datetime={(series.data.date as Date).toISOString()}>
-          {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </time>
-      )}
-      {series.data.location && <p class="location">{series.data.location}</p>}
-    </header>
+<Layout
+  title={`${series.data.title} — Page ${currentPage}`}
+  description={series.data.description}
+  ogImage={series.data.cover}
+  lang={series.data.lang}
+  schema={schema}
+>
+  <header class="hf-series-header">
+    <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
+    <h1>{series.data.title} <small>— Page {currentPage}</small></h1>
+    {series.data.date && (
+      <time datetime={(series.data.date as Date).toISOString()}>
+        {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </time>
+    )}
+    {series.data.location && <p class="location">{series.data.location}</p>}
+  </header>
 
-    <div class="hf-series-body">
-      <Content />
-    </div>
+  <div class="hf-series-body">
+    <Content />
+  </div>
 
-    <SeriesGallery
-      images={pageImages}
-      allImages={allImages}
-      page={currentPage}
-      totalPages={totalPages}
-      baseUrl={baseUrl}
-    />
-  </main>
-</body>
-</html>
+  <SeriesGallery
+    images={pageImages}
+    allImages={allImages}
+    page={currentPage}
+    totalPages={totalPages}
+    baseUrl={baseUrl}
+  />
+</Layout>

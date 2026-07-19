@@ -16,7 +16,7 @@ export default defineConfig({
   // Copier les fichiers .astro (routes, composants, thème) dans dist/
   // car tsup ne compile que les fichiers TypeScript
   onSuccess: async () => {
-    const dirs = ['routes', 'components', 'theme'];
+    const dirs = ['routes', 'components', 'theme', 'layouts'];
     for (const dir of dirs) {
       cpSync(resolve('src', dir), resolve('dist', dir), {
         recursive: true,

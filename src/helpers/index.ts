@@ -83,22 +83,55 @@ export async function getSeriesBySlug(slug: string): Promise<Series> {
 }
 
 /**
- * Retourne toutes les images d'une série, triées alphabétiquement.
- * Mode distant prioritaire si `series.data.images` est défini (spec §1.5).
+ * Retourne toutes les images d'une série.
+ *
+ * Si `series.data.images` est défini, il pilote l'ordre et l'alt (spec §1.5).
+ * Trois formes d'entrée sont acceptées, dans l'ordre de priorité :
+ *   1. `{ src: <asset image()>, alt? }` — asset local traité par `astro:assets`
+ *      (ordre curé + alt + optimisation WebP/srcset).
+ *   2. `{ file: '01.jpg', alt? }` — fichier de `media/` référencé par nom.
+ *   3. `{ url, alt?, width?, height? }` — image distante.
+ *
+ * Sinon, fallback : glob de `media/` trié alphabétiquement (sans alt).
  */
 export async function getSeriesImages(slug: string, series?: Series): Promise<ImageMetadata[]> {
-  const remoteImages = series?.data.images as Array<{ url: string; alt?: string; width?: number; height?: number }> | undefined;
-  if (remoteImages && remoteImages.length > 0) {
-    return remoteImages.map((img) => ({
-      src: img.url,
-      width: img.width ?? 0,
-      height: img.height ?? 0,
-      format: img.url.split('.').pop() ?? 'jpg',
-      ...(img.alt !== undefined && { alt: img.alt }),
-    }));
-  }
+  const imageList = series?.data.images as
+    | Array<{ src?: ImageMetadata; file?: string; url?: string; alt?: string; width?: number; height?: number }>
+    | undefined;
 
   const dirSlug = slug.replace(/\/index$/, '');
+
+  if (imageList && imageList.length > 0) {
+    return imageList
+      .map((img): ImageMetadata | null => {
+        // 1) Asset local traité par astro:assets (`src: image()`)
+        if (img.src && typeof img.src === 'object') {
+          return { ...img.src, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
+        }
+        // 2) Fichier local de media/ référencé par nom (`file: '01.jpg'`)
+        if (typeof img.file === 'string') {
+          const fileName = img.file;
+          const found = Object.entries(_imageGlob).find(([path]) => {
+            const m = path.match(/\/src\/content\/series\/(.+)\/media\/([^/]+)$/);
+            return m !== null && m[1] === dirSlug && m[2] === fileName;
+          });
+          if (!found) return null;
+          return { ...found[1].default, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
+        }
+        // 3) Image distante (`url`)
+        if (typeof img.url === 'string') {
+          return {
+            src: img.url,
+            width: img.width ?? 0,
+            height: img.height ?? 0,
+            format: img.url.split('.').pop() ?? 'jpg',
+            ...(img.alt !== undefined ? { alt: img.alt } : {}),
+          };
+        }
+        return null;
+      })
+      .filter((img): img is ImageMetadata => img !== null);
+  }
 
   return Object.entries(_imageGlob)
     .filter(([path]) => {
