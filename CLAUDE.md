@@ -1,6 +1,8 @@
-# hyperfocale — Plugin Astro 6
+# hyperfocale — Plugin Astro 7
 
-Plugin d'intégration Astro pour galeries photo (séries). Publié sur GitHub Packages : `@izo/hyperfocale`.
+Plugin d'intégration Astro pour galeries photo (séries). Publié sur GitHub Packages : `@izo/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
+
+> Spec canonique (source de vérité) : dépôt externe `izo/hyperfocale-spec` — voir `spec-hyperfocale.md`.
 
 ## Commandes
 
@@ -21,7 +23,7 @@ src/
   index.ts          ← point d'entrée de l'intégration (defineIntegration, options)
   schema.ts         ← schéma Zod de la collection + module virtuel Vite
   helpers/          ← API publique TypeScript (getSeriesList, getSeriesBySlug, etc.)
-  components/       ← composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox)
+  components/       ← 8 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox, SeriesAttachments, SeriesFilter, SeriesMap, SeriesMasonry)
   routes/           ← pages Astro injectées via injectRoute()
   theme/            ← base.css avec custom properties --hf-*
 tests/
@@ -40,7 +42,7 @@ dist/               ← build tsup (gitignored)
 
 **Mocks Astro** : `astro:content` et `astro:assets` sont des modules virtuels inexistants hors du runtime Astro. Des mocks manuels dans `tests/__mocks__/` sont aliasés dans `vitest.config.ts`.
 
-**Module virtuel** : `virtual:hyperfocale/collection` expose le schéma Zod au site consommateur. L'import dans `src/content.config.ts` est obligatoire — l'injection automatique n'est pas supportée par l'API Astro 6.
+**Module virtuel** : `virtual:hyperfocale/collection` expose le schéma Zod au site consommateur. L'import dans `src/content.config.ts` est obligatoire — l'injection automatique n'est pas supportée par l'API Astro 7.
 
 **Peer deps** : `astro` et `zod` sont des peer dependencies. Ne pas les ajouter en dépendances directes.
 

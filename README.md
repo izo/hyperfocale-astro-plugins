@@ -1,13 +1,13 @@
 # @izo/hyperfocale
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Astro](https://img.shields.io/badge/Astro-6.x-FF5D01?logo=astro&logoColor=white)](https://astro.build)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Astro](https://img.shields.io/badge/Astro-7.x-FF5D01?logo=astro&logoColor=white)](https://astro.build)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-%40izo%2Fhyperfocale-24292e?logo=github)](https://github.com/izo/hyperfocale-astro-plugins/packages)
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
-Plugin d'intégration **Astro 6** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
+Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
 
 ---
 
@@ -16,7 +16,7 @@ Plugin d'intégration **Astro 6** pour sites de photographie. Ajoute en une lign
 - **Zéro config requise** — une ligne dans `astro.config.mjs` suffit
 - **CLI `init`** — crée ou met à jour `src/content.config.ts` automatiquement
 - **Routes injectées** — `/series/`, `/series/[slug]/`, pagination native
-- **4 composants prêts** — `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesLightbox`
+- **8 composants prêts** — `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesLightbox`, `SeriesAttachments`, `SeriesFilter`, `SeriesMap`, `SeriesMasonry`
 - **Lightbox native** — navigation clavier ←/→/Esc, aucune dépendance externe
 - **Thème configurable** — CSS custom properties `--hf-*` surchargeables
 - **Schéma extensible** — ajoutez vos champs via `.extend()` Zod
@@ -137,6 +137,10 @@ import {
   SeriesList,
   SeriesGallery,
   SeriesLightbox,
+  SeriesAttachments,
+  SeriesFilter,
+  SeriesMap,
+  SeriesMasonry,
 } from '@izo/hyperfocale/components';
 ```
 
@@ -175,6 +179,44 @@ Visionneuse plein écran. S'ouvre au clic sur une image, navigation ←/→/Esc.
 | Prop | Type | Description |
 |------|------|-------------|
 | `images` | `Image[]` | Toutes les images de la série |
+
+### `<SeriesMasonry images={imgs} columns={3} />`
+
+Galerie en maçonnerie (colonnes de hauteurs variables), alternative à `SeriesGallery`.
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `images` | `ImageMetadata[]` | — | Images à afficher |
+| `columns` | `number` | `3` | Nombre de colonnes |
+
+### `<SeriesAttachments attachments={att} heading="Documents" />`
+
+Liste les documents joints non-image d'une série (vidéo, audio, PDF, fichiers). Alimenté par `getSeriesAttachments()`.
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `attachments` | `Attachment[]` | — | Documents joints résolus |
+| `heading` | `string` | `« Documents »` | Titre de la section |
+
+### `<SeriesFilter series={arr} filters={['tags','date','location']} />`
+
+Filtres interactifs (par tags, année, lieu) sur une liste de séries.
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `series` | `Series[]` | — | Séries à filtrer |
+| `filters` | `('tags' \| 'date' \| 'location')[]` | tous | Filtres actifs |
+| `prefix` | `string` | `/series` | Préfixe des liens générés |
+
+### `<SeriesMap series={arr} height="400px" />`
+
+Carte des séries géolocalisées (coordonnées lues dans `iptc.gps`).
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `series` | `Series[]` | — | Séries à placer sur la carte |
+| `height` | `string` | — | Hauteur CSS de la carte |
+| `prefix` | `string` | `/series` | Préfixe des liens générés |
 
 ---
 
@@ -223,6 +265,22 @@ Découpe un tableau d'images en pages.
 ```ts
 const { items, totalPages, currentPage } = paginateImages(images, 12, 1);
 ```
+
+### Autres helpers
+
+L'API expose aussi (voir les types dans `dist/helpers/index.d.ts`) :
+
+| Helper | Rôle |
+|--------|------|
+| `querySeries(options)` | Requête flexible : filtres (`tags`, `collection`, `featured`, `exclude`), tri (`date`/`title`/`random`), pagination (`limit`/`offset`) |
+| `getSeriesAttachments(slug, series?)` | Documents joints non-image (vidéo/audio/PDF…), mode local ou distant |
+| `getSeriesCover(slug, series?)` | Première image comme cover de fallback |
+| `getAllTags()` | Tags distincts triés par fréquence |
+| `getAllCollections()` | Collections parentes (slugs hiérarchiques) triées par volume |
+| `getParentCollection(id)` | Premier segment d'un slug hiérarchique |
+| `classifyAttachment(filename)` | Classe un fichier (`video`/`audio`/`document`/`file`) |
+| `serializeSeries(series)` | Version JSON-sérialisable pour les Astro Islands |
+| `resetSeriesCache()` | Réinitialise le cache module (teardowns de tests) |
 
 ---
 
