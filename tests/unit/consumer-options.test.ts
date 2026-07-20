@@ -62,7 +62,12 @@ describe('getSeriesImages — mode distant', () => {
 describe('options hyperfocale', () => {
   it('accepte les nouvelles options valides', () => {
     expect(() =>
-      hyperfocale({ galleryLayout: 'column', injectRoutes: false, layout: './src/layouts/Base.astro' }),
+      hyperfocale({
+        galleryLayout: 'column',
+        injectRoutes: false,
+        listRoute: false,
+        layout: './src/layouts/Base.astro',
+      }),
     ).not.toThrow();
   });
 

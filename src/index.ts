@@ -78,6 +78,15 @@ export interface HyperfocaleOptions {
    * @default true
    */
   injectRoutes?: boolean;
+
+  /**
+   * Injecter la route d'index `/{prefix}/` (liste des séries).
+   * À `false`, seules les pages de détail sont injectées — le site consommateur
+   * fournit sa propre page d'index (ex. `src/pages/series/index.astro`) sans
+   * collision de route. Sans effet si `injectRoutes` est `false`.
+   * @default true
+   */
+  listRoute?: boolean;
 }
 
 /**
@@ -93,6 +102,7 @@ export interface NormalizedHyperfocaleOptions {
   layout: string | undefined;
   galleryLayout: 'grid' | 'column';
   injectRoutes: boolean;
+  listRoute: boolean;
 }
 
 /**
@@ -114,6 +124,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const layout = options.layout;
   const galleryLayout = options.galleryLayout ?? 'grid';
   const injectRoutes = options.injectRoutes ?? true;
+  const listRoute = options.listRoute ?? true;
 
   if (!rawPrefix.startsWith('/')) {
     throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${rawPrefix}`);
@@ -132,7 +143,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   }
 
   const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
-  return { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes };
+  return { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes, listRoute };
 }
 
 /**
@@ -144,7 +155,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
-  const { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes } =
+  const { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes, listRoute } =
     normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
@@ -179,11 +190,13 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
         const layoutFile = layout ? resolve(fileURLToPath(config.root), layout) : bareLayoutFile;
 
         if (injectRoutes) {
-          injectRoute({
-            pattern: `${prefix}/`,
-            entrypoint: resolve(routesDir, 'series-list.astro'),
-            prerender: true,
-          });
+          if (listRoute) {
+            injectRoute({
+              pattern: `${prefix}/`,
+              entrypoint: resolve(routesDir, 'series-list.astro'),
+              prerender: true,
+            });
+          }
 
           injectRoute({
             pattern: `${prefix}/[...slug]/`,
