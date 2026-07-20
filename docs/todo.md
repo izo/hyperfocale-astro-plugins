@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.7.0"
-updated: 2026-07-19
+updated: 2026-07-20
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -54,19 +54,6 @@ prefixes:
 
 ## Todo
 
-- [ ] #DOC-005 [P2] README : documenter en détail les helpers et le schéma complets #docs #effort-m
-  **Zone** : `README.md`
-  **Effort** : M (2-4h)
-  **Dépendances** : —
-
-  **Contexte** : le README ne détaille que 4 helpers sur ~14 et 5 champs de schéma sur 17. Les nouveaux ont été listés (tableau récap) mais sans exemples ni signatures complètes.
-
-  **Checklist** :
-  - [ ] Sections détaillées pour `querySeries`, `getSeriesAttachments`, `getSeriesCover`, `getAllTags`, `getAllCollections`, `getParentCollection`, `serializeSeries`, `classifyAttachment`
-  - [ ] Tableau complet du schéma (17 champs) : `published`, `draft`, `featured`, `tags`, `lang`, `alt_description`, `private`, `download`, bloc `iptc`, `images[]` (distant), `attachments[]`, `files[]`
-  - [ ] Documenter les options `collectionName` et `dateRequired` (section Installation)
-  - [ ] Documenter le mode distant (images/fichiers via URL) et les slugs hiérarchiques
-
 - [ ] #DOC-006 [P2] Re-vérifier la conformité à la spec canonique `izo/hyperfocale-spec` #spec #effort-s
   **Zone** : `docs/reports/`, `src/`
   **Effort** : S (1-2h)
@@ -86,6 +73,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #DOC-005 [P2] README : helpers et schéma complets documentés #docs #effort-m
+  > ✅ **Terminé** le 2026-07-20
+  **Zone** : `README.md`
+  **Résumé** : sections détaillées pour les 8 helpers restants (`querySeries`, `getSeriesAttachments`, `getSeriesCover`, `getAllTags`, `getAllCollections`, `getParentCollection`, `classifyAttachment`, `serializeSeries`, `resetSeriesCache`) avec signatures et exemples ; tableau complet du schéma (17 champs + bloc IPTC) ; table des 5 options d'intégration (`prefix`, `pageSize`, `theme`, `collectionName`, `dateRequired`) ; section « Modes avancés » (slugs hiérarchiques, images/fichiers distants, `attachments:`).
 
 - [x] #DOC-003 [P2] Docs alignées Astro 7 + 8 composants #docs #effort-s
   > ✅ **Terminé** le 2026-07-19

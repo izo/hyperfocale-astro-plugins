@@ -65,15 +65,27 @@ import hyperfocale from '@izo/hyperfocale';
 export default defineConfig({
   integrations: [
     hyperfocale({
-      prefix: '/series',  // préfixe des routes  (défaut)
-      pageSize: 12,       // images par page     (défaut)
-      theme: 'auto',      // 'light' | 'dark' | 'auto'  (défaut)
+      prefix: '/series',  // préfixe des routes           (défaut)
+      pageSize: 12,       // images par page              (défaut)
+      theme: 'auto',      // 'light' | 'dark' | 'auto'    (défaut)
+      collectionName: 'series', // nom de la collection   (défaut)
+      dateRequired: true,       // `date` obligatoire      (défaut)
     }),
   ],
 });
 ```
 
 C'est tout — votre site génère maintenant des routes `/series/` automatiquement.
+
+### Options
+
+| Option | Type | Défaut | Description |
+|--------|------|--------|-------------|
+| `prefix` | `string` | `'/series'` | Préfixe des routes injectées. Doit commencer par `/`. |
+| `pageSize` | `number` | `12` | Nombre d'images par page dans la galerie paginée (≥ 1). |
+| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
+| `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Utile pour héberger plusieurs galeries. |
+| `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
 
 ---
 
@@ -107,13 +119,75 @@ La série apparaît automatiquement sur `/series/`. Formats acceptés : `.jpg` `
 
 ### Champs du frontmatter
 
-| Champ | Type | Requis | Description |
+Le schéma Zod complet (`seriesSchema`) accepte 17 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
+
+| Champ | Type | Défaut | Description |
 |-------|------|--------|-------------|
-| `title` | `string` | oui | Titre de la série |
-| `date` | `date` | oui | Date (tri décroissant sur la liste) |
-| `description` | `string` | non | Description courte affichée sur la card |
-| `cover` | `image` | non | Couverture — première image si absent |
-| `location` | `string` | non | Lieu associé à la série |
+| `title` | `string` | — (requis) | Titre de la série |
+| `date` | `date` | — (requis¹) | Date ISO. Tri décroissant sur la liste |
+| `description` | `string` | — | Description courte affichée sur la card |
+| `cover` | `image` | — | Couverture. Première image si absent (`getSeriesCover`) |
+| `location` | `string` | — | Lieu associé à la série |
+| `lang` | `string` | — | Code langue (ex. `fr`, `en`) |
+| `published` | `boolean` | `true` | `false` → masquée en production (visible en dev) |
+| `draft` | `boolean` | `false` | `true` → masquée en production (visible en dev) |
+| `featured` | `boolean` | `false` | Mise en avant (`querySeries({ featured })`) |
+| `tags` | `string[]` | `[]` | Tags libres (`getAllTags`, filtre `querySeries`) |
+| `alt_description` | `string` | — | Texte alternatif de la série |
+| `private` | `boolean` | `false` | Marque la série comme privée |
+| `download` | `boolean` | `false` | Autorise le téléchargement des originaux |
+| `iptc` | `object` | — | Métadonnées IPTC (voir ci-dessous) |
+| `images` | `RemoteImage[]` | — | Images en mode distant (voir ci-dessous) |
+| `attachments` | `AttachmentMeta[]` | — | Métadonnées des documents joints locaux |
+| `files` | `RemoteFile[]` | — | Documents joints en mode distant |
+
+¹ Optionnel si l'intégration est configurée avec `dateRequired: false`.
+
+**Bloc `iptc`** (tous optionnels, mode `looseObject`) : `creator`, `credit`, `copyright`, `keywords[]`, `city`, `province`, `country`, `country_code`, `camera`, `lens`, `film`, `headline`, `instructions`, `source`, `gps: { lat, lng }`.
+
+Le champ `iptc.gps` alimente `<SeriesMap>`.
+
+---
+
+## Modes avancés
+
+### Collections hiérarchiques
+
+Les slugs peuvent être imbriqués : un dossier `voyages/asie/tokyo-2024/` produit le slug `voyages/asie/tokyo-2024`, servi par les routes catch-all. Le premier segment est la **collection parente**, exploitable via les helpers :
+
+```ts
+getParentCollection('voyages/asie/tokyo-2024'); // → 'voyages'
+const cols = await getAllCollections();          // → [{ slug: 'voyages', count: 12 }, …]
+const asie = await querySeries({ collection: 'voyages' });
+```
+
+### Images et documents distants
+
+Par défaut, les images sont lues dans `media/` et optimisées par Astro. Vous pouvez à la place référencer des URL distantes dans le frontmatter — elles **priment** sur `media/` :
+
+```yaml
+# Images hébergées ailleurs (CDN, S3…)
+images:
+  - url: "https://cdn.exemple.com/tokyo/01.jpg"
+    alt: "Shibuya de nuit"
+    width: 1600
+    height: 1067
+
+# Documents joints distants
+files:
+  - url: "https://cdn.exemple.com/tokyo/carnet.pdf"
+    title: "Carnet de voyage"
+    kind: document   # video | audio | document | file (auto-détecté si absent)
+```
+
+Les documents joints **locaux** (tout fichier non-image dans `media/`) sont détectés automatiquement ; le bloc `attachments:` permet d'y attacher un titre/description :
+
+```yaml
+attachments:
+  - file: "interview.mp3"
+    title: "Entretien avec l'artiste"
+    description: "12 min, français"
+```
 
 ---
 
@@ -125,7 +199,7 @@ La série apparaît automatiquement sur `/series/`. Formats acceptés : `.jpg` `
 | `/series/[slug]/` | Page d'une série — body + galerie paginée |
 | `/series/[slug]/[page]/` | Pages suivantes de la galerie |
 
-Le préfixe `/series` est configurable via l'option `prefix`.
+Le préfixe `/series` est configurable via l'option `prefix`. Les slugs hiérarchiques (`voyages/asie/tokyo-2024`) sont gérés par des routes catch-all.
 
 ---
 
@@ -266,21 +340,85 @@ Découpe un tableau d'images en pages.
 const { items, totalPages, currentPage } = paginateImages(images, 12, 1);
 ```
 
-### Autres helpers
+### `querySeries(options)`
 
-L'API expose aussi (voir les types dans `dist/helpers/index.d.ts`) :
+API de requête flexible — remplace `getSeriesList()` dès qu'il faut filtrer, trier ou paginer. Retourne `{ items, pagination }`.
 
-| Helper | Rôle |
-|--------|------|
-| `querySeries(options)` | Requête flexible : filtres (`tags`, `collection`, `featured`, `exclude`), tri (`date`/`title`/`random`), pagination (`limit`/`offset`) |
-| `getSeriesAttachments(slug, series?)` | Documents joints non-image (vidéo/audio/PDF…), mode local ou distant |
-| `getSeriesCover(slug, series?)` | Première image comme cover de fallback |
-| `getAllTags()` | Tags distincts triés par fréquence |
-| `getAllCollections()` | Collections parentes (slugs hiérarchiques) triées par volume |
-| `getParentCollection(id)` | Premier segment d'un slug hiérarchique |
-| `classifyAttachment(filename)` | Classe un fichier (`video`/`audio`/`document`/`file`) |
-| `serializeSeries(series)` | Version JSON-sérialisable pour les Astro Islands |
-| `resetSeriesCache()` | Réinitialise le cache module (teardowns de tests) |
+```ts
+const { items, pagination } = await querySeries({
+  collection: 'voyages',      // premier segment du slug
+  tags: ['argentique'],       // ET-logique (tous les tags requis)
+  featured: 'first',          // true = seulement featured · 'first' = remontées en tête
+  exclude: ['voyages/asie/tokyo-2024'],
+  published: true,            // défaut true
+  draft: false,               // défaut false
+  sort: 'date',               // 'date' (défaut) | 'title' | 'random'
+  limit: 12,
+  offset: 0,
+});
+// pagination: { currentPage, totalPages, totalItems, hasNext, hasPrev }
+```
+
+### `getSeriesAttachments(slug, series?)`
+
+Documents joints non-image d'une série (`Attachment[]`), triés alphabétiquement. Mode distant (`files[]`) prioritaire, sinon détection des non-images de `media/`. Les métadonnées du bloc `attachments:` sont fusionnées par nom de fichier.
+
+```ts
+const docs = await getSeriesAttachments('bretagne-2024', serie);
+// Attachment[] : { src, kind: 'video'|'audio'|'document'|'file', title, description?, size? }
+```
+
+### `getSeriesCover(slug, series?)`
+
+Première image de la série comme cover de fallback. `undefined` si aucune image.
+
+```ts
+const cover = await getSeriesCover('bretagne-2024');
+// ImageMetadata | undefined
+```
+
+### `getAllTags()` · `getAllCollections()`
+
+Agrégations sur toute la collection, triées par fréquence décroissante.
+
+```ts
+const tags = await getAllTags();          // [{ name: 'argentique', count: 8 }, …]
+const cols = await getAllCollections();   // [{ slug: 'voyages', name: 'voyages', count: 12 }, …]
+```
+
+### `getParentCollection(id)`
+
+Premier segment d'un slug hiérarchique, ou `null` pour un slug plat. Synchrone.
+
+```ts
+getParentCollection('voyages/asie/tokyo-2024'); // → 'voyages'
+getParentCollection('bretagne-2024');           // → null
+```
+
+### `classifyAttachment(filename)`
+
+Classe un fichier selon son extension : `'video' | 'audio' | 'document' | 'file'`. Retourne `null` pour une image ou `index.md`. Ne lève jamais d'erreur (extension inconnue → `'file'`). Synchrone.
+
+```ts
+classifyAttachment('interview.mp3'); // → 'audio'
+classifyAttachment('01.jpg');        // → null (alimente la galerie, pas les pièces jointes)
+```
+
+### `serializeSeries(series)`
+
+Version JSON-sérialisable d'une série pour les Astro Islands (React, Vue, Svelte…). Les `Date` deviennent des chaînes ISO ; la méthode `render` est omise.
+
+```ts
+const data = serializeSeries(serie); // { id, collection, body?, data: { …, date?: string } }
+```
+
+### `resetSeriesCache()`
+
+Réinitialise le cache module-level. À appeler dans les teardowns de tests pour éviter les fuites entre cas.
+
+```ts
+afterEach(() => resetSeriesCache());
+```
 
 ---
 
