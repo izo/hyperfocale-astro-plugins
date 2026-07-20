@@ -54,7 +54,7 @@
   "sideEffects": false,
   "scripts": {
     "dev": "tsup --watch",
-    "build": "tsup",
+    "build": "tsup && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run tests/unit",

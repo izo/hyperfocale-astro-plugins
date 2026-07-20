@@ -9,6 +9,9 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const VIRTUAL_MODULE_ID = 'virtual:hyperfocale/collection';
 const RESOLVED_VIRTUAL_MODULE_ID = `\0${VIRTUAL_MODULE_ID}`;
 
+const VIRTUAL_LAYOUT_ID = 'virtual:hyperfocale/layout';
+const RESOLVED_VIRTUAL_LAYOUT_ID = `\0${VIRTUAL_LAYOUT_ID}`;
+
 /**
  * Options de configuration du plugin `hyperfocale`.
  */
@@ -44,6 +47,29 @@ export interface HyperfocaleOptions {
    * @default true
    */
   dateRequired?: boolean;
+
+  /**
+   * Chemin (relatif à la racine du projet) d'un layout `.astro` du site consommateur
+   * qui enveloppe les routes injectées. Le layout reçoit les props
+   * `{ title, description, ogImage?, lang?, schema? }` et rend le contenu via `<slot />`.
+   * Absent → layout brut interne (document HTML minimal), comportement historique.
+   */
+  layout?: string;
+
+  /**
+   * Disposition de la galerie : `'grid'` (vignettes carrées recadrées) ou
+   * `'column'` (colonne pleine largeur, ratios naturels préservés — ne recadre pas
+   * les diptyques ni les portraits).
+   * @default 'grid'
+   */
+  galleryLayout?: 'grid' | 'column';
+
+  /**
+   * Injecter les routes automatiques (`/{prefix}/`, `/{prefix}/[...slug]/`…).
+   * À `false`, le site consommateur câble ses propres pages avec les helpers et composants.
+   * @default true
+   */
+  injectRoutes?: boolean;
 }
 
 /**
@@ -55,6 +81,10 @@ export interface NormalizedHyperfocaleOptions {
   theme: 'light' | 'dark' | 'auto';
   collectionName: string;
   dateRequired: boolean;
+  /** Chemin du layout consommateur, ou `undefined` pour le layout brut interne. */
+  layout: string | undefined;
+  galleryLayout: 'grid' | 'column';
+  injectRoutes: boolean;
 }
 
 /**
@@ -66,6 +96,9 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const theme = options.theme ?? 'auto';
   const collectionName = options.collectionName ?? 'series';
   const dateRequired = options.dateRequired ?? true;
+  const layout = options.layout;
+  const galleryLayout = options.galleryLayout ?? 'grid';
+  const injectRoutes = options.injectRoutes ?? true;
 
   if (!rawPrefix.startsWith('/')) {
     throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${rawPrefix}`);
@@ -79,9 +112,12 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   if (!collectionName || collectionName.trim() === '') {
     throw new Error(`[hyperfocale] L'option "collectionName" ne peut pas être vide.`);
   }
+  if (!['grid', 'column'].includes(galleryLayout)) {
+    throw new Error(`[hyperfocale] L'option "galleryLayout" doit être 'grid' ou 'column'. Reçu: ${galleryLayout}`);
+  }
 
   const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
-  return { prefix, pageSize, theme, collectionName, dateRequired };
+  return { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes };
 }
 
 /**
@@ -93,9 +129,12 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
-  const { prefix, pageSize, theme, collectionName, dateRequired } = normalizeOptions(options);
+  const { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes } =
+    normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
+  // Layout de repli interne, utilisé quand l'option `layout` n'est pas fournie.
+  const bareLayoutFile = resolve(__dirname, 'layouts', 'BareLayout.astro');
 
   return {
     name: 'hyperfocale',
@@ -103,32 +142,46 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, logger, config }) => {
         logger.info(`Initialisation hyperfocale (prefix: ${prefix}, collection: ${collectionName}, theme: ${theme})`);
 
-        // Vérifier que src/content.config.ts référence la collection
+        // Vérifier que src/content.config.ts référence la collection. On accepte
+        // soit le module virtuel `seriesCollection`, soit une déclaration maison
+        // basée sur les builders exportés (`seriesSchema`/`baseSeriesSchema`) — un
+        // site consommateur qui étend le schéma n'utilise pas `seriesCollection`.
         const contentConfig = resolve(fileURLToPath(config.root), 'src/content.config.ts');
-        if (!existsSync(contentConfig) || !readFileSync(contentConfig, 'utf-8').includes('seriesCollection')) {
+        const registered =
+          existsSync(contentConfig) &&
+          new RegExp(`seriesCollection|seriesSchema|baseSeriesSchema|content/${collectionName}\\b`).test(
+            readFileSync(contentConfig, 'utf-8'),
+          );
+        if (!registered) {
           logger.warn(
-            `La collection "series" n'est pas enregistrée.\n` +
+            `La collection "${collectionName}" n'est pas enregistrée.\n` +
             `  → Lancez : npx hyperfocale init`,
           );
         }
 
-        injectRoute({
-          pattern: `${prefix}/`,
-          entrypoint: resolve(routesDir, 'series-list.astro'),
-          prerender: true,
-        });
+        // Chemin absolu du layout qui enveloppe les routes injectées :
+        // celui du site consommateur si fourni, sinon le layout brut interne.
+        const layoutFile = layout ? resolve(fileURLToPath(config.root), layout) : bareLayoutFile;
 
-        injectRoute({
-          pattern: `${prefix}/[...slug]/`,
-          entrypoint: resolve(routesDir, 'series-detail.astro'),
-          prerender: true,
-        });
+        if (injectRoutes) {
+          injectRoute({
+            pattern: `${prefix}/`,
+            entrypoint: resolve(routesDir, 'series-list.astro'),
+            prerender: true,
+          });
 
-        injectRoute({
-          pattern: `${prefix}/[...slug]/[page]/`,
-          entrypoint: resolve(routesDir, 'series-page.astro'),
-          prerender: true,
-        });
+          injectRoute({
+            pattern: `${prefix}/[...slug]/`,
+            entrypoint: resolve(routesDir, 'series-detail.astro'),
+            prerender: true,
+          });
+
+          injectRoute({
+            pattern: `${prefix}/[...slug]/[page]/`,
+            entrypoint: resolve(routesDir, 'series-page.astro'),
+            prerender: true,
+          });
+        }
 
         injectScript('page-ssr', `import "${themeFile}";`);
 
@@ -143,9 +196,16 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
             if (id === VIRTUAL_MODULE_ID) {
               return RESOLVED_VIRTUAL_MODULE_ID;
             }
+            if (id === VIRTUAL_LAYOUT_ID) {
+              return RESOLVED_VIRTUAL_LAYOUT_ID;
+            }
             return undefined;
           },
           load(id) {
+            // Ré-export du layout (consommateur ou repli interne) pour les routes injectées.
+            if (id === RESOLVED_VIRTUAL_LAYOUT_ID) {
+              return `export { default } from ${JSON.stringify(layoutFile)};`;
+            }
             if (id === RESOLVED_VIRTUAL_MODULE_ID) {
               const dateField = dateRequired
                 ? `date: z.coerce.date(),`
@@ -215,6 +275,7 @@ export const seriesCollection = defineCollection({
               'import.meta.env.HYPERFOCALE_THEME': JSON.stringify(theme),
               'import.meta.env.HYPERFOCALE_COLLECTION_NAME': JSON.stringify(collectionName),
               'import.meta.env.HYPERFOCALE_DATE_REQUIRED': JSON.stringify(dateRequired),
+              'import.meta.env.HYPERFOCALE_GALLERY_LAYOUT': JSON.stringify(galleryLayout),
             },
           },
         });

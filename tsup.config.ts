@@ -10,13 +10,16 @@ export default defineConfig({
     'cli/init': 'src/cli/init.ts',
   },
   format: ['esm'],
-  dts: true,
+  // Déclarations émises séparément par `tsc --emitDeclarationOnly` (script build) :
+  // le bundler de dts de tsup (rollup-plugin-dts) plante sous Node récent
+  // (`useCaseSensitiveFileNames`). tsc est plus robuste et suffit ici.
+  dts: false,
   clean: true,
   external: ['astro', 'astro:content', 'astro:assets', 'zod'],
   // Copier les fichiers .astro (routes, composants, thème) dans dist/
   // car tsup ne compile que les fichiers TypeScript
   onSuccess: async () => {
-    const dirs = ['routes', 'components', 'theme'];
+    const dirs = ['routes', 'components', 'theme', 'layouts'];
     for (const dir of dirs) {
       cpSync(resolve('src', dir), resolve('dist', dir), {
         recursive: true,

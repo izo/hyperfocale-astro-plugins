@@ -6,6 +6,13 @@ interface Props {
 }
 
 const { images } = Astro.props;
+
+// Données sérialisées pour le JS client. Injectées via `set:html` : dans un
+// `<script>`, Astro n'évalue pas les expressions `{}` du template — sans ça, le
+// JSON serait rendu littéralement et la lightbox n'aurait aucune image.
+const lightboxData = JSON.stringify(
+  images.map((img) => ({ src: img.src, width: img.width, height: img.height, alt: img.alt })),
+);
 ---
 
 <div
@@ -64,9 +71,7 @@ const { images } = Astro.props;
 </div>
 
 <!-- Données des images sérialisées pour le JS côté client -->
-<script type="application/json" id="hf-lightbox-data">
-  {JSON.stringify(images.map((img) => ({ src: img.src, width: img.width, height: img.height, alt: img.alt })))}
-</script>
+<script type="application/json" id="hf-lightbox-data" is:inline set:html={lightboxData}></script>
 
 <script>
   (() => {

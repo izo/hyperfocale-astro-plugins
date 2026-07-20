@@ -18,6 +18,10 @@ interface Props {
 
 const { images, allImages, page, totalPages, baseUrl } = Astro.props;
 
+// Disposition : 'grid' (vignettes carrées recadrées) ou 'column' (colonne pleine
+// largeur, ratios naturels — ne recadre pas les diptyques ni les portraits).
+const galleryLayout = (import.meta.env.HYPERFOCALE_GALLERY_LAYOUT ?? 'grid') as 'grid' | 'column';
+
 // Normalise l'URL de base : retire le slash final
 const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
@@ -34,10 +38,11 @@ function pageUrl(p: number): string {
 }
 ---
 
-<section class="hf-gallery" aria-label="Galerie photos">
+<section class:list={['hf-gallery', `hf-gallery--${galleryLayout}`]} aria-label="Galerie photos">
   <div class="hf-gallery__grid">
     {images.map((image, i) => {
       const globalIndex = safePageStartIndex + i;
+      const alt = image.alt ?? `Photo ${globalIndex + 1}`;
       return (
         <button
           class="hf-gallery__item"
@@ -45,14 +50,25 @@ function pageUrl(p: number): string {
           aria-label={`Ouvrir l'image ${globalIndex + 1}`}
           data-lightbox-index={globalIndex}
         >
-          <Image
-            src={image as Parameters<typeof Image>[0]['src']}
-            alt={`Photo ${globalIndex + 1}`}
-            width={600}
-            height={400}
-            class="hf-gallery__img"
-            loading="lazy"
-          />
+          {galleryLayout === 'column' ? (
+            <Image
+              src={image as Parameters<typeof Image>[0]['src']}
+              alt={alt}
+              width={1000}
+              densities={[1, 2]}
+              class="hf-gallery__img"
+              loading={globalIndex === 0 ? 'eager' : 'lazy'}
+            />
+          ) : (
+            <Image
+              src={image as Parameters<typeof Image>[0]['src']}
+              alt={alt}
+              width={600}
+              height={400}
+              class="hf-gallery__img"
+              loading="lazy"
+            />
+          )}
         </button>
       );
     })}
@@ -145,6 +161,24 @@ function pageUrl(p: number): string {
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  /* ─── Mode colonne : pleine largeur, ratios naturels ────────────────────
+     Une seule colonne, images non recadrées (préserve diptyques et portraits). */
+  .hf-gallery--column .hf-gallery__grid {
+    grid-template-columns: 1fr;
+    gap: var(--hf-gallery-gap, 3.5rem);
+  }
+
+  .hf-gallery--column .hf-gallery__item {
+    aspect-ratio: auto;
+    background: transparent;
+    border-radius: 0;
+  }
+
+  .hf-gallery--column .hf-gallery__img {
+    height: auto;
+    object-fit: contain;
   }
 
   /* ─── Pagination ────────────────────────────────────────────────────── */

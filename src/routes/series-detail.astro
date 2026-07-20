@@ -1,5 +1,6 @@
 ---
 import { render } from 'astro:content';
+import Layout from 'virtual:hyperfocale/layout';
 import { getSeriesList, getSeriesImages, getSeriesAttachments, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 import SeriesAttachments from '../components/SeriesAttachments.astro';
@@ -29,45 +30,48 @@ const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1)
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const baseUrl = `${normalizedPrefix}/${slug}`;
 
+// Données structurées : galerie d'images de la série.
+const schema = {
+  '@context': 'https://schema.org',
+  '@type': 'ImageGallery',
+  name: series.data.title,
+  ...(series.data.description ? { description: series.data.description } : {}),
+};
+
 const { Content } = await render(series);
 ---
 
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{series.data.title}</title>
-  {series.data.description && <meta name="description" content={series.data.description} />}
-</head>
-<body>
-  <main>
-    <header>
-      <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
-      <h1>{series.data.title}</h1>
-      {series.data.date && (
-        <time datetime={(series.data.date as Date).toISOString()}>
-          {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
-        </time>
-      )}
-      {series.data.location && <p class="location">{series.data.location}</p>}
-    </header>
+<Layout
+  title={series.data.title}
+  description={series.data.description}
+  ogImage={series.data.cover}
+  lang={series.data.lang}
+  schema={schema}
+>
+  <header class="hf-series-header">
+    <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
+    <h1>{series.data.title}</h1>
+    {series.data.date && (
+      <time datetime={(series.data.date as Date).toISOString()}>
+        {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+      </time>
+    )}
+    {series.data.location && <p class="location">{series.data.location}</p>}
+  </header>
 
-    {/* Body markdown avant la galerie */}
-    <div class="hf-series-body">
-      <Content />
-    </div>
+  {/* Body markdown avant la galerie */}
+  <div class="hf-series-body">
+    <Content />
+  </div>
 
-    <SeriesGallery
-      images={pageImages}
-      allImages={allImages}
-      page={1}
-      totalPages={totalPages}
-      baseUrl={baseUrl}
-    />
+  <SeriesGallery
+    images={pageImages}
+    allImages={allImages}
+    page={1}
+    totalPages={totalPages}
+    baseUrl={baseUrl}
+  />
 
-    {/* Documents joints après la galerie (spec §1.9) */}
-    <SeriesAttachments attachments={attachments} />
-  </main>
-</body>
-</html>
+  {/* Documents joints après la galerie (spec §1.9) */}
+  <SeriesAttachments attachments={attachments} />
+</Layout>

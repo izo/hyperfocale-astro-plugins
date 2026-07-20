@@ -1,0 +1,36 @@
+---
+// Layout de repli interne des routes injectées, utilisé quand l'option `layout`
+// n'est pas fournie. Rend un document HTML minimal — comportement historique du
+// plugin (avant le slot de layout). Un site consommateur passe plutôt son propre
+// layout via l'option `layout` de l'intégration.
+//
+// Contrat de props partagé avec les layouts consommateurs :
+//   { title, description?, ogImage?, lang?, schema? }
+// `ogImage` et `schema` sont ignorés ici (le layout brut ne fait pas de SEO) ;
+// ils sont acceptés pour que les routes soient agnostiques du layout cible.
+interface Props {
+  title: string;
+  description?: string;
+  ogImage?: unknown;
+  lang?: string;
+  schema?: object;
+}
+
+const { title, description, lang = 'fr', schema } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {schema && <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />}
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
