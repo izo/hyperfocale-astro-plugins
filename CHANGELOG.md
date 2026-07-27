@@ -7,7 +7,25 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [0.7.0] — 2026-07-09
+## [0.8.0] — 2026-07-27
+
+### Ajouté
+
+- **Presets de domaine** (option `preset`) : `photo`, `portfolio`, `music`, `catalog`, `press`, `recipe` pré-remplissent `prefix`, `collectionName` et `dateRequired` en une seule option. Toute option fournie explicitement l'emporte sur la valeur du preset. `PRESETS`, `resolvePreset`, `PresetName` et `PresetConfig` sont exportés depuis le point d'entrée ; un preset inconnu lève une erreur explicite.
+- **Option `listRoute`** (défaut `true`) : à `false`, la route d'index `/{prefix}/` n'est pas injectée, laissant le site fournir sa propre page d'index sans collision de route. Les routes de détail et de pagination restent injectées.
+- **Tests** : `tests/unit/presets.test.ts` (table des presets, intégration de l'option) et couverture des routes réellement injectées — `listRoute`, `injectRoutes` et répercussion du prefix d'un preset sont vérifiés sur les patterns passés à `injectRoute`, non plus seulement sur l'acceptation de l'option.
+
+### Corrigé
+
+- **Composants inaccessibles à l'import** : `<SeriesFilter>`, `<SeriesMap>` et `<SeriesMasonry>` étaient bien livrés dans `dist/components/` mais ne figuraient dans aucune entrée `exports` du `package.json` — un site consommateur ne pouvait pas les importer. Les trois entrées sont ajoutées. Cause racine : le test de packaging maintenait sa liste de composants en dur (4 sur 8) ; elle est désormais dérivée de `src/components/`, ce qui couvre d'office les composants futurs.
+
+### Rétro-compatibilité
+
+Aucun changement cassant : `preset` et `listRoute` ont des défauts qui reproduisent le comportement 0.7.0.
+
+---
+
+## [0.7.0] — 2026-07-27
 
 ### Ajouté
 
@@ -20,9 +38,21 @@ Documents joints — implémentation de la spec Hyperfocale **v2.5-draft §1.9**
 - **Design tokens** : `--hf-attachments-gap`, `--hf-attachments-radius`, `--hf-attachments-bg`, `--hf-attachments-bg-hover`.
 - **Tests** : `tests/unit/attachments.test.ts` (classification, mode distant, schéma).
 
+Consommation du plugin par un site au design soigné (dogfooding sur laurenceguenoun.com) : consommer le plugin sans perdre son chrome, ses ratios d'image ni son texte alternatif.
+
+- **Slot de layout** (option `layout`) : les routes injectées s'enveloppent dans un layout `.astro` du site consommateur via le module virtuel `virtual:hyperfocale/layout` (repli sur un `BareLayout` interne). Contrat de props : `{ title, description, ogImage?, lang?, schema? }`. Option `injectRoutes` pour laisser le consommateur câbler entièrement ses propres pages.
+- **`galleryLayout: 'grid' | 'column'`** (défaut `grid`) : le mode `column` rend une galerie en colonne pleine largeur aux ratios naturels — ne recadre pas les diptyques ni les portraits.
+- **Images locales ordonnées avec alt** : `getSeriesImages` accepte un `images[]` local (`{ src: <asset image()>, alt }` ou `{ file, alt }`), en plus du mode distant — préserve l'ordre curé et l'alt là où le glob alphabétique n'en portait aucun. `SeriesGallery` utilise `image.alt`.
+- **Tests** : `tests/unit/consumer-options.test.ts` (images locales ordre + alt, régression du mode distant, validation des options).
+
+### Corrigé
+
+- **Lightbox muette** : les données d'images étaient injectées via `<script>{JSON.stringify(...)}</script>`, non évalué par Astro 7. Passage à `is:inline set:html`.
+- **Build des déclarations** : `dts: false` (tsup) + `tsc --emitDeclarationOnly` dans le script `build`. Le bundler `rollup-plugin-dts` plantait sous Node récent (`useCaseSensitiveFileNames`), bloquant `prepare`/`prepublishOnly` — donc l'installation en dépendance locale et la publication.
+
 ### Rétro-compatibilité
 
-Aucun changement cassant : les deux blocs de frontmatter sont optionnels, le glob d'images est inchangé, et les séries sans documents joints se comportent exactement comme avant.
+Aucun changement cassant : les deux blocs de frontmatter sont optionnels, le glob d'images est inchangé, et les séries sans documents joints se comportent exactement comme avant. Les nouvelles options ont toutes un défaut qui reproduit le comportement 0.6.0.
 
 ---
 
