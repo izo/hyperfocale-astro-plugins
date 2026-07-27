@@ -1,0 +1,41 @@
+name: Publish
+
+# Publie @izo/hyperfocale sur GitHub Packages.
+#
+# Deux déclencheurs :
+#   - un tag `v*` poussé sur le dépôt (chemin nominal) ;
+#   - un lancement manuel depuis l'onglet Actions (rattrapage).
+#
+# Aucun secret à créer : le `GITHUB_TOKEN` du runner porte `packages: write`,
+# et le dépôt déclare déjà `publishConfig.registry` + `repository` — GitHub
+# Packages rattache donc le paquet à ce dépôt automatiquement.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          registry-url: https://npm.pkg.github.com
+          scope: '@izo'
+
+      # `npm ci` exécute le hook `prepare` → `npm run build` (dist/ + DTS).
+      - run: npm ci
+
+      # `npm publish` exécute `prepublishOnly` → typecheck + tests unitaires.
+      # Rien n'est publié si l'un des deux échoue.
+      - run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
