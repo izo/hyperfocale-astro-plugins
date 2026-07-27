@@ -52,7 +52,7 @@
     "hyperfocale": "dist/cli/init.js"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "sideEffects": false,
   "scripts": {

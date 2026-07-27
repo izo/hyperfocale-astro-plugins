@@ -3,7 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Astro](https://img.shields.io/badge/Astro-7.x-FF5D01?logo=astro&logoColor=white)](https://astro.build)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![GitHub Packages](https://img.shields.io/badge/GitHub%20Packages-%40izo%2Fhyperfocale-24292e?logo=github)](https://github.com/izo/hyperfocale-astro-plugins/packages)
+[![npm](https://img.shields.io/badge/npm-%40izo%2Fhyperfocale-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/@izo/hyperfocale)
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
@@ -27,27 +27,18 @@ Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une lign
 
 ## Installation
 
-### 1. Configurer l'accès GitHub Packages
-
-Ce package est distribué via GitHub Packages. Créez un [Personal Access Token](https://github.com/settings/tokens) avec le scope `read:packages`, puis ajoutez-le à votre `~/.npmrc` global :
-
-```bash
-echo "//npm.pkg.github.com/:_authToken=VOTRE_TOKEN" >> ~/.npmrc
-```
-
-Ajoutez ensuite un fichier `.npmrc` **à la racine de votre projet** :
-
-```
-@izo:registry=https://npm.pkg.github.com
-```
-
-### 2. Installer le plugin
+### 1. Installer le plugin
 
 ```bash
 npm install @izo/hyperfocale
 ```
 
-### 3. Initialiser la content collection
+Aucun registre à configurer, aucun jeton : le paquet est publié sur le npm
+public. *(Il vivait sur GitHub Packages, qui exige une authentification même
+pour un paquet public — donc un jeton en local, en CI et au déploiement de
+chaque site consommateur.)*
+
+### 2. Initialiser la content collection
 
 ```bash
 npx hyperfocale init
@@ -55,7 +46,7 @@ npx hyperfocale init
 
 Le CLI crée ou met à jour `src/content.config.ts` pour enregistrer la collection `series`. Idempotent — relancez-le sans risque si le fichier existe déjà.
 
-### 4. Activer l'intégration
+### 3. Activer l'intégration
 
 ```ts
 // astro.config.mjs
@@ -84,7 +75,7 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `prefix` | `string` | `'/series'` | Préfixe des routes injectées. Doit commencer par `/`. |
 | `pageSize` | `number` | `12` | Nombre d'images par page dans la galerie paginée (≥ 1). |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
-| `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Utile pour héberger plusieurs galeries. |
+| `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
 
 ---

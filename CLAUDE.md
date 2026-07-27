@@ -1,6 +1,8 @@
 # hyperfocale — Plugin Astro 7
 
-Plugin d'intégration Astro pour galeries photo (séries). Publié sur GitHub Packages : `@izo/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
+Plugin d'intégration Astro pour galeries photo (séries). Publié sur le **npm public** : `@izo/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
+
+> Le paquet vivait sur GitHub Packages, qui réclame une authentification même pour un paquet public : chaque site consommateur devait porter un jeton `read:packages` en local, en CI **et** au déploiement. La publication demande désormais un secret `NPM_TOKEN` ; l'installation ne demande plus rien.
 
 > Spec canonique (source de vérité) : dépôt externe `izo/hyperfocale-spec` — voir `spec-hyperfocale.md`.
 
