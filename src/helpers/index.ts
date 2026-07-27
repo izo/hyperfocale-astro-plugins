@@ -1,8 +1,26 @@
 import { getCollection } from 'astro:content';
-import type { CollectionEntry } from 'astro:content';
+import type { CollectionEntry, CollectionKey } from 'astro:content';
 import type { Attachment, AttachmentKind } from '../schema.js';
 
-export type Series = CollectionEntry<'series'>;
+/**
+ * Nom de la collection lue par les helpers.
+ *
+ * Injecté par l'intégration via `define` Vite (même mécanisme que
+ * `HYPERFOCALE_PREFIX` côté composants et routes). Absent — tests unitaires,
+ * ou import des helpers sans l'intégration — on retombe sur `series`, le
+ * défaut historique : aucun site existant ne change de comportement.
+ */
+const COLLECTION_NAME: string =
+  (import.meta.env.HYPERFOCALE_COLLECTION_NAME as string | undefined) ?? 'series';
+
+/**
+ * Une entrée de la collection, quel que soit son nom.
+ *
+ * `CollectionEntry<'series'>` ne compilait que sur un site possédant une
+ * collection littéralement nommée `series` : chez un consommateur qui suit
+ * le preset `portfolio` (collection `projects`), le type était une erreur.
+ */
+export type Series = CollectionEntry<CollectionKey>;
 export type { Attachment, AttachmentKind } from '../schema.js';
 
 export interface PaginationResult<T> {
@@ -23,8 +41,12 @@ export interface ImageMetadata {
 let _seriesCache: Series[] | null = null;
 
 // Glob hoissé — évalué une seule fois par Vite au build, supporte les slugs hiérarchiques (#ARCH-003)
+//
+// Le motif ne PEUT PAS porter le nom de collection : `import.meta.glob` est
+// analysé statiquement par Vite et n'accepte qu'un littéral. On globe donc
+// tout `src/content/`, et `matchMedia()` filtre par collection à l'exécution.
 const _imageGlob = import.meta.glob<{ default: ImageMetadata }>(
-  '/src/content/series/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+  '/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
   { eager: true },
 );
 
@@ -32,15 +54,34 @@ const _imageGlob = import.meta.glob<{ default: ImageMetadata }>(
 // `query: '?url'` fait servir les fichiers comme assets statiques et retourne leur URL.
 const _attachmentGlob = import.meta.glob<string>(
   [
-    '/src/content/series/**/media/*',
-    '!/src/content/series/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+    '/src/content/**/media/*',
+    '!/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
   ],
   { eager: true, query: '?url', import: 'default' },
 );
 
+/** `/src/content/<collection>/<dirSlug>/media/<filename>` */
+const MEDIA_PATH = /^\/src\/content\/([^/]+)\/(.+)\/media\/([^/]+)$/;
+
+/**
+ * Décompose un chemin de `media/`, et écarte les collections voisines.
+ * Retourne `null` si le chemin n'appartient pas à la collection visée.
+ *
+ * @internal Exporté pour les tests — le glob étant statique, c'est ici que
+ * se joue l'appartenance à la collection.
+ */
+export function matchMedia(
+  path: string,
+  collection: string = COLLECTION_NAME,
+): { dirSlug: string; filename: string } | null {
+  const m = MEDIA_PATH.exec(path);
+  if (m === null || m[1] !== collection) return null;
+  return { dirSlug: m[2] as string, filename: m[3] as string };
+}
+
 async function getAllSeriesCached(): Promise<Series[]> {
   if (_seriesCache !== null) return _seriesCache;
-  const result = await getCollection('series');
+  const result = await getCollection(COLLECTION_NAME as CollectionKey);
   _seriesCache = result;
   return result;
 }
@@ -112,8 +153,8 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
         if (typeof img.file === 'string') {
           const fileName = img.file;
           const found = Object.entries(_imageGlob).find(([path]) => {
-            const m = path.match(/\/src\/content\/series\/(.+)\/media\/([^/]+)$/);
-            return m !== null && m[1] === dirSlug && m[2] === fileName;
+            const m = matchMedia(path);
+            return m !== null && m.dirSlug === dirSlug && m.filename === fileName;
           });
           if (!found) return null;
           return { ...found[1].default, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
@@ -134,10 +175,7 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
   }
 
   return Object.entries(_imageGlob)
-    .filter(([path]) => {
-      const match = path.match(/\/src\/content\/series\/(.+)\/media\//);
-      return match !== null && match[1] === dirSlug;
-    })
+    .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)
     .sort(([pathA], [pathB]) => {
       const fileA = pathA.split('/').pop() ?? '';
       const fileB = pathB.split('/').pop() ?? '';
@@ -202,10 +240,7 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
   const dirSlug = slug.replace(/\/index$/, '');
 
   return Object.entries(_attachmentGlob)
-    .filter(([path]) => {
-      const match = path.match(/\/src\/content\/series\/(.+)\/media\//);
-      return match !== null && match[1] === dirSlug;
-    })
+    .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)
     .map(([path, url]) => ({ path, url, filename: path.split('/').pop() ?? path }))
     .filter(({ filename }) => classifyAttachment(filename) !== null)
     .sort((a, b) => a.filename.localeCompare(b.filename))

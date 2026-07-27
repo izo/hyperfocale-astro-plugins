@@ -1,14 +1,18 @@
 name: Publish
 
-# Publie @izo/hyperfocale sur GitHub Packages.
+# Publie @izo/hyperfocale sur le registre npm public.
 #
 # Deux déclencheurs :
 #   - un tag `v*` poussé sur le dépôt (chemin nominal) ;
 #   - un lancement manuel depuis l'onglet Actions (rattrapage).
 #
-# Aucun secret à créer : le `GITHUB_TOKEN` du runner porte `packages: write`,
-# et le dépôt déclare déjà `publishConfig.registry` + `repository` — GitHub
-# Packages rattache donc le paquet à ce dépôt automatiquement.
+# Un secret `NPM_TOKEN` est requis (jeton npm « Automation »). En échange,
+# les CONSOMMATEURS n'ont plus rien à présenter : GitHub Packages exigeait
+# une authentification même pour un paquet public, ce qui imposait un jeton
+# en local, en CI et au déploiement de chaque site installant le plugin.
+#
+# `publishConfig.access: public` est indispensable : un paquet scopé (@izo/…)
+# serait sinon publié « restricted », donc inaccessible.
 
 on:
   push:
@@ -20,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
     steps:
       - uses: actions/checkout@v7
 
@@ -28,8 +31,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          registry-url: https://npm.pkg.github.com
-          scope: '@izo'
+          registry-url: https://registry.npmjs.org
 
       # `npm ci` exécute le hook `prepare` → `npm run build` (dist/ + DTS).
       - run: npm ci
@@ -38,4 +40,4 @@ jobs:
       # Rien n'est publié si l'un des deux échoue.
       - run: npm publish
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
