@@ -80,3 +80,54 @@ describe('options hyperfocale', () => {
     expect(() => hyperfocale({})).not.toThrow();
   });
 });
+
+// ─── Routes effectivement injectées (`listRoute`, `injectRoutes`) ────────────
+
+/**
+ * Exécute le hook `astro:config:setup` de l'intégration et retourne les
+ * patterns réellement passés à `injectRoute`. Vérifier l'acceptation d'une
+ * option ne dit rien de son effet : `listRoute` n'existe que pour supprimer
+ * une injection, c'est donc l'injection qu'il faut observer.
+ */
+function injectedPatterns(options: Parameters<typeof hyperfocale>[0] = {}): string[] {
+  const patterns: string[] = [];
+  const setup = hyperfocale(options).hooks['astro:config:setup'];
+  if (!setup) throw new Error('hook astro:config:setup absent de l’intégration');
+  setup({
+    injectRoute: (route: { pattern: string }) => void patterns.push(route.pattern),
+    injectScript: () => {},
+    updateConfig: () => {},
+    logger: { info: () => {}, warn: () => {} },
+    config: { root: new URL('file:///tmp/hyperfocale-test/') },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+  return patterns;
+}
+
+describe('routes injectées', () => {
+  it('injecte index + détail + pagination par défaut', () => {
+    expect(injectedPatterns()).toEqual([
+      '/series/',
+      '/series/[...slug]/',
+      '/series/[...slug]/[page]/',
+    ]);
+  });
+
+  it("listRoute: false retire l'index et conserve les autres routes", () => {
+    const patterns = injectedPatterns({ listRoute: false });
+    expect(patterns).not.toContain('/series/');
+    expect(patterns).toEqual(['/series/[...slug]/', '/series/[...slug]/[page]/']);
+  });
+
+  it("injectRoutes: false n'injecte aucune route", () => {
+    expect(injectedPatterns({ injectRoutes: false })).toEqual([]);
+  });
+
+  it('le prefix du preset se répercute sur les patterns', () => {
+    expect(injectedPatterns({ preset: 'recipe' })).toEqual([
+      '/recettes/',
+      '/recettes/[...slug]/',
+      '/recettes/[...slug]/[page]/',
+    ]);
+  });
+});
