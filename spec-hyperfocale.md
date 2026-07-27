@@ -27,9 +27,19 @@ corriger, pas une décision à laisser filer.
 
 ## Conformité à date
 
-Dernier audit : [`docs/reports/conformite-spec-2026-06-24.md`](docs/reports/conformite-spec-2026-06-24.md).
+Dernier audit : [`docs/reports/conformite-spec-2026-07-27.md`](docs/reports/conformite-spec-2026-07-27.md)
+— **v0.8.0 contre la spec v2.6-draft, score 77 %**.
 
-L'implémentation courante (v0.7.0) couvre notamment : schéma étendu (IPTC, images
-et fichiers distants, attachments, tags, published/draft/featured), slugs
-hiérarchiques, `querySeries`, helpers de collections/tags. Se reporter à l'audit
-pour le score et les écarts restants.
+L'implémentation courante couvre notamment : schéma étendu (IPTC, images et
+fichiers distants, `attachments`, tags, `published`/`draft`/`featured`), slugs
+hiérarchiques, `querySeries`, helpers de collections/tags, documents joints
+(§1.9) et presets de domaine (§2.0.1).
+
+Deux écarts **critiques** restent ouverts, tous deux introduits par la v2.6 :
+
+- **§1.10 page d'index de section** (`#SPEC-001`) — le champ `type` est absent et
+  `date` est requise par défaut : un `index.md` déclarant `type: section` **casse
+  le build**. C'est le seul écart qui fait échouer du contenu conforme.
+- **§1.5.1 manifeste `images.json`** (`#SPEC-002`) — non implémenté.
+
+Se reporter à l'audit pour la matrice complète et les écarts de moindre priorité.

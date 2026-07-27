@@ -54,17 +54,31 @@ prefixes:
 
 ## Todo
 
-- [ ] #DOC-006 [P2] Re-vérifier la conformité à la spec canonique `izo/hyperfocale-spec` #spec #effort-s
-  **Zone** : `docs/reports/`, `src/`
-  **Effort** : S (1-2h)
+- [ ] #SPEC-001 [P1] Page d'index de section (§1.10) — champ `type` #spec #effort-m
+  **Zone** : `src/schema.ts`, `src/helpers/index.ts`, `src/index.ts`
+  **Effort** : M (1,5-2j)
   **Dépendances** : —
 
-  **Contexte** : dernier audit de conformité daté du 2026-06-24 (70 %). Le code a évolué depuis (v0.7.0). Rafraîchir le score contre la version courante de la spec canonique.
+  **Contexte** : gap **critique** C1 de l'audit du 2026-07-27. §1.10 (introduit v2.6) définit `type: section` pour les pages de rangement, qui n'ont pas de `date`. Le plugin n'a aucun champ `type` (`src/schema.ts`), et `date` est requise par défaut (`src/schema.ts:86`) — un `index.md` conforme à la v2.6 **casse donc le build Astro**. Cinq fichiers du corpus de `mathieu-drouet.com` sont dans ce cas.
 
   **Checklist** :
-  - [ ] Lire la spec à jour : `gh api repos/izo/hyperfocale-spec/contents/spec-hyperfocale.md --jq '.content' | base64 -d`
-  - [ ] Comparer §1.x / §3.x aux implémentations `src/schema.ts`, `src/helpers/`, `src/components/`
-  - [ ] Mettre à jour `docs/reports/conformite-spec-<date>.md` avec le nouveau score et les écarts restants
+  - [ ] Champ `type` optionnel (défaut `series`, valeur alternative `section`) au schéma
+  - [ ] `date` non requise quand `type: section`, sans toucher au défaut des séries
+  - [ ] Exclure les sections des listings, flux et tri par date (`getSeriesList`, cache)
+  - [ ] Tests : une section ne casse pas le build et n'apparaît pas dans les listings
+
+- [ ] #SPEC-002 [P1] Manifeste d'images externalisé (§1.5.1) — `images.json` #spec #effort-m
+  **Zone** : `src/helpers/index.ts`
+  **Effort** : M (1,5-2j)
+  **Dépendances** : —
+
+  **Contexte** : gap **critique** C2 de l'audit du 2026-07-27. §1.5.1 (introduit v2.6) permet d'externaliser l'ordre et les métadonnées des images dans un `images.json` prioritaire sur le glob de `media/`. Aucune trace dans `src/`.
+
+  **Checklist** :
+  - [ ] Lecture de `images.json` dans `getSeriesImages`, prioritaire sur le glob
+  - [ ] Formes courte et longue d'entrée, résolution des URLs
+  - [ ] Fallback non bloquant si le fichier est absent ou malformé
+  - [ ] Tests : priorité sur le glob, ordre préservé, tolérance aux erreurs
 
 ## In Progress
 
@@ -73,6 +87,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #DOC-006 [P2] Re-vérifier la conformité à la spec canonique `izo/hyperfocale-spec` #spec #effort-s
+  > ✅ **Terminé** le 2026-07-27
+  **Zone** : `docs/reports/`
+  **Résumé** : audit de `@izo/hyperfocale` **v0.8.0** contre la spec **v2.6-draft** (le rapport précédent portait sur v0.4.0 ↔ v2.4-draft) → `docs/reports/conformite-spec-2026-07-27.md`. Score **77 %**, 2 gaps critiques ouverts en `#SPEC-001` et `#SPEC-002`. Progrès depuis le 24/06 : §1.9 documents joints complet (9/9), §3.1 composants 7/7, fallback de cover corrigé, `alt` sur `ImageMetadata`, swipe tactile, `series.render()` déprécié remplacé. Deux corrections portées **côté spec** : §0.5 la décrivait encore en v0.4.0 (PR spec #9) et quatre presets du plugin n'étaient standardisés nulle part (PR spec #10, Annexe G v2.7-draft).
 
 - [x] #DOC-005 [P2] README : helpers et schéma complets documentés #docs #effort-m
   > ✅ **Terminé** le 2026-07-20
