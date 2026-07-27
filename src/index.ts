@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
+import { PRESETS, resolvePreset, type PresetName } from './presets.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -16,6 +17,13 @@ const RESOLVED_VIRTUAL_LAYOUT_ID = `\0${VIRTUAL_LAYOUT_ID}`;
  * Options de configuration du plugin `hyperfocale`.
  */
 export interface HyperfocaleOptions {
+  /**
+   * Preset de domaine : pré-remplit `prefix`, `collectionName` et `dateRequired`
+   * pour un usage courant (`photo`, `portfolio`, `music`, `catalog`, `press`, `recipe`).
+   * Toute option fournie explicitement l'emporte sur la valeur du preset.
+   */
+  preset?: PresetName;
+
   /**
    * Préfixe des routes automatiques.
    * @default '/series'
@@ -91,11 +99,18 @@ export interface NormalizedHyperfocaleOptions {
  * Normalise et valide les options du plugin.
  */
 function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfocaleOptions {
-  const rawPrefix = options.prefix ?? '/series';
+  const preset = options.preset === undefined ? undefined : resolvePreset(options.preset);
+  if (options.preset !== undefined && preset === undefined) {
+    throw new Error(
+      `[hyperfocale] L'option "preset" est inconnue. Valeurs acceptées: ${Object.keys(PRESETS).join(', ')}. Reçu: ${options.preset}`,
+    );
+  }
+
+  const rawPrefix = options.prefix ?? preset?.prefix ?? '/series';
   const pageSize = options.pageSize ?? 12;
   const theme = options.theme ?? 'auto';
-  const collectionName = options.collectionName ?? 'series';
-  const dateRequired = options.dateRequired ?? true;
+  const collectionName = options.collectionName ?? preset?.collectionName ?? 'series';
+  const dateRequired = options.dateRequired ?? preset?.dateRequired ?? true;
   const layout = options.layout;
   const galleryLayout = options.galleryLayout ?? 'grid';
   const injectRoutes = options.injectRoutes ?? true;
@@ -286,3 +301,5 @@ export const seriesCollection = defineCollection({
 
 export { seriesSchema, baseSeriesSchema } from './schema.js';
 export type { SeriesData, SeriesDataOptionalDate } from './schema.js';
+export { PRESETS, resolvePreset } from './presets.js';
+export type { PresetName, PresetConfig } from './presets.js';
