@@ -34,6 +34,9 @@
     "./components/SeriesGallery.astro": "./dist/components/SeriesGallery.astro",
     "./components/SeriesLightbox.astro": "./dist/components/SeriesLightbox.astro",
     "./components/SeriesAttachments.astro": "./dist/components/SeriesAttachments.astro",
+    "./components/SeriesFilter.astro": "./dist/components/SeriesFilter.astro",
+    "./components/SeriesMap.astro": "./dist/components/SeriesMap.astro",
+    "./components/SeriesMasonry.astro": "./dist/components/SeriesMasonry.astro",
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"
