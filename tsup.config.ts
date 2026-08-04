@@ -5,6 +5,9 @@ import { resolve } from 'node:path';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
+    // Entrée à part entière : le module virtuel `virtual:hyperfocale/collection`
+    // importe `dist/schema.js` par chemin absolu pour ne pas redéclarer le shape.
+    schema: 'src/schema.ts',
     'components/index': 'src/components/index.ts',
     'helpers/index': 'src/helpers/index.ts',
     'cli/init': 'src/cli/init.ts',

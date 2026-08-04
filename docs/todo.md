@@ -54,19 +54,6 @@ prefixes:
 
 ## Todo
 
-- [ ] #SPEC-001 [P1] Page d'index de section (§1.10) — champ `type` #spec #effort-m
-  **Zone** : `src/schema.ts`, `src/helpers/index.ts`, `src/index.ts`
-  **Effort** : M (1,5-2j)
-  **Dépendances** : —
-
-  **Contexte** : gap **critique** C1 de l'audit du 2026-07-27. §1.10 (introduit v2.6) définit `type: section` pour les pages de rangement, qui n'ont pas de `date`. Le plugin n'a aucun champ `type` (`src/schema.ts`), et `date` est requise par défaut (`src/schema.ts:86`) — un `index.md` conforme à la v2.6 **casse donc le build Astro**. Cinq fichiers du corpus de `mathieu-drouet.com` sont dans ce cas.
-
-  **Checklist** :
-  - [ ] Champ `type` optionnel (défaut `series`, valeur alternative `section`) au schéma
-  - [ ] `date` non requise quand `type: section`, sans toucher au défaut des séries
-  - [ ] Exclure les sections des listings, flux et tri par date (`getSeriesList`, cache)
-  - [ ] Tests : une section ne casse pas le build et n'apparaît pas dans les listings
-
 - [ ] #SPEC-002 [P1] Manifeste d'images externalisé (§1.5.1) — `images.json` #spec #effort-m
   **Zone** : `src/helpers/index.ts`
   **Effort** : M (1,5-2j)
@@ -87,6 +74,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #SPEC-001 [P1] Page d'index de section (§1.10) — champ `type` #spec #effort-m
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/schema.ts`, `src/helpers/index.ts`, `src/index.ts`, `tsup.config.ts`
+  **Résumé** : gap critique C1 de l'audit du 27/07 refermé. Champ `type: 'series' | 'section'` (défaut `series`) au schéma ; `date` déclarée optionnelle dans le shape puis rendue obligatoire par un `.check()` qui épargne les sections — un champ ne pouvant être requis conditionnellement dans un shape Zod, et `.check()` survivant à `.extend()` (API d'extension #DATA-004 préservée). `isSection()` et `getSections()` exportés ; sections écartées de `getSeriesList`, `querySeries`, `getAllTags`, `getAllCollections` et donc des routes générées. **Effet de bord corrigé** : le module virtuel `virtual:hyperfocale/collection` redéclarait le shape en dur et avait déjà divergé de `src/schema.ts` (ni `attachments`, ni `files`, §1.9) — il délègue désormais à `seriesSchema()`, importé depuis `dist/schema.js` (nouvelle entrée tsup, ré-export de 195 B vers le chunk partagé). 13 tests unitaires + 4 e2e ; le demo-site porte une section `archives/` avec une série enfant.
 
 - [x] #DOC-006 [P2] Re-vérifier la conformité à la spec canonique `izo/hyperfocale-spec` #spec #effort-s
   > ✅ **Terminé** le 2026-07-27
