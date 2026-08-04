@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.12.0"
+version: "0.13.0"
 updated: 2026-08-04
 priorities:
   P0: Critique (bloquant)
@@ -37,6 +37,16 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #M3 [P2] `images[]` — valider les trois formes acceptées par les helpers #schema #effort-xs
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/schema.ts`
+  **Résumé** : `getSeriesImages()` traite `url`, `file` et `src` depuis toujours ; le schéma n'en validait qu'une, si bien qu'une entrée `{ file: '01.jpg' }` était rejetée par Zod avant d'atteindre le helper qui savait la lire — une fonctionnalité existante mais inatteignable. Union des trois formes, `url` en premier car seule normative (§1.5). Gap ouvert depuis le rapport de juillet.
+
+- [x] #M4 [P2] Vérifier le cover de conteneur traversant un sous-dossier (§1.8) #tests #effort-xs
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `examples/demo-site/`, `tests/e2e/routes.test.ts`
+  **Résumé** : dernier ❓ de la matrice, noté « plausible mais non exercé » dans trois rapports. Le conteneur de démo porte un `cover: "./set-aurore/media/01.png"`. **Test validé par mutation** : le retirer le fait échouer — sans cette vérification il serait passé sur le repli, la première image du conteneur produisant elle aussi une card optimisée. Ce qui discrimine est `data-image-component`, marque du rendu par `<Image>` là où le repli sert un `<img>` brut.
 
 - [x] #DOC-008 [P2] Re-vérifier la conformité après H1/H2/M1/M2 #spec #effort-s
   > ✅ **Terminé** le 2026-08-04
