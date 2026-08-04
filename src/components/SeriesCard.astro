@@ -19,6 +19,10 @@ const formattedDate = date instanceof Date
 // Cover fallback — première image si `cover` absent (spec §1.6, #MVP-004)
 const fallbackImage = !cover ? (await getSeriesImages(slug, series))[0] : undefined;
 
+// `disabled` sert le fichier d'origine, sans passer par `astro:assets`
+// (option `imageOptimization` de l'intégration).
+const optimizeImages = (import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION ?? 'auto') !== 'disabled';
+
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const seriesUrl = `${normalizedPrefix}/${slug}/`;
 ---
@@ -26,7 +30,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
 <article class="hf-card">
   <a href={seriesUrl} class="hf-card__link" aria-label={`Voir la série : ${title}`}>
     <div class="hf-card__cover">
-      {cover ? (
+      {cover && optimizeImages ? (
         <Image
           src={cover}
           alt={`Couverture de la série ${title}`}
@@ -34,6 +38,16 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
           height={400}
           class="hf-card__image"
           loading="lazy"
+        />
+      ) : cover ? (
+        <img
+          src={(cover as { src: string }).src}
+          alt={`Couverture de la série ${title}`}
+          width={600}
+          height={400}
+          class="hf-card__image"
+          loading="lazy"
+          decoding="async"
         />
       ) : fallbackImage ? (
         <img

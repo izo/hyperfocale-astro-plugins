@@ -72,11 +72,36 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 
 | Option | Type | Défaut | Description |
 |--------|------|--------|-------------|
+| `preset` | `PresetName` | — | Profil de domaine : pré-remplit `prefix`, `collectionName` et `dateRequired` (voir ci-dessous). Toute option explicite l'emporte. |
 | `prefix` | `string` | `'/series'` | Préfixe des routes injectées. Doit commencer par `/`. |
 | `pageSize` | `number` | `12` | Nombre d'images par page dans la galerie paginée (≥ 1). |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
 | `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
+| `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
+
+### Profils de domaine (`preset`)
+
+Le plugin ne sert pas que des galeries photo. Un `preset` pré-remplit les trois options structurantes d'un domaine — ces profils sont standardisés en Annexe G de la spec :
+
+```js
+hyperfocale({ preset: 'portfolio' })   // → collection `projects`, routes sous /projets
+```
+
+| Preset | Collection | Préfixe | `dateRequired` |
+|--------|-----------|---------|----------------|
+| `series` | `series` | `/series` | `true` |
+| `portfolio` | `projects` | `/projets` | `false` |
+| `music` | `albums` | `/discographie` | `true` |
+| `catalog` | `items` | `/catalogue` | `false` |
+| `press` | `articles` | `/presse` | `true` |
+| `recipe` | `recipes` | `/recettes` | `false` |
+
+Toute option explicite l'emporte sur le preset : `hyperfocale({ preset: 'music', prefix: '/albums' })` garde la collection `albums` mais sert `/albums`.
+
+Les préfixes sont localisés en français. La spec les donne en anglais, mais sa colonne `prefix` est une **recommandation** — §2.0.1 autorise un preset à fixer le sien.
+
+> **`photo` est déprécié.** C'était le nom du profil canonique avant que l'Annexe G ne le standardise sous le nom `series`. Il continue de fonctionner à l'identique, avec un avertissement au build, et sera retiré en 1.0.
 
 ---
 
@@ -110,7 +135,7 @@ La série apparaît automatiquement sur `/series/`. Formats acceptés : `.jpg` `
 
 ### Champs du frontmatter
 
-Le schéma Zod complet (`seriesSchema`) accepte 18 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false` ou `type: section`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
+Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false` ou `type: section`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
 
 | Champ | Type | Défaut | Description |
 |-------|------|--------|-------------|
@@ -125,6 +150,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 18 champs. Seul `title` est touj
 | `draft` | `boolean` | `false` | `true` → masquée en production (visible en dev) |
 | `featured` | `boolean` | `false` | Mise en avant (`querySeries({ featured })`) |
 | `tags` | `string[]` | `[]` | Tags libres (`getAllTags`, filtre `querySeries`) |
+| `lineup_order` | `number` | — | Ordre d'une sous-série dans le line-up de son conteneur (§1.8) |
 | `alt_description` | `string` | — | Texte alternatif de la série |
 | `private` | `boolean` | `false` | Marque la série comme privée |
 | `download` | `boolean` | `false` | Autorise le téléchargement des originaux |
@@ -167,6 +193,37 @@ if (isSection(entry)) { /* … */ }           // → discriminant explicite
 ```
 
 La distinction se lit **uniquement** dans `type` : une série sans `date` reste une série invalide, jamais une section devinée.
+
+### Séries imbriquées (conteneur)
+
+Une **série conteneur** regroupe des sous-séries liées éditorialement — un festival et ses concerts, un mariage et ses moments (spec §1.8). Elle reste une série à part entière : son propre `index.md` daté, sa galerie éventuelle, et en fin de page le **line-up** de ses sous-séries.
+
+```
+src/content/series/festival-2024/
+├── index.md              ← le conteneur (title + date requis)
+├── media/                ← optionnel : ses photos propres
+├── set-aurore/
+│   ├── index.md
+│   └── media/
+└── set-crepuscule/…
+```
+
+Les deux niveaux d'URL sont générés automatiquement : `/series/festival-2024/` et `/series/festival-2024/set-aurore/`. Le line-up s'affiche sur la page du conteneur, sans configuration.
+
+**Ne pas confondre avec le rangement.** `archives/music/concerts/<slug>/` est une série rangée en profondeur, pas une sous-série : aucun dossier traversé ne porte d'`index.md`. L'imbrication commence quand un dossier **porteur d'un `index.md`** en contient un autre — et elle est limitée à un niveau.
+
+Le line-up est trié par date décroissante. Pour un ordre éditorial, `lineup_order` prime :
+
+```yaml
+# festival-2024/set-crepuscule/index.md
+lineup_order: 1   # passe devant, quelle que soit sa date
+```
+
+Les sous-séries sans `lineup_order` suivent celles qui en ont, entre elles par date décroissante. Le helper est exposé pour composer vos propres pages :
+
+```ts
+const lineup = await getSubSeries('festival-2024');  // Series[]
+```
 
 ### Collections hiérarchiques
 
@@ -243,6 +300,20 @@ Les deux formes sont acceptées : une chaîne équivaut à `{ "url": <chaîne> }
 | Robustesse | JSON illisible, clé `images` absente ou non-tableau : repli silencieux sur `media/`, avec un avertissement en console. **Jamais d'échec de build** |
 
 Les trois modes sont exclusifs par série. Une série portant à la fois un `images:` et un `images.json` déclenche un avertissement — le frontmatter l'emporte.
+
+### Déploiement et optimisation des images
+
+Par défaut, `astro:assets` traite les images au build : conversion WebP, dimensions, et `srcset` haute densité pour les écrans Retina.
+
+**Le `srcset` est omis en développement.** Quand un site délègue l'optimisation à son hébergeur — `@astrojs/vercel`, `@astrojs/netlify`, Cloudflare Images — les URLs générées pointent vers un endpoint (`/_vercel/image?…`) qui n'existe pas en local : chaque variante du `srcset` répondrait 404. Le rendu de production est inchangé.
+
+Si vos images sont déjà optimisées en amont, ou servies par un CDN qui s'en charge, court-circuitez le traitement :
+
+```js
+hyperfocale({ imageOptimization: 'disabled' })
+```
+
+Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redimensionnement. Les dimensions déclarées restent transmises au HTML, ce qui préserve la réservation d'espace et évite les décalages de mise en page.
 
 ---
 
@@ -376,6 +447,15 @@ Les pages d'index de section (spec §1.10) — ce que `getSeriesList()` écarte.
 ```ts
 const sections = await getSections();  // Series[], triées par slug
 isSection(entry);                      // boolean
+```
+
+### `getSubSeries(containerId)`
+
+Les sous-séries d'une série conteneur (§1.8), triées par `lineup_order` puis par date décroissante. Vide pour une série ordinaire.
+
+```ts
+const lineup = await getSubSeries('festival-2024');
+// Series[] — uniquement les entrées un segment plus bas
 ```
 
 ### `getSeriesBySlug(slug)`

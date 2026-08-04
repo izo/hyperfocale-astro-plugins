@@ -242,6 +242,54 @@ describe('page d\'index de section (§1.10)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Tests — Line-up des sous-séries (spec §1.8, H2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('série conteneur et line-up (§1.8)', () => {
+  // `festival-2024/` porte son propre index.md daté, sa galerie, et deux
+  // sous-séries. Leurs `lineup_order` contredisent volontairement les dates :
+  // un line-up trié chronologiquement les afficherait dans l'autre sens.
+  const container = () => htmlOf('series/festival-2024/index.html');
+
+  it('génère les deux niveaux d\'URL', () => {
+    expect(fileExists('series/festival-2024/index.html')).toBe(true);
+    expect(fileExists('series/festival-2024/set-aurore/index.html')).toBe(true);
+    expect(fileExists('series/festival-2024/set-crepuscule/index.html')).toBe(true);
+  });
+
+  it('affiche le line-up sur la page du conteneur', () => {
+    const html = container();
+    // `class="hf-lineup"` et non `hf-lineup` : le <style> scopé de la route
+    // injecte la règle CSS dans toutes les pages, rendue ou non.
+    expect(html).toContain('class="hf-lineup"');
+    expect(html).toContain('Set du crépuscule');
+    expect(html).toContain('Set de l\'aurore');
+  });
+
+  it('le conteneur garde sa galerie propre', () => {
+    // §1.8 : « body + galerie propre éventuelle + liste des sous-séries ».
+    expect(container()).toContain('hf-gallery');
+  });
+
+  it('`lineup_order` pilote l\'ordre, pas la date', () => {
+    const html = container();
+    // set-crepuscule (20/07, order 1) doit précéder set-aurore (21/07, order 2).
+    expect(html.indexOf('Set du crépuscule')).toBeLessThan(html.indexOf('Set de l\'aurore'));
+  });
+
+  it('une série ordinaire n\'affiche aucun line-up', () => {
+    expect(htmlOf('series/bretagne-2024/index.html')).not.toContain('class="hf-lineup"');
+  });
+
+  it('les sous-séries restent listées dans l\'index global', () => {
+    // §1.8 : « Listing global : aplatir par défaut ».
+    const list = htmlOf('series/index.html');
+    expect(list).toContain('Festival 2024');
+    expect(list).toContain('Set de l\'aurore');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tests — Manifeste d'images externalisé (spec §1.5.1, #SPEC-002)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -256,13 +304,18 @@ describe('manifeste d\'images externalisé (§1.5.1)', () => {
   });
 
   it('l\'ordre du manifeste prime sur le tri alphabétique de media/', () => {
+    // L'ordre se lit dans les `alt`, pas dans les noms d'assets générés :
+    // Astro déduplique les images par contenu, si bien qu'un fichier peut
+    // sortir sous le nom d'un homonyme d'une autre série.
     const html = gallery();
-    const at = (n: string) => html.indexOf(`/_astro/${n}.`);
-    expect(at('03')).toBeGreaterThan(-1);
-    expect(at('01')).toBeGreaterThan(-1);
-    expect(at('02')).toBeGreaterThan(-1);
-    expect(at('03')).toBeLessThan(at('01'));
-    expect(at('01')).toBeLessThan(at('02'));
+    const troisieme = html.indexOf('Troisième vue');   // ./media/03.png, 1re du manifeste
+    const premiere = html.indexOf('alt="Photo 2"');    // ./media/01.png, forme courte, 2e
+    const deuxieme = html.indexOf('Deuxième vue');     // ./media/02.png, 3e
+    expect(troisieme).toBeGreaterThan(-1);
+    expect(premiere).toBeGreaterThan(-1);
+    expect(deuxieme).toBeGreaterThan(-1);
+    expect(troisieme).toBeLessThan(premiere);
+    expect(premiere).toBeLessThan(deuxieme);
   });
 
   it('les chemins relatifs sont résolus en assets Astro optimisés', () => {
@@ -276,8 +329,10 @@ describe('manifeste d\'images externalisé (§1.5.1)', () => {
 
   it('la forme courte est acceptée sans alt', () => {
     // `"./media/01.png"` équivaut à `{ "url": "./media/01.png" }` — elle doit
-    // produire une image, sans imposer d'alt.
-    expect(gallery()).toContain('/_astro/01.');
+    // produire une image, avec l'alt de repli du composant.
+    const images = gallery().match(/<img[^>]*class="hf-gallery__img"/g) ?? [];
+    expect(images).toHaveLength(3);
+    expect(gallery()).toContain('alt="Photo 2"');
   });
 
   it('images.json n\'est pas rendu comme document joint', () => {

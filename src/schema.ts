@@ -110,6 +110,9 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
     tags: z.array(z.string()).default([]),
+    // Tri d'une sous-série dans le line-up de son conteneur (spec §1.8).
+    // Absent, la sous-série se range par date décroissante.
+    lineup_order: z.number().optional(),
     alt_description: z.string().optional(),
     private: z.boolean().default(false),
     download: z.boolean().default(false),
@@ -178,6 +181,8 @@ export interface SeriesData {
   draft: boolean;
   featured: boolean;
   tags: string[];
+  /** Tri d'une sous-série dans le line-up de son conteneur (spec §1.8). */
+  lineup_order?: number;
   alt_description?: string;
   private: boolean;
   download: boolean;

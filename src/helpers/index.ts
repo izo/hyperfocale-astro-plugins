@@ -277,6 +277,48 @@ export async function getSeriesList(): Promise<Series[]> {
 }
 
 /**
+ * Retourne les sous-séries d'une série conteneur (spec §1.8).
+ *
+ * Un conteneur est une série dont un sous-dossier porte lui aussi un `index.md` —
+ * un festival et ses concerts, un mariage et ses moments. À ne pas confondre avec
+ * le rangement (§1.2) : `archives/music/concerts/` n'est pas un conteneur, aucun
+ * des dossiers traversés ne portant d'`index.md`. C'est pourquoi ce helper ne
+ * retient que les entrées situées **exactement un segment plus bas** : la spec
+ * limite l'imbrication à un niveau, et une série rangée plus profond n'est pas
+ * une sous-série.
+ *
+ * Tri : `lineup_order` croissant quand il est renseigné, date décroissante sinon.
+ * Les deux se mélangent — une sous-série ordonnée passe devant celles qui ne le
+ * sont pas, lesquelles restent entre elles en ordre chronologique inverse.
+ *
+ * @example getSubSeries('printemps-bourges-2008') → les séries de chaque artiste
+ */
+export async function getSubSeries(containerId: string): Promise<Series[]> {
+  const prefix = `${containerId}/`;
+  const all = await getAllSeriesCached();
+
+  const subs = all.filter((entry) => {
+    if (isSection(entry)) return false;
+    if (!entry.id.startsWith(prefix)) return false;
+    return !entry.id.slice(prefix.length).includes('/');
+  });
+
+  const orderOf = (s: Series): number => {
+    const raw = (s.data as Record<string, unknown>).lineup_order;
+    return typeof raw === 'number' ? raw : Number.POSITIVE_INFINITY;
+  };
+
+  return subs.sort((a, b) => {
+    const oa = orderOf(a);
+    const ob = orderOf(b);
+    if (oa !== ob) return oa - ob;
+    const da = (a.data.date as Date | undefined)?.getTime() ?? 0;
+    const db = (b.data.date as Date | undefined)?.getTime() ?? 0;
+    return db - da;
+  });
+}
+
+/**
  * Retourne une série par son slug (plat ou hiérarchique).
  * Lève une erreur si la série est introuvable.
  */
