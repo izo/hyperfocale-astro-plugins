@@ -72,11 +72,35 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 
 | Option | Type | Défaut | Description |
 |--------|------|--------|-------------|
+| `preset` | `PresetName` | — | Profil de domaine : pré-remplit `prefix`, `collectionName` et `dateRequired` (voir ci-dessous). Toute option explicite l'emporte. |
 | `prefix` | `string` | `'/series'` | Préfixe des routes injectées. Doit commencer par `/`. |
 | `pageSize` | `number` | `12` | Nombre d'images par page dans la galerie paginée (≥ 1). |
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
 | `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
+
+### Profils de domaine (`preset`)
+
+Le plugin ne sert pas que des galeries photo. Un `preset` pré-remplit les trois options structurantes d'un domaine — ces profils sont standardisés en Annexe G de la spec :
+
+```js
+hyperfocale({ preset: 'portfolio' })   // → collection `projects`, routes sous /projets
+```
+
+| Preset | Collection | Préfixe | `dateRequired` |
+|--------|-----------|---------|----------------|
+| `series` | `series` | `/series` | `true` |
+| `portfolio` | `projects` | `/projets` | `false` |
+| `music` | `albums` | `/discographie` | `true` |
+| `catalog` | `items` | `/catalogue` | `false` |
+| `press` | `articles` | `/presse` | `true` |
+| `recipe` | `recipes` | `/recettes` | `false` |
+
+Toute option explicite l'emporte sur le preset : `hyperfocale({ preset: 'music', prefix: '/albums' })` garde la collection `albums` mais sert `/albums`.
+
+Les préfixes sont localisés en français. La spec les donne en anglais, mais sa colonne `prefix` est une **recommandation** — §2.0.1 autorise un preset à fixer le sien.
+
+> **`photo` est déprécié.** C'était le nom du profil canonique avant que l'Annexe G ne le standardise sous le nom `series`. Il continue de fonctionner à l'identique, avec un avertissement au build, et sera retiré en 1.0.
 
 ---
 
