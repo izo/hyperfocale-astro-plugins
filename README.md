@@ -401,7 +401,7 @@ const images = await getSeriesImages('bretagne-2024');
 Découpe un tableau d'images en pages.
 
 ```ts
-const { items, totalPages, currentPage } = paginateImages(images, 12, 1);
+const { items, totalPages, currentPage, pageSize } = paginateImages(images, 12, 1);
 ```
 
 ### `querySeries(options)`
