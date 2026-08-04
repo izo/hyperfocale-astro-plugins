@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.11.0"
+version: "0.12.0"
 updated: 2026-08-04
 priorities:
   P0: Critique (bloquant)
@@ -28,30 +28,6 @@ prefixes:
 
 ## Backlog
 
-- [ ] #ARCH-004 [P3] Adapter les images pour les déploiements avec optimisation côté serveur #images #effort-s
-  **Zone** : `src/helpers/index.ts`, `src/components/`
-  **Effort** : S (1-2h)
-  **Dépendances** : #MVP-001
-
-  **Contexte** : certains hébergeurs (Vercel, Netlify Image CDN, Cloudflare) optimisent les images à la volée. En dev local, les endpoints d'optimisation n'existent pas → 404. Ce comportement doit être détecté automatiquement.
-
-  **Checklist** :
-  - [ ] Détecter `import.meta.env.DEV` → désactiver srcSet dynamique en dev
-  - [ ] Option `imageOptimization?: 'auto' | 'disabled'` dans `HyperfocaleOptions` (défaut : `'auto'`)
-  - [ ] Documenter la limitation dans `README.md` (section "Déploiement")
-
-- [ ] #ARCH-005 [P3] Cache build-time pour `getCollection` #performance #effort-m
-  **Zone** : `src/helpers/index.ts`
-  **Effort** : M (2-4h)
-  **Dépendances** : #MVP-003
-
-  **Contexte** : sur de grands catalogues (500+ séries), chaque route appellera `getCollection` séparément si le cache singleton du module n'est pas partagé entre les workers Vite. Évaluer et documenter les limites.
-
-  **Checklist** :
-  - [ ] Mesurer le nombre d'appels `getCollection` sur un build avec 100+ séries (via log de debug)
-  - [ ] Documenter le comportement réel du cache module-level dans le contexte SSG d'Astro 7
-  - [ ] Si nécessaire : proposer un helper `warmSeriesCache()` à appeler explicitement en `getStaticPaths`
-
 ## Todo
 
 ## In Progress
@@ -61,6 +37,26 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #H1 [P1] Preset canonique `photo` → `series` (Annexe G) #spec #effort-xs
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/presets.ts`, `src/index.ts`, `README.md`
+  **Résumé** : dernier écart de vocabulaire relevé par §0.5 de la spec. `series` devient le nom canonique ; `photo` reste un alias qui résout à l'identique en avertissant, retiré en 1.0 — renommer un vocabulaire ne justifie pas de casser les sites existants. `PRESETS` ne porte que les noms de l'annexe, les alias vivent dans `PRESET_ALIASES`, si bien que le message d'erreur d'un preset inconnu ne suggère jamais un nom déprécié. L'option `preset` n'était par ailleurs documentée nulle part depuis la 0.8.0 : la table des six profils est ajoutée au README.
+
+- [x] #H2 [P1] Line-up des sous-séries d'un conteneur (§1.8) #spec #effort-m
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/helpers/index.ts`, `src/routes/series-detail.astro`, `src/schema.ts`
+  **Résumé** : dernière fonctionnalité positivement absente du rapport de conformité. `getSubSeries(containerId)` ne retient que les entrées situées **exactement un segment plus bas** — §1.8 limite l'imbrication à un niveau, et `archives/music/concerts/<slug>/` est une série *rangée* (§1.2), pas une sous-série de quatrième niveau. Trois cas limites verrouillés, dont `festival-2024-bis` face au conteneur `festival-2024` : un `startsWith()` sans séparateur l'aurait embarqué. Tri par `lineup_order` (champ ajouté au schéma — referme **M2**), date décroissante à défaut. Rendu en fin de page, après les documents joints. Le demo-site porte un conteneur dont les `lineup_order` contredisent les dates, sans quoi le test ne prouverait rien.
+
+- [x] #ARCH-004 [P3] Images et optimisation côté serveur #images #effort-s
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/index.ts`, `src/components/SeriesGallery.astro`, `src/components/SeriesCard.astro`
+  **Résumé** : option `imageOptimization: 'auto' | 'disabled'` et `srcset` haute densité omis en développement — quand un site délègue l'optimisation à son hébergeur (Vercel, Netlify, Cloudflare), les URLs pointent vers un endpoint inexistant en local et chaque variante répondait 404. Les dimensions restent transmises au HTML en mode `disabled` : les omettre échangerait un problème d'optimisation contre des décalages de mise en page. Bug introduit puis corrigé en cours de route : `cover` présent avec optimisation désactivée tombait sur la branche placeholder.
+
+- [x] #ARCH-005 [P3] Cache build-time pour `getCollection` #performance #effort-m
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/helpers/index.ts`, `src/index.ts`
+  **Résumé** : la carte demandait de mesurer avant de décider. **La mesure a tranché contre l'implémentation** : build de 126 séries produisant 127 pages → **un seul appel** à `getCollection`. Le cache module-level survit à l'ensemble du build SSG ; le `warmSeriesCache()` envisagé « si nécessaire » aurait été du code mort, il n'est pas ajouté. Livré à la place : `getCollectionFetchCount()` et le flag `HYPERFOCALE_DEBUG_CACHE=1`, pour rejouer la mesure après une montée de version d'Astro qui changerait le découpage en chunks.
 
 - [x] #DOC-007 [P2] Re-vérifier la conformité après §1.10 et §1.5.1 #spec #effort-s
   > ✅ **Terminé** le 2026-08-04
