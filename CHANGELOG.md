@@ -7,6 +7,30 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.9.0] — 2026-08-04
+
+### Ajouté
+
+Page d'index de section — implémentation de la spec Hyperfocale **v2.6-draft §1.10** (#SPEC-001, gap critique C1 de l'audit du 2026-07-27) :
+
+- **Champ `type`** (`'series' | 'section'`, défaut `'series'`) : un `index.md` déclarant `type: section` est une page de rangement, pas une série — pas de galerie, pas de date, absente des listings. `CONTENT_TYPES`, `ContentType` et `SectionData` sont exportés.
+- **`date` conditionnelle** : non requise pour une section, inchangée pour une série. Elle est déclarée optionnelle dans le shape puis rendue obligatoire par un `.check()` qui épargne les sections — un champ ne pouvant être requis conditionnellement dans un shape Zod. `.check()` survit à `.extend()`, ce dont dépend l'API d'extension (#DATA-004) ; c'est couvert par un test.
+- **Exclusion des listings** : `getSeriesList`, `querySeries`, `getAllTags` et `getAllCollections` écartent les sections, donc aucune route n'est générée pour elles.
+- **`isSection(entry)` et `getSections()`** : de quoi bâtir une page de rubrique (titre, body, puis les séries rangées dans le dossier).
+- **Tests** : `tests/unit/sections.test.ts` (13 cas) et 4 cas e2e — le demo-site porte une section `archives/` avec une série enfant.
+
+La distinction série / section se lit **uniquement** dans `type`, jamais dans l'absence de `date` : une série non datée reste une série invalide (§1.10, règle « discriminant explicite »).
+
+### Corrigé
+
+- **Module virtuel en retard sur le schéma** : `virtual:hyperfocale/collection` redéclarait le shape en dur dans une chaîne de caractères, et avait déjà divergé de `src/schema.ts` — ni `attachments`, ni `files` (§1.9). Tout site passant par `seriesCollection` héritait donc d'un schéma en retard d'une version de spec. Le module virtuel délègue désormais à `seriesSchema()`, importé depuis `dist/schema.js` (nouvelle entrée `tsup` : un ré-export de 195 B vers le chunk partagé, sans duplication du code). Sans ce changement, le correctif §1.10 n'atteignait aucun site consommateur.
+
+### Rétro-compatibilité
+
+`type` devient un champ **réservé au core**, conformément à §1.10 : un site qui l'utilisait comme champ libre (le mode `looseObject` le laissait passer) verra son contenu rejeté. Vérifié sans collision sur le corpus de `mathieu-drouet.com` (332 fichiers). Aucun autre changement cassant : l'absence de `type` vaut `series`, le comportement de tout contenu antérieur à la v2.6.
+
+---
+
 ## [0.8.0] — 2026-07-27
 
 ### Ajouté
