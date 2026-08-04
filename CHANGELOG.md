@@ -7,6 +7,18 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.11.0] — 2026-08-04
+
+### Ajouté
+
+- **`pageSize` dans `PaginationResult<T>`** (spec §3.2, gap M1) : `paginateImages()` retourne désormais la taille de page effective, aux côtés de `items`, `totalPages` et `currentPage`. Le type `PaginatedImages` de la spec la porte ; un consommateur qui n'avait pas conservé la valeur passée devait la redéduire pour calculer l'index absolu d'une image ou dimensionner un squelette de chargement. Gap signalé dans trois rapports de conformité consécutifs — juin, juillet, août.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. L'ajout d'une propriété au résultat n'affecte pas le code qui le lit ; seul un code qui *implémenterait* `PaginationResult<T>` à la main serait concerné, cas improbable pour un type de retour.
+
+---
+
 ## [0.10.0] — 2026-08-04
 
 ### Ajouté
