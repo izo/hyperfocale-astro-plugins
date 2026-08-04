@@ -39,6 +39,15 @@ describe('paginateImages', () => {
     expect(result.items[0]?.src).toBe('/img/25.jpg');
   });
 
+  it('retourne la taille de page effective (spec §3.2)', () => {
+    // Le consommateur n'a pas toujours gardé la valeur qu'il a passée : sans
+    // `pageSize`, calculer l'index absolu d'une image demande de la redéduire.
+    expect(paginateImages(makeImages(30), 12, 2).pageSize).toBe(12);
+    expect(paginateImages([], 12, 1).pageSize).toBe(12);
+    // Bornée au maximum, la page change — la taille de page, non.
+    expect(paginateImages(makeImages(5), 12, 99).pageSize).toBe(12);
+  });
+
   it('retourne totalPages = 1 pour tableau vide', () => {
     const result = paginateImages([], 12, 1);
     expect(result.totalPages).toBe(1);

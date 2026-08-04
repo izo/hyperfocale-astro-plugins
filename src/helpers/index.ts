@@ -27,6 +27,14 @@ export interface PaginationResult<T> {
   items: T[];
   totalPages: number;
   currentPage: number;
+  /**
+   * Taille de page effective (spec §3.2, `PaginatedImages`).
+   *
+   * Utile au consommateur qui rend une pagination sans avoir gardé la valeur
+   * qu'il a passée : calculer l'index absolu d'une image, ou dimensionner un
+   * squelette de chargement, demande de connaître la taille de page.
+   */
+  pageSize: number;
 }
 
 export interface ImageMetadata {
@@ -444,6 +452,7 @@ export function paginateImages<T>(
     items: items.slice(start, start + pageSize),
     totalPages,
     currentPage,
+    pageSize,
   };
 }
 
