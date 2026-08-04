@@ -206,6 +206,44 @@ attachments:
     description: "12 min, français"
 ```
 
+### Manifeste d'images externalisé
+
+Le tableau `images:` du frontmatter suppose une liste écrite à la main. Dès qu'elle est **générée** — synchronisation CDN, pipeline d'optimisation, export depuis un catalogue — l'inscrire dans le frontmatter mélange donnée dérivée et donnée éditoriale : chaque resynchronisation réécrit `index.md` et pollue son historique Git.
+
+Un fichier `images.json` posé à côté d'`index.md` isole cette liste (spec §1.5.1) :
+
+```
+bretagne-2024/
+├── index.md
+├── images.json
+└── media/
+```
+
+```json
+{
+  "images": [
+    { "url": "./media/03.jpg", "alt": "Phare de la Pointe Saint-Mathieu" },
+    "./media/01.jpg",
+    { "url": "https://cdn.exemple.com/bretagne/final.jpg", "width": 3000, "height": 2000 }
+  ],
+  "files": [
+    { "url": "https://cdn.exemple.com/bretagne/carnet.pdf", "title": "Carnet" }
+  ]
+}
+```
+
+Les deux formes sont acceptées : une chaîne équivaut à `{ "url": <chaîne> }`.
+
+| Règle | Comportement |
+|-------|--------------|
+| Priorité | `images:` du frontmatter > `images.json` > scan de `media/` |
+| Ordre | L'ordre du tableau fait foi — aucun tri alphabétique |
+| Résolution | URL absolue (`https://…`), chemin absolu au site (`/…`), ou relatif à `index.md` (`./media/01.jpg`). Seul le relatif désigne un asset local : il est résolu par Astro, donc optimisé, avec ses dimensions réelles |
+| Couverture | `cover` du frontmatter, sinon la première entrée du tableau |
+| Robustesse | JSON illisible, clé `images` absente ou non-tableau : repli silencieux sur `media/`, avec un avertissement en console. **Jamais d'échec de build** |
+
+Les trois modes sont exclusifs par série. Une série portant à la fois un `images:` et un `images.json` déclenche un avertissement — le frontmatter l'emporte.
+
 ---
 
 ## Routes générées
