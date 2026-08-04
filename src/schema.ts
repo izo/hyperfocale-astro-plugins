@@ -45,13 +45,49 @@ const iptcSchema = z.looseObject({
   gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
 
-/** Schéma d'une image en mode distant (spec §1.5). */
+/** Schéma d'une image en mode distant (spec §1.5) — `url` requis. */
 const remoteImageSchema = z.object({
   url: z.url(),
   alt: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
 });
+
+/**
+ * Fichier de `media/` référencé par nom — extension du plugin, hors spec §1.5.
+ * Permet de curer l'ordre et les `alt` d'images locales sans passer par `image()`.
+ */
+const localFileImageSchema = z.object({
+  file: z.string(),
+  alt: z.string().optional(),
+});
+
+/**
+ * Asset local déjà traité par `image()` du site consommateur — extension du
+ * plugin. La valeur est l'`ImageMetadata` d'Astro, dont seule la clé `src` est
+ * garantie ici : le reste (width, height, format) transite en passthrough.
+ */
+const localAssetImageSchema = z.object({
+  src: z.looseObject({ src: z.string() }),
+  alt: z.string().optional(),
+});
+
+/**
+ * Une entrée de `images[]`.
+ *
+ * `getSeriesImages()` accepte trois formes ; le schéma n'en validait qu'une,
+ * si bien qu'une entrée `{ file: '01.jpg' }` échouait à la validation Zod avant
+ * d'atteindre le helper qui savait la traiter. L'union rétablit la
+ * correspondance entre ce qui est validé et ce qui est réellement supporté.
+ *
+ * L'ordre compte : `url` d'abord (la seule forme normative, §1.5), puis les
+ * deux extensions, discriminées par leur clé obligatoire.
+ */
+const imageEntrySchema = z.union([
+  remoteImageSchema,
+  localFileImageSchema,
+  localAssetImageSchema,
+]);
 
 /** Classes de documents joints non-image (spec §1.9). */
 export const ATTACHMENT_KINDS = ['video', 'audio', 'document', 'file'] as const;
@@ -117,7 +153,7 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     private: z.boolean().default(false),
     download: z.boolean().default(false),
     iptc: iptcSchema.optional(),
-    images: z.array(remoteImageSchema).optional(),
+    images: z.array(imageEntrySchema).optional(),
     attachments: z.array(attachmentMetaSchema).optional(),
     files: z.array(remoteFileSchema).optional(),
   });
@@ -187,12 +223,16 @@ export interface SeriesData {
   private: boolean;
   download: boolean;
   iptc?: Record<string, unknown>;
-  images?: Array<{
-    url: string;
-    alt?: string;
-    width?: number;
-    height?: number;
-  }>;
+  /**
+   * Entrées de `images[]` — trois formes, cf. `imageEntrySchema` :
+   * `url` (mode distant §1.5), `file` (média local par nom), `src` (asset
+   * déjà traité par `image()`). Les deux dernières sont des extensions du plugin.
+   */
+  images?: Array<
+    | { url: string; alt?: string; width?: number; height?: number }
+    | { file: string; alt?: string }
+    | { src: { src: string; [key: string]: unknown }; alt?: string }
+  >;
   attachments?: Array<{
     file: string;
     title?: string;

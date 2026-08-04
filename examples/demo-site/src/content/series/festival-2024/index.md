@@ -2,6 +2,9 @@
 title: "Festival 2024"
 date: 2024-07-20
 description: "Deux sets, deux lumières — une série conteneur au sens §1.8."
+# Cover traversant un sous-dossier : dérogation explicite de §1.8 à la règle
+# « pas de récursion dans media/ » (§1.6), justifiée par le besoin éditorial.
+cover: "./set-aurore/media/01.png"
 ---
 
 Un conteneur garde sa propre galerie : les photos ci-dessous sont celles du lieu
