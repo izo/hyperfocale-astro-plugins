@@ -1,9 +1,10 @@
 ---
 import { render } from 'astro:content';
 import Layout from 'virtual:hyperfocale/layout';
-import { getSeriesList, getSeriesImages, getSeriesAttachments, paginateImages } from '../helpers/index.js';
+import { getSeriesList, getSeriesImages, getSeriesAttachments, getSubSeries, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 import SeriesAttachments from '../components/SeriesAttachments.astro';
+import SeriesList from '../components/SeriesList.astro';
 
 export async function getStaticPaths() {
   const series = await getSeriesList();
@@ -25,6 +26,8 @@ if (!slug || !series) {
 
 const allImages = await getSeriesImages(slug, series);
 const attachments = await getSeriesAttachments(slug, series);
+// Line-up : vide pour une série ordinaire, peuplé pour un conteneur (spec §1.8).
+const subSeries = await getSubSeries(slug);
 const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1);
 
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
@@ -74,4 +77,27 @@ const { Content } = await render(series);
 
   {/* Documents joints après la galerie (spec §1.9) */}
   <SeriesAttachments attachments={attachments} />
+
+  {/* Line-up des sous-séries (spec §1.8) — rien pour une série ordinaire.
+      Placé en dernier : ce qui appartient à la série vient d'abord, la
+      navigation vers les séries qu'elle regroupe ensuite. */}
+  {subSeries.length > 0 && (
+    <section class="hf-lineup" aria-labelledby="hf-lineup-heading">
+      <h2 id="hf-lineup-heading" class="hf-lineup__heading">Dans cette série</h2>
+      <SeriesList series={subSeries} prefix={prefix} />
+    </section>
+  )}
 </Layout>
+
+<style>
+  .hf-lineup {
+    margin-top: var(--hf-lineup-gap, 3rem);
+  }
+
+  .hf-lineup__heading {
+    margin: 0 0 1rem;
+    font-size: var(--hf-lineup-heading-size, 1.3rem);
+    font-weight: 600;
+    color: var(--hf-color-text, #111);
+  }
+</style>

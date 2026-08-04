@@ -110,7 +110,7 @@ La série apparaît automatiquement sur `/series/`. Formats acceptés : `.jpg` `
 
 ### Champs du frontmatter
 
-Le schéma Zod complet (`seriesSchema`) accepte 18 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false` ou `type: section`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
+Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false` ou `type: section`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
 
 | Champ | Type | Défaut | Description |
 |-------|------|--------|-------------|
@@ -125,6 +125,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 18 champs. Seul `title` est touj
 | `draft` | `boolean` | `false` | `true` → masquée en production (visible en dev) |
 | `featured` | `boolean` | `false` | Mise en avant (`querySeries({ featured })`) |
 | `tags` | `string[]` | `[]` | Tags libres (`getAllTags`, filtre `querySeries`) |
+| `lineup_order` | `number` | — | Ordre d'une sous-série dans le line-up de son conteneur (§1.8) |
 | `alt_description` | `string` | — | Texte alternatif de la série |
 | `private` | `boolean` | `false` | Marque la série comme privée |
 | `download` | `boolean` | `false` | Autorise le téléchargement des originaux |
@@ -167,6 +168,37 @@ if (isSection(entry)) { /* … */ }           // → discriminant explicite
 ```
 
 La distinction se lit **uniquement** dans `type` : une série sans `date` reste une série invalide, jamais une section devinée.
+
+### Séries imbriquées (conteneur)
+
+Une **série conteneur** regroupe des sous-séries liées éditorialement — un festival et ses concerts, un mariage et ses moments (spec §1.8). Elle reste une série à part entière : son propre `index.md` daté, sa galerie éventuelle, et en fin de page le **line-up** de ses sous-séries.
+
+```
+src/content/series/festival-2024/
+├── index.md              ← le conteneur (title + date requis)
+├── media/                ← optionnel : ses photos propres
+├── set-aurore/
+│   ├── index.md
+│   └── media/
+└── set-crepuscule/…
+```
+
+Les deux niveaux d'URL sont générés automatiquement : `/series/festival-2024/` et `/series/festival-2024/set-aurore/`. Le line-up s'affiche sur la page du conteneur, sans configuration.
+
+**Ne pas confondre avec le rangement.** `archives/music/concerts/<slug>/` est une série rangée en profondeur, pas une sous-série : aucun dossier traversé ne porte d'`index.md`. L'imbrication commence quand un dossier **porteur d'un `index.md`** en contient un autre — et elle est limitée à un niveau.
+
+Le line-up est trié par date décroissante. Pour un ordre éditorial, `lineup_order` prime :
+
+```yaml
+# festival-2024/set-crepuscule/index.md
+lineup_order: 1   # passe devant, quelle que soit sa date
+```
+
+Les sous-séries sans `lineup_order` suivent celles qui en ont, entre elles par date décroissante. Le helper est exposé pour composer vos propres pages :
+
+```ts
+const lineup = await getSubSeries('festival-2024');  // Series[]
+```
 
 ### Collections hiérarchiques
 
@@ -376,6 +408,15 @@ Les pages d'index de section (spec §1.10) — ce que `getSeriesList()` écarte.
 ```ts
 const sections = await getSections();  // Series[], triées par slug
 isSection(entry);                      // boolean
+```
+
+### `getSubSeries(containerId)`
+
+Les sous-séries d'une série conteneur (§1.8), triées par `lineup_order` puis par date décroissante. Vide pour une série ordinaire.
+
+```ts
+const lineup = await getSubSeries('festival-2024');
+// Series[] — uniquement les entrées un segment plus bas
 ```
 
 ### `getSeriesBySlug(slug)`
