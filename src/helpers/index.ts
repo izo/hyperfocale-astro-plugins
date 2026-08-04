@@ -60,8 +60,20 @@ const _attachmentGlob = import.meta.glob<string>(
   { eager: true, query: '?url', import: 'default' },
 );
 
+// Manifeste d'images (spec §1.5.1) — lu en brut, et non importé comme JSON :
+// un fichier malformé doit se rabattre sur `media/`, jamais casser le build.
+// Un `import` de JSON ferait échouer Vite au parsing, avant tout `try`.
+const _manifestGlob = import.meta.glob<string>('/src/content/**/images.json', {
+  eager: true,
+  query: '?raw',
+  import: 'default',
+});
+
 /** `/src/content/<collection>/<dirSlug>/media/<filename>` */
 const MEDIA_PATH = /^\/src\/content\/([^/]+)\/(.+)\/media\/([^/]+)$/;
+
+/** `/src/content/<collection>/<dirSlug>/images.json` (spec §1.5.1) */
+const MANIFEST_PATH = /^\/src\/content\/([^/]+)\/(.+)\/images\.json$/;
 
 /**
  * Décompose un chemin de `media/`, et écarte les collections voisines.
@@ -77,6 +89,104 @@ export function matchMedia(
   const m = MEDIA_PATH.exec(path);
   if (m === null || m[1] !== collection) return null;
   return { dirSlug: m[2] as string, filename: m[3] as string };
+}
+
+/** Entrée d'images d'un manifeste — forme courte (chaîne) ou longue (objet). */
+export type ManifestImage = string | { url?: string; alt?: string; width?: number; height?: number };
+
+/** Contenu utile d'un `images.json` (spec §1.5.1). */
+export interface ImageManifest {
+  images: ManifestImage[];
+  files?: Array<{ url: string; title?: string; kind?: AttachmentKind; size?: number }>;
+}
+
+/**
+ * Parse un `images.json` (spec §1.5.1). Retourne `null` sur toute anomalie —
+ * JSON illisible, clé `images` absente ou non-tableau — après un avertissement :
+ * l'appelant se rabat alors sur `media/`. Ne lève jamais.
+ *
+ * @internal Exporté pour les tests : le glob étant statique, c'est le seul
+ * point où la robustesse du manifeste est vérifiable sans filesystem.
+ */
+export function parseImageManifest(raw: string, source = 'images.json'): ImageManifest | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    console.warn(`[hyperfocale] ${source} n'est pas un JSON valide — repli sur media/.`);
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) {
+    console.warn(`[hyperfocale] ${source} ne contient pas un objet — repli sur media/.`);
+    return null;
+  }
+  const { images, files } = parsed as { images?: unknown; files?: unknown };
+  if (!Array.isArray(images)) {
+    console.warn(`[hyperfocale] ${source} : la clé "images" est absente ou n'est pas un tableau — repli sur media/.`);
+    return null;
+  }
+  return {
+    images: images as ManifestImage[],
+    ...(Array.isArray(files) ? { files: files as NonNullable<ImageManifest['files']> } : {}),
+  };
+}
+
+/** Localise le `images.json` d'une série sans le parser. */
+function findManifest(dirSlug: string, collection: string = COLLECTION_NAME): [string, string] | null {
+  for (const [path, raw] of Object.entries(_manifestGlob)) {
+    const m = MANIFEST_PATH.exec(path);
+    if (m === null || m[1] !== collection || m[2] !== dirSlug) continue;
+    return [path, raw];
+  }
+  return null;
+}
+
+/** Lit le manifeste d'une série, ou `null` s'il n'y en a pas (spec §1.5.1). */
+function readManifest(dirSlug: string): ImageManifest | null {
+  const found = findManifest(dirSlug);
+  return found === null ? null : parseImageManifest(found[1], found[0]);
+}
+
+/** Extension d'une URL, sans query string — sert de `format` par défaut. */
+function formatOf(url: string): string {
+  const clean = url.split('?')[0] ?? url;
+  const ext = clean.split('.').pop();
+  return ext !== undefined && ext !== clean ? ext : 'jpg';
+}
+
+/**
+ * Résout une entrée de manifeste en image (spec §1.5.1, « Résolution des URLs »).
+ *
+ * Trois formes acceptées : URL absolue (`https://…`), chemin absolu au site
+ * (`/…`), ou chemin relatif à `index.md` (`./media/01.jpg`). Seule la troisième
+ * désigne un asset local — elle est résolue via le glob pour récupérer les
+ * dimensions réelles et l'optimisation Astro ; les deux autres sont servies
+ * telles quelles, dimensions inconnues sauf si le manifeste les fournit.
+ */
+function resolveManifestImage(entry: ManifestImage, dirSlug: string): ImageMetadata | null {
+  const img = typeof entry === 'string' ? { url: entry } : entry;
+  if (typeof img.url !== 'string' || img.url === '') return null;
+
+  const withAlt = (base: ImageMetadata): ImageMetadata => ({
+    ...base,
+    ...(img.alt !== undefined ? { alt: img.alt } : {}),
+  });
+
+  if (/^https?:\/\//.test(img.url) || img.url.startsWith('/')) {
+    return withAlt({
+      src: img.url,
+      width: img.width ?? 0,
+      height: img.height ?? 0,
+      format: formatOf(img.url),
+    });
+  }
+
+  const filename = (img.url.replace(/^\.\//, '').split('/').pop() ?? '').trim();
+  const found = Object.entries(_imageGlob).find(([path]) => {
+    const m = matchMedia(path);
+    return m !== null && m.dirSlug === dirSlug && m.filename === filename;
+  });
+  return found ? withAlt(found[1].default) : null;
 }
 
 async function getAllSeriesCached(): Promise<Series[]> {
@@ -157,7 +267,12 @@ export async function getSeriesBySlug(slug: string): Promise<Series> {
  *   2. `{ file: '01.jpg', alt? }` — fichier de `media/` référencé par nom.
  *   3. `{ url, alt?, width?, height? }` — image distante.
  *
+ * À défaut, un `images.json` posé à côté d'`index.md` pilote la galerie
+ * (spec §1.5.1) — l'ordre du tableau fait foi, aucun tri n'est appliqué.
+ *
  * Sinon, fallback : glob de `media/` trié alphabétiquement (sans alt).
+ *
+ * Priorité : `images:` du frontmatter > `images.json` > scan de `media/`.
  */
 export async function getSeriesImages(slug: string, series?: Series): Promise<ImageMetadata[]> {
   const imageList = series?.data.images as
@@ -167,6 +282,14 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
   const dirSlug = slug.replace(/\/index$/, '');
 
   if (imageList && imageList.length > 0) {
+    // Les trois modes sont exclusifs par série (§1.5.1). Le frontmatter gagne,
+    // mais le manifeste ignoré est probablement une erreur d'auteur.
+    if (findManifest(dirSlug) !== null) {
+      console.warn(
+        `[hyperfocale] "${dirSlug}" porte à la fois un tableau \`images:\` et un images.json. ` +
+        'Le frontmatter est prioritaire (§1.5.1) ; le manifeste est ignoré.',
+      );
+    }
     return imageList
       .map((img): ImageMetadata | null => {
         // 1) Asset local traité par astro:assets (`src: image()`)
@@ -198,6 +321,14 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
       .filter((img): img is ImageMetadata => img !== null);
   }
 
+  // Manifeste externalisé (§1.5.1) — l'ordre du tableau fait foi.
+  const manifest = readManifest(dirSlug);
+  if (manifest !== null) {
+    return manifest.images
+      .map((entry) => resolveManifestImage(entry, dirSlug))
+      .filter((img): img is ImageMetadata => img !== null);
+  }
+
   return Object.entries(_imageGlob)
     .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)
     .sort(([pathA], [pathB]) => {
@@ -220,12 +351,14 @@ const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tiff'])
 /**
  * Classe un fichier de `media/` selon la spec §1.9.
  * Retourne `null` pour une image (qui alimente la galerie, pas les pièces jointes)
- * et pour `index.md` (fichier de métadonnées, jamais un document joint).
+ * et pour les fichiers de métadonnées — `index.md`, ainsi que `images.json`, qui
+ * « n'est jamais un média ni un document joint » (§1.5.1).
  * Toute extension inconnue tombe dans la classe `file` — ne lève jamais d'erreur.
  */
 export function classifyAttachment(filename: string): AttachmentKind | null {
   const base = filename.split('/').pop() ?? filename;
-  if (base.toLowerCase() === 'index.md') return null;
+  const lower = base.toLowerCase();
+  if (lower === 'index.md' || lower === 'images.json') return null;
   const dot = base.lastIndexOf('.');
   if (dot <= 0) return 'file';
   const ext = base.slice(dot + 1).toLowerCase();
@@ -235,22 +368,33 @@ export function classifyAttachment(filename: string): AttachmentKind | null {
 
 /**
  * Retourne les documents joints (non-images) d'une série, triés alphabétiquement (spec §1.9).
- * Mode distant prioritaire si `series.data.files` est défini.
- * Les métadonnées du bloc frontmatter `attachments:` (title/description) sont fusionnées
- * par nom de fichier ; à défaut, le libellé est le nom de fichier.
+ *
+ * Priorité : `files:` du frontmatter > clé `files` d'un `images.json` (§1.5.1)
+ * > non-images de `media/`. Les métadonnées du bloc frontmatter `attachments:`
+ * (title/description) sont fusionnées par nom de fichier ; à défaut, le libellé
+ * est le nom de fichier.
  */
 export async function getSeriesAttachments(slug: string, series?: Series): Promise<Attachment[]> {
   const data = series?.data as Record<string, unknown> | undefined;
+  const dirSlug = slug.replace(/\/index$/, '');
+
+  const toAttachment = (f: { url: string; title?: string; kind?: AttachmentKind; size?: number }): Attachment => ({
+    src: f.url,
+    kind: f.kind ?? classifyAttachment(f.url.split('?')[0] ?? f.url) ?? 'file',
+    title: f.title ?? (f.url.split('/').pop() ?? f.url),
+    ...(f.size !== undefined && { size: f.size }),
+  });
 
   // Mode distant (spec §1.9) : `files[]` a priorité sur les non-images de media/
   const remoteFiles = data?.files as Array<{ url: string; title?: string; kind?: AttachmentKind; size?: number }> | undefined;
   if (remoteFiles && remoteFiles.length > 0) {
-    return remoteFiles.map((f) => ({
-      src: f.url,
-      kind: f.kind ?? classifyAttachment(f.url.split('?')[0] ?? f.url) ?? 'file',
-      title: f.title ?? (f.url.split('/').pop() ?? f.url),
-      ...(f.size !== undefined && { size: f.size }),
-    }));
+    return remoteFiles.map(toAttachment);
+  }
+
+  // Clé `files` du manifeste (§1.5.1) — mêmes entrées qu'en §1.9 mode distant.
+  const manifestFiles = readManifest(dirSlug)?.files;
+  if (manifestFiles && manifestFiles.length > 0) {
+    return manifestFiles.map(toAttachment);
   }
 
   // Métadonnées frontmatter indexées par nom de fichier (bloc `attachments:`)
@@ -260,8 +404,6 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
     const base = meta.file.split('/').pop();
     if (base) metaByFilename.set(base, meta);
   }
-
-  const dirSlug = slug.replace(/\/index$/, '');
 
   return Object.entries(_attachmentGlob)
     .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)

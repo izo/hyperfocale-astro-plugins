@@ -7,6 +7,30 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.10.0] — 2026-08-04
+
+### Ajouté
+
+Manifeste d'images externalisé — implémentation de la spec Hyperfocale **v2.6-draft §1.5.1** (#SPEC-002, gap critique C2 de l'audit du 2026-07-27) :
+
+- **`images.json` à côté d'`index.md`** pilote la galerie. Priorité : `images:` du frontmatter > `images.json` > scan de `media/`. L'ordre du tableau fait foi — le tri alphabétique de §1.6 ne s'applique pas, un manifeste étant une donnée ordonnée et non un scan.
+- **Formes courte et longue** : une entrée chaîne équivaut à `{ "url": <chaîne> }` ; la forme objet accepte les clés d'une entrée `images:` (`url`, `alt`, `width`, `height`).
+- **Résolution des trois formes d'URL** : absolue (`https://…`), absolue au site (`/…`), ou relative à `index.md` (`./media/01.jpg`). Seule la dernière désigne un asset local : elle est résolue via le glob, donc optimisée par Astro avec ses dimensions réelles.
+- **Clé `files` optionnelle** : alimente `getSeriesAttachments()` avec les mêmes entrées qu'en §1.9 mode distant. `images.json` est lui-même exclu des documents joints — c'est un fichier de métadonnées, au même titre qu'`index.md`.
+- **Couverture** : `cover` du frontmatter, sinon la première entrée du manifeste (et non la première par ordre alphabétique).
+- **`parseImageManifest()`** exporté, avec les types `ImageManifest` et `ManifestImage`.
+- **Tests** : `tests/unit/manifest.test.ts` (15 cas) et 6 cas e2e — le demo-site porte `manifeste-2024/`, dont le manifeste ordonne les images 03/01/02, à rebours de l'alphabétique.
+
+Le manifeste est chargé en `?raw` puis parsé dans un `try`, et non importé comme JSON : un import ferait échouer Vite au parsing **avant** tout `catch`, alors que §1.5.1 impose un repli sur `media/` sans jamais casser le build. JSON illisible, clé `images` absente ou non-tableau : repli silencieux, avertissement en console.
+
+Les trois modes étant exclusifs par série, une série portant à la fois un `images:` et un `images.json` déclenche un avertissement — le frontmatter l'emporte.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. Une série sans `images.json` conserve exactement le comportement 0.9.0.
+
+---
+
 ## [0.9.0] — 2026-08-04
 
 ### Changé

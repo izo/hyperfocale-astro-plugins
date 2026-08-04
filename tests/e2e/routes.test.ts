@@ -240,3 +240,51 @@ describe('page d\'index de section (§1.10)', () => {
     expect(htmlOf('series/index.html')).toContain('Concerts 2023');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests — Manifeste d'images externalisé (spec §1.5.1, #SPEC-002)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('manifeste d\'images externalisé (§1.5.1)', () => {
+  // `manifeste-2024/` porte trois images nommées 01/02/03 et un images.json qui
+  // les ordonne 03, 01, 02 : si la galerie sortait dans l'ordre alphabétique,
+  // c'est que le manifeste n'a pas été lu.
+  const gallery = () => htmlOf('series/manifeste-2024/index.html');
+
+  it('génère la page de la série', () => {
+    expect(fileExists('series/manifeste-2024/index.html')).toBe(true);
+  });
+
+  it('l\'ordre du manifeste prime sur le tri alphabétique de media/', () => {
+    const html = gallery();
+    const at = (n: string) => html.indexOf(`/_astro/${n}.`);
+    expect(at('03')).toBeGreaterThan(-1);
+    expect(at('01')).toBeGreaterThan(-1);
+    expect(at('02')).toBeGreaterThan(-1);
+    expect(at('03')).toBeLessThan(at('01'));
+    expect(at('01')).toBeLessThan(at('02'));
+  });
+
+  it('les chemins relatifs sont résolus en assets Astro optimisés', () => {
+    // Une URL brute `./media/03.png` signalerait une résolution manquée.
+    expect(gallery()).not.toContain('./media/03.png');
+  });
+
+  it('la forme longue porte son `alt` jusqu\'au HTML', () => {
+    expect(gallery()).toContain('Troisième vue, posée en tête par le manifeste');
+  });
+
+  it('la forme courte est acceptée sans alt', () => {
+    // `"./media/01.png"` équivaut à `{ "url": "./media/01.png" }` — elle doit
+    // produire une image, sans imposer d'alt.
+    expect(gallery()).toContain('/_astro/01.');
+  });
+
+  it('images.json n\'est pas rendu comme document joint', () => {
+    // Le nom du fichier apparaît dans la description et le body de la série —
+    // ce qui compte est qu'aucune section de pièces jointes ne soit rendue.
+    // (`.hf-attachments` figure dans le CSS inline ; `class="hf-attachments`
+    // n'apparaît que si le composant a rendu quelque chose.)
+    expect(gallery()).not.toContain('class="hf-attachments');
+  });
+});

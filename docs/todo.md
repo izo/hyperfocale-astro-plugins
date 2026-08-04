@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.9.0"
+version: "0.10.0"
 updated: 2026-08-04
 priorities:
   P0: Critique (bloquant)
@@ -54,19 +54,6 @@ prefixes:
 
 ## Todo
 
-- [ ] #SPEC-002 [P1] Manifeste d'images externalisé (§1.5.1) — `images.json` #spec #effort-m
-  **Zone** : `src/helpers/index.ts`
-  **Effort** : M (1,5-2j)
-  **Dépendances** : —
-
-  **Contexte** : gap **critique** C2 de l'audit du 2026-07-27. §1.5.1 (introduit v2.6) permet d'externaliser l'ordre et les métadonnées des images dans un `images.json` prioritaire sur le glob de `media/`. Aucune trace dans `src/`.
-
-  **Checklist** :
-  - [ ] Lecture de `images.json` dans `getSeriesImages`, prioritaire sur le glob
-  - [ ] Formes courte et longue d'entrée, résolution des URLs
-  - [ ] Fallback non bloquant si le fichier est absent ou malformé
-  - [ ] Tests : priorité sur le glob, ordre préservé, tolérance aux erreurs
-
 ## In Progress
 
 ## Blocked
@@ -74,6 +61,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #SPEC-002 [P1] Manifeste d'images externalisé (§1.5.1) — `images.json` #spec #effort-m
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `src/helpers/index.ts`
+  **Résumé** : gap critique C2 de l'audit du 27/07 refermé. `getSeriesImages` lit un `images.json` posé à côté d'`index.md` — priorité `images:` > `images.json` > scan de `media/`, ordre du tableau préservé (aucun tri). Formes courte (chaîne) et longue (objet) acceptées ; résolution des trois formes d'URL (absolue, absolue au site, relative à `index.md` — cette dernière passant par le glob pour récupérer dimensions réelles et optimisation Astro). La clé `files` alimente `getSeriesAttachments` (§1.9 mode distant), et `images.json` est exclu des documents joints. **Choix technique** : le manifeste est chargé en `?raw` puis parsé dans un `try`, et non importé comme JSON — un import ferait échouer Vite au parsing avant tout `catch`, alors que §1.5.1 impose un repli sur `media/` sans jamais casser le build. Un `images:` et un `images.json` sur la même série déclenchent un avertissement (règle d'exclusivité). 15 tests unitaires + 6 e2e (le demo-site porte `manifeste-2024/`, dont le manifeste ordonne 03/01/02 à rebours de l'alphabétique).
 
 - [x] #SPEC-001 [P1] Page d'index de section (§1.10) — champ `type` #spec #effort-m
   > ✅ **Terminé** le 2026-08-04

@@ -1,0 +1,7 @@
+{
+  "images": [
+    { "url": "./media/03.png", "alt": "Troisième vue, posée en tête par le manifeste" },
+    "./media/01.png",
+    { "url": "./media/02.png", "alt": "Deuxième vue, reléguée en fin de galerie" }
+  ]
+}
