@@ -65,6 +65,42 @@ describe('schéma — §1.10 page d’index de section', () => {
   });
 });
 
+describe('schéma — les trois formes de `images[]` (M3)', () => {
+  // `getSeriesImages()` a toujours accepté ces trois formes ; le schéma n'en
+  // validait qu'une, si bien qu'une entrée `{ file: '01.jpg' }` était rejetée
+  // avant d'atteindre le helper qui savait la traiter.
+  const parse = (images: unknown[]) =>
+    baseSeriesSchema().safeParse({ title: 'S', date: '2024-01-01', images });
+
+  it('accepte la forme distante `url` (§1.5)', () => {
+    expect(parse([{ url: 'https://cdn.test/01.jpg', alt: 'x' }]).success).toBe(true);
+  });
+
+  it('accepte la forme `file` — média local référencé par nom', () => {
+    expect(parse([{ file: '01.jpg', alt: 'x' }]).success).toBe(true);
+  });
+
+  it('accepte la forme `src` — asset déjà traité par image()', () => {
+    expect(parse([{ src: { src: '/_astro/01.png', width: 800, height: 600, format: 'png' } }]).success).toBe(true);
+  });
+
+  it('accepte les trois formes mélangées', () => {
+    expect(parse([
+      { url: 'https://cdn.test/01.jpg' },
+      { file: '02.jpg' },
+      { src: { src: '/_astro/03.png' } },
+    ]).success).toBe(true);
+  });
+
+  it('rejette une entrée qui ne porte aucune des trois clés', () => {
+    expect(parse([{ alt: 'orpheline' }]).success).toBe(false);
+  });
+
+  it('rejette une `url` qui n’en est pas une', () => {
+    expect(parse([{ url: 'pas-une-url' }]).success).toBe(false);
+  });
+});
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 type Entry = { id: string; collection: string; data: Record<string, unknown>; body: string };

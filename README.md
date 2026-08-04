@@ -155,7 +155,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est touj
 | `private` | `boolean` | `false` | Marque la série comme privée |
 | `download` | `boolean` | `false` | Autorise le téléchargement des originaux |
 | `iptc` | `object` | — | Métadonnées IPTC (voir ci-dessous) |
-| `images` | `RemoteImage[]` | — | Images en mode distant (voir ci-dessous) |
+| `images` | `ImageEntry[]` | — | Liste d'images curée — trois formes acceptées (voir ci-dessous) |
 | `attachments` | `AttachmentMeta[]` | — | Métadonnées des documents joints locaux |
 | `files` | `RemoteFile[]` | — | Documents joints en mode distant |
 
@@ -252,6 +252,17 @@ files:
   - url: "https://cdn.exemple.com/tokyo/carnet.pdf"
     title: "Carnet de voyage"
     kind: document   # video | audio | document | file (auto-détecté si absent)
+```
+
+Le tableau `images:` accepte **trois formes**, mélangeables — la première est celle de la spec §1.5, les deux autres sont des extensions du plugin pour curer l'ordre et les `alt` d'images locales :
+
+```yaml
+images:
+  - url: "https://cdn.exemple.com/01.jpg"   # distante (§1.5)
+    alt: "Shibuya de nuit"
+  - file: "02.jpg"                          # fichier de media/, par nom
+    alt: "Ruelle de Golden Gai"
+  - src: "./media/03.jpg"                   # asset traité par image() du site
 ```
 
 Les documents joints **locaux** (tout fichier non-image dans `media/`) sont détectés automatiquement ; le bloc `attachments:` permet d'y attacher un titre/description :
