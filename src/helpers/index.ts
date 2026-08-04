@@ -197,16 +197,40 @@ function resolveManifestImage(entry: ManifestImage, dirSlug: string): ImageMetad
   return found ? withAlt(found[1].default) : null;
 }
 
+// Nombre d'appels réels à `getCollection` — un par cache miss. Le cache étant
+// module-level, il ne survit pas au-delà du module : ce compteur sert à observer
+// combien de fois Vite réévalue réellement ce module pendant un build.
+let _collectionFetches = 0;
+
+/**
+ * Nombre d'appels à `getCollection` effectués depuis le chargement du module.
+ *
+ * Sert à vérifier que le cache tient sur un build réel — le comportement de
+ * `import.meta.glob` et du graphe de modules Vite ne se déduit pas de la
+ * lecture du code. Remis à zéro par `resetSeriesCache()`.
+ */
+export function getCollectionFetchCount(): number {
+  return _collectionFetches;
+}
+
 async function getAllSeriesCached(): Promise<Series[]> {
   if (_seriesCache !== null) return _seriesCache;
+  _collectionFetches += 1;
   const result = await getCollection(COLLECTION_NAME as CollectionKey);
   _seriesCache = result;
+  if (import.meta.env.HYPERFOCALE_DEBUG_CACHE) {
+    console.info(
+      `[hyperfocale] getCollection("${COLLECTION_NAME}") — appel #${_collectionFetches}, ` +
+      `${result.length} entrées`,
+    );
+  }
   return result;
 }
 
 /** Réinitialise le cache — à appeler dans les teardowns de tests. */
 export function resetSeriesCache(): void {
   _seriesCache = null;
+  _collectionFetches = 0;
 }
 
 /**
