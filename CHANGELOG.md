@@ -9,6 +9,10 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [0.9.0] — 2026-08-04
 
+### Changé
+
+- **Le paquet est renommé `@regrets/hyperfocale`** (auparavant `@izo/hyperfocale`). Le scope `@izo` ne correspondait à aucun compte ni organisation npm : toute tentative de publication se soldait par un 404 sur le `PUT`. Aucune version n'ayant jamais été publiée sous l'ancien nom, ce renommage ne casse aucune installation existante — il n'y a rien à migrer. L'identifiant de l'intégration, le module virtuel (`virtual:hyperfocale/collection`), la commande `npx hyperfocale init` et les préfixes CSS `--hf-*` sont inchangés.
+
 ### Ajouté
 
 Page d'index de section — implémentation de la spec Hyperfocale **v2.6-draft §1.10** (#SPEC-001, gap critique C1 de l'audit du 2026-07-27) :

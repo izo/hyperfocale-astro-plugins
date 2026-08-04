@@ -36,7 +36,7 @@ Le plugin expose deux fonctions pour définir le schéma de votre collection :
 ```ts
 // src/content.config.ts
 import { defineCollection } from 'astro:content';
-import { baseSeriesSchema } from '@izo/hyperfocale';
+import { baseSeriesSchema } from '@regrets/hyperfocale';
 import { z } from 'zod';
 
 export const collections = {
@@ -87,7 +87,7 @@ export const collections = {
 Les champs personnalisés sont accessibles via cast :
 
 ```ts
-import { getSeriesList } from '@izo/hyperfocale/helpers';
+import { getSeriesList } from '@regrets/hyperfocale/helpers';
 
 const series = await getSeriesList();
 const cameras = series.map((s) => (s.data as Record<string, unknown>).camera as string | undefined);

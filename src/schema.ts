@@ -79,7 +79,7 @@ const remoteFileSchema = z.object({
  *
  * ```ts
  * // src/content.config.ts du site consommateur
- * import { baseSeriesSchema } from '@izo/hyperfocale';
+ * import { baseSeriesSchema } from '@regrets/hyperfocale';
  *
  * export const collections = {
  *   series: defineCollection({

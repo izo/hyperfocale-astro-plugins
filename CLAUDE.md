@@ -1,6 +1,6 @@
 # hyperfocale — Plugin Astro 7
 
-Plugin d'intégration Astro pour galeries photo (séries). Publié sur le **npm public** : `@izo/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
+Plugin d'intégration Astro pour galeries photo (séries). Publié sur le **npm public** : `@regrets/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
 
 > Le paquet vivait sur GitHub Packages, qui réclame une authentification même pour un paquet public : chaque site consommateur devait porter un jeton `read:packages` en local, en CI **et** au déploiement. La publication demande désormais un secret `NPM_TOKEN` ; l'installation ne demande plus rien.
 
@@ -66,8 +66,8 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 
 | Import | Source |
 |--------|--------|
-| `import hyperfocale from '@izo/hyperfocale'` | `src/index.ts` — intégration Astro |
-| `import { ... } from '@izo/hyperfocale/components'` | `src/components/index.ts` |
-| `import { ... } from '@izo/hyperfocale/helpers'` | `src/helpers/index.ts` |
+| `import hyperfocale from '@regrets/hyperfocale'` | `src/index.ts` — intégration Astro |
+| `import { ... } from '@regrets/hyperfocale/components'` | `src/components/index.ts` |
+| `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
 | `npx hyperfocale init` | `src/cli/init.ts` — CLI d'initialisation |

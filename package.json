@@ -1,5 +1,5 @@
 {
-  "name": "@izo/hyperfocale",
+  "name": "@regrets/hyperfocale",
   "version": "0.9.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
