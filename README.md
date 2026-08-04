@@ -78,6 +78,7 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
 | `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
+| `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
 
 ### Profils de domaine (`preset`)
 
@@ -299,6 +300,20 @@ Les deux formes sont acceptées : une chaîne équivaut à `{ "url": <chaîne> }
 | Robustesse | JSON illisible, clé `images` absente ou non-tableau : repli silencieux sur `media/`, avec un avertissement en console. **Jamais d'échec de build** |
 
 Les trois modes sont exclusifs par série. Une série portant à la fois un `images:` et un `images.json` déclenche un avertissement — le frontmatter l'emporte.
+
+### Déploiement et optimisation des images
+
+Par défaut, `astro:assets` traite les images au build : conversion WebP, dimensions, et `srcset` haute densité pour les écrans Retina.
+
+**Le `srcset` est omis en développement.** Quand un site délègue l'optimisation à son hébergeur — `@astrojs/vercel`, `@astrojs/netlify`, Cloudflare Images — les URLs générées pointent vers un endpoint (`/_vercel/image?…`) qui n'existe pas en local : chaque variante du `srcset` répondrait 404. Le rendu de production est inchangé.
+
+Si vos images sont déjà optimisées en amont, ou servies par un CDN qui s'en charge, court-circuitez le traitement :
+
+```js
+hyperfocale({ imageOptimization: 'disabled' })
+```
+
+Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redimensionnement. Les dimensions déclarées restent transmises au HTML, ce qui préserve la réservation d'espace et évite les décalages de mise en page.
 
 ---
 

@@ -79,6 +79,16 @@ describe('options hyperfocale', () => {
   it('galleryLayout défaut = grid (ne lève pas)', () => {
     expect(() => hyperfocale({})).not.toThrow();
   });
+
+  it('accepte imageOptimization: auto | disabled', () => {
+    expect(() => hyperfocale({ imageOptimization: 'auto' })).not.toThrow();
+    expect(() => hyperfocale({ imageOptimization: 'disabled' })).not.toThrow();
+  });
+
+  it('rejette un imageOptimization inconnu', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => hyperfocale({ imageOptimization: 'off' as any })).toThrowError(/imageOptimization/);
+  });
 });
 
 // ─── Routes effectivement injectées (`listRoute`, `injectRoutes`) ────────────

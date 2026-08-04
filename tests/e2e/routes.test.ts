@@ -304,13 +304,18 @@ describe('manifeste d\'images externalisé (§1.5.1)', () => {
   });
 
   it('l\'ordre du manifeste prime sur le tri alphabétique de media/', () => {
+    // L'ordre se lit dans les `alt`, pas dans les noms d'assets générés :
+    // Astro déduplique les images par contenu, si bien qu'un fichier peut
+    // sortir sous le nom d'un homonyme d'une autre série.
     const html = gallery();
-    const at = (n: string) => html.indexOf(`/_astro/${n}.`);
-    expect(at('03')).toBeGreaterThan(-1);
-    expect(at('01')).toBeGreaterThan(-1);
-    expect(at('02')).toBeGreaterThan(-1);
-    expect(at('03')).toBeLessThan(at('01'));
-    expect(at('01')).toBeLessThan(at('02'));
+    const troisieme = html.indexOf('Troisième vue');   // ./media/03.png, 1re du manifeste
+    const premiere = html.indexOf('alt="Photo 2"');    // ./media/01.png, forme courte, 2e
+    const deuxieme = html.indexOf('Deuxième vue');     // ./media/02.png, 3e
+    expect(troisieme).toBeGreaterThan(-1);
+    expect(premiere).toBeGreaterThan(-1);
+    expect(deuxieme).toBeGreaterThan(-1);
+    expect(troisieme).toBeLessThan(premiere);
+    expect(premiere).toBeLessThan(deuxieme);
   });
 
   it('les chemins relatifs sont résolus en assets Astro optimisés', () => {
@@ -324,8 +329,10 @@ describe('manifeste d\'images externalisé (§1.5.1)', () => {
 
   it('la forme courte est acceptée sans alt', () => {
     // `"./media/01.png"` équivaut à `{ "url": "./media/01.png" }` — elle doit
-    // produire une image, sans imposer d'alt.
-    expect(gallery()).toContain('/_astro/01.');
+    // produire une image, avec l'alt de repli du composant.
+    const images = gallery().match(/<img[^>]*class="hf-gallery__img"/g) ?? [];
+    expect(images).toHaveLength(3);
+    expect(gallery()).toContain('alt="Photo 2"');
   });
 
   it('images.json n\'est pas rendu comme document joint', () => {
