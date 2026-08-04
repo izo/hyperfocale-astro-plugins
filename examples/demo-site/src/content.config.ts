@@ -1,5 +1,5 @@
 import { seriesCollection } from 'virtual:hyperfocale/collection';
-import { baseSeriesSchema } from '@izo/hyperfocale';
+import { baseSeriesSchema } from '@regrets/hyperfocale';
 import { defineCollection } from 'astro:content';
 import { glob } from 'astro/loaders';
 

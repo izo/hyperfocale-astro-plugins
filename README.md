@@ -1,9 +1,9 @@
-# @izo/hyperfocale
+# @regrets/hyperfocale
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Astro](https://img.shields.io/badge/Astro-7.x-FF5D01?logo=astro&logoColor=white)](https://astro.build)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.x-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![npm](https://img.shields.io/badge/npm-%40izo%2Fhyperfocale-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/@izo/hyperfocale)
+[![npm](https://img.shields.io/badge/npm-%40regrets%2Fhyperfocale-CB3837?logo=npm&logoColor=white)](https://www.npmjs.com/package/@regrets/hyperfocale)
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
@@ -30,7 +30,7 @@ Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une lign
 ### 1. Installer le plugin
 
 ```bash
-npm install @izo/hyperfocale
+npm install @regrets/hyperfocale
 ```
 
 Aucun registre à configurer, aucun jeton : le paquet est publié sur le npm
@@ -51,7 +51,7 @@ Le CLI crée ou met à jour `src/content.config.ts` pour enregistrer la collecti
 ```ts
 // astro.config.mjs
 import { defineConfig } from 'astro/config';
-import hyperfocale from '@izo/hyperfocale';
+import hyperfocale from '@regrets/hyperfocale';
 
 export default defineConfig({
   integrations: [
@@ -232,7 +232,7 @@ import {
   SeriesFilter,
   SeriesMap,
   SeriesMasonry,
-} from '@izo/hyperfocale/components';
+} from '@regrets/hyperfocale/components';
 ```
 
 ### `<SeriesCard series={s} />`
@@ -319,7 +319,7 @@ import {
   getSeriesBySlug,
   getSeriesImages,
   paginateImages,
-} from '@izo/hyperfocale/helpers';
+} from '@regrets/hyperfocale/helpers';
 ```
 
 ### `getSeriesList()`
@@ -474,7 +474,7 @@ Pour ajouter des champs custom au frontmatter, utilisez `.extend()` sur le sché
 ```ts
 // src/content.config.ts
 import { defineCollection } from 'astro:content';
-import { seriesSchema } from '@izo/hyperfocale';
+import { seriesSchema } from '@regrets/hyperfocale';
 import { z } from 'zod';
 
 export const collections = {

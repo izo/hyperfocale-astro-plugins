@@ -1,6 +1,6 @@
 name: Publish
 
-# Publie @izo/hyperfocale sur le registre npm public.
+# Publie @regrets/hyperfocale sur le registre npm public.
 #
 # Deux déclencheurs :
 #   - un tag `v*` poussé sur le dépôt (chemin nominal) ;
