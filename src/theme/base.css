@@ -59,6 +59,10 @@
   --hf-attachments-radius: var(--hf-card-radius);
   --hf-attachments-bg: var(--hf-color-surface);
   --hf-attachments-bg-hover: var(--hf-color-border);
+
+  /* Line-up des sous-séries d'un conteneur (spec §1.8) */
+  --hf-lineup-gap: 3rem;
+  --hf-lineup-heading-size: 1.3rem;
 }
 
 /* ─── Thème sombre ──────────────────────────────────────────────────────── */

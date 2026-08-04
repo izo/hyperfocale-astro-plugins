@@ -242,6 +242,54 @@ describe('page d\'index de section (§1.10)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Tests — Line-up des sous-séries (spec §1.8, H2)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('série conteneur et line-up (§1.8)', () => {
+  // `festival-2024/` porte son propre index.md daté, sa galerie, et deux
+  // sous-séries. Leurs `lineup_order` contredisent volontairement les dates :
+  // un line-up trié chronologiquement les afficherait dans l'autre sens.
+  const container = () => htmlOf('series/festival-2024/index.html');
+
+  it('génère les deux niveaux d\'URL', () => {
+    expect(fileExists('series/festival-2024/index.html')).toBe(true);
+    expect(fileExists('series/festival-2024/set-aurore/index.html')).toBe(true);
+    expect(fileExists('series/festival-2024/set-crepuscule/index.html')).toBe(true);
+  });
+
+  it('affiche le line-up sur la page du conteneur', () => {
+    const html = container();
+    // `class="hf-lineup"` et non `hf-lineup` : le <style> scopé de la route
+    // injecte la règle CSS dans toutes les pages, rendue ou non.
+    expect(html).toContain('class="hf-lineup"');
+    expect(html).toContain('Set du crépuscule');
+    expect(html).toContain('Set de l\'aurore');
+  });
+
+  it('le conteneur garde sa galerie propre', () => {
+    // §1.8 : « body + galerie propre éventuelle + liste des sous-séries ».
+    expect(container()).toContain('hf-gallery');
+  });
+
+  it('`lineup_order` pilote l\'ordre, pas la date', () => {
+    const html = container();
+    // set-crepuscule (20/07, order 1) doit précéder set-aurore (21/07, order 2).
+    expect(html.indexOf('Set du crépuscule')).toBeLessThan(html.indexOf('Set de l\'aurore'));
+  });
+
+  it('une série ordinaire n\'affiche aucun line-up', () => {
+    expect(htmlOf('series/bretagne-2024/index.html')).not.toContain('class="hf-lineup"');
+  });
+
+  it('les sous-séries restent listées dans l\'index global', () => {
+    // §1.8 : « Listing global : aplatir par défaut ».
+    const list = htmlOf('series/index.html');
+    expect(list).toContain('Festival 2024');
+    expect(list).toContain('Set de l\'aurore');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tests — Manifeste d'images externalisé (spec §1.5.1, #SPEC-002)
 // ─────────────────────────────────────────────────────────────────────────────
 
