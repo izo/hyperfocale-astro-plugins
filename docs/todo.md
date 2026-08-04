@@ -38,6 +38,11 @@ prefixes:
 
 ## Done
 
+- [x] #DOC-008 [P2] Re-vérifier la conformité après H1/H2/M1/M2 #spec #effort-s
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `docs/reports/`
+  **Résumé** : audit de **v0.12.0** contre la spec **v2.7-draft** → `docs/reports/conformite-spec-2026-08-04-v0.12.0.md`. Score **96 %** (92 % ce matin sur la 0.10.0, 77 % le 27/07). **Aucun ❌ ne subsiste dans la matrice** — c'est le premier rapport dans ce cas. §1.8 passe de 3✅/1❌/2❓ à 5✅/1❓ : le line-up referme le dernier ❌, et le conteneur `festival-2024` du demo-site lève deux ❓ par la preuve. §2.0.1 et §3.2 passent de 🟡 à ✅ (preset `series`, `pageSize`). Restent six gaps Moyens, dont le moins cher — un `cover` de conteneur traversant un sous-dossier dans le demo-site — transformerait le dernier ❓ en verdict.
+
 - [x] #H1 [P1] Preset canonique `photo` → `series` (Annexe G) #spec #effort-xs
   > ✅ **Terminé** le 2026-08-04
   **Zone** : `src/presets.ts`, `src/index.ts`, `README.md`
