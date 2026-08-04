@@ -7,6 +7,24 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.13.0] — 2026-08-04
+
+### Corrigé
+
+- **`images[]` acceptait moins de formes que les helpers n'en traitent** (gap M3). `getSeriesImages()` gère trois formes d'entrée — `url` (mode distant §1.5), `file` (média local référencé par nom), `src` (asset déjà traité par `image()`) — mais le schéma ne validait que la première. Une entrée `{ file: '01.jpg' }` était donc **rejetée par Zod avant d'atteindre le helper qui savait la lire** : la fonctionnalité existait sans être atteignable. Le champ accepte désormais une union des trois formes, mélangeables dans un même tableau. `url` reste la seule forme normative et vient en premier ; les deux autres sont documentées comme des extensions du plugin.
+
+### Vérifié
+
+- **Cover de conteneur traversant un sous-dossier** (gap M4, spec §1.8) : le demo-site porte un `cover: "./set-aurore/media/01.png"`, dérogation explicite au « pas de récursion dans `media/` » de §1.6. Trois rapports de conformité successifs avaient noté ce point « plausible mais non exercé » ; il est maintenant couvert par un test e2e, lui-même validé par mutation — retirer le `cover` le fait échouer, sans quoi il serait passé sur le repli.
+
+Avec ces deux points, la matrice de conformité ne contient plus ni ❌ ni ❓.
+
+### Rétro-compatibilité
+
+Aucun changement cassant : l'union élargit ce que le schéma accepte, elle ne retire rien. Un frontmatter valide en 0.12.0 le reste.
+
+---
+
 ## [0.12.0] — 2026-08-04
 
 ### Ajouté
