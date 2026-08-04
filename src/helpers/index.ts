@@ -92,13 +92,37 @@ export function resetSeriesCache(): void {
 }
 
 /**
+ * `true` si l'entrée est une page d'index de section (spec §1.10).
+ *
+ * Une section est un rangement, pas un contenu : elle est exclue des listings,
+ * des flux et du tri par date. La distinction se lit **uniquement** dans `type`,
+ * jamais dans l'absence de `date` — une série sans date reste une série invalide.
+ */
+export function isSection(entry: Series): boolean {
+  return (entry.data as Record<string, unknown>).type === 'section';
+}
+
+/**
+ * Retourne les pages d'index de section (spec §1.10), triées par slug.
+ *
+ * Le pendant de `getSeriesList()` : ce que celui-ci écarte, celui-ci le rend —
+ * de quoi bâtir une page de rubrique (titre, body, puis les séries du dossier).
+ */
+export async function getSections(): Promise<Series[]> {
+  const all = await getAllSeriesCached();
+  return all.filter(isSection).sort((a, b) => a.id.localeCompare(b.id));
+}
+
+/**
  * Retourne toutes les séries publiées, triées par date décroissante.
- * Exclut `draft: true` et `published: false` en production (spec §1.6).
+ * Exclut `draft: true` et `published: false` en production (spec §1.6),
+ * ainsi que les pages d'index de section, en dev comme en prod (spec §1.10).
  */
 export async function getSeriesList(): Promise<Series[]> {
   const all = await getAllSeriesCached();
   return all
     .filter((entry: Series) => {
+      if (isSection(entry)) return false;
       if (import.meta.env.DEV) return true;
       const published = (entry.data as Record<string, unknown>).published ?? true;
       return !entry.data.draft && published !== false;
@@ -336,6 +360,7 @@ export async function querySeries(options: QuerySeriesOptions = {}): Promise<Que
   const d = (s: Series) => s.data as Record<string, unknown>;
 
   const filtered = (await getAllSeriesCached()).filter((entry) => {
+    if (isSection(entry)) return false; // spec §1.10 — un rangement n'est pas un contenu
     if ((d(entry).published ?? true) !== published) return false;
     if ((d(entry).draft ?? false) !== draft) return false;
     if (featured === true && !d(entry).featured) return false;
@@ -401,6 +426,7 @@ export async function getAllTags(): Promise<{ name: string; count: number }[]> {
   const all = await getAllSeriesCached();
   const counts = new Map<string, number>();
   for (const entry of all) {
+    if (isSection(entry)) continue;
     const tags = ((entry.data as Record<string, unknown>).tags as string[] | undefined) ?? [];
     for (const tag of tags) {
       counts.set(tag, (counts.get(tag) ?? 0) + 1);
@@ -419,6 +445,7 @@ export async function getAllCollections(): Promise<{ slug: string; name: string;
   const all = await getAllSeriesCached();
   const counts = new Map<string, number>();
   for (const entry of all) {
+    if (isSection(entry)) continue;
     const parent = getParentCollection(entry.id);
     if (parent !== null) counts.set(parent, (counts.get(parent) ?? 0) + 1);
   }

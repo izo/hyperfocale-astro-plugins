@@ -110,12 +110,13 @@ La série apparaît automatiquement sur `/series/`. Formats acceptés : `.jpg` `
 
 ### Champs du frontmatter
 
-Le schéma Zod complet (`seriesSchema`) accepte 17 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
+Le schéma Zod complet (`seriesSchema`) accepte 18 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false` ou `type: section`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
 
 | Champ | Type | Défaut | Description |
 |-------|------|--------|-------------|
 | `title` | `string` | — (requis) | Titre de la série |
 | `date` | `date` | — (requis¹) | Date ISO. Tri décroissant sur la liste |
+| `type` | `'series' \| 'section'` | `'series'` | `section` → page d'index de rubrique, pas une série (voir ci-dessous) |
 | `description` | `string` | — | Description courte affichée sur la card |
 | `cover` | `image` | — | Couverture. Première image si absent (`getSeriesCover`) |
 | `location` | `string` | — | Lieu associé à la série |
@@ -132,7 +133,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 17 champs. Seul `title` est touj
 | `attachments` | `AttachmentMeta[]` | — | Métadonnées des documents joints locaux |
 | `files` | `RemoteFile[]` | — | Documents joints en mode distant |
 
-¹ Optionnel si l'intégration est configurée avec `dateRequired: false`.
+¹ Optionnel si l'intégration est configurée avec `dateRequired: false`, ou si l'entrée déclare `type: section`.
 
 **Bloc `iptc`** (tous optionnels, mode `looseObject`) : `creator`, `credit`, `copyright`, `keywords[]`, `city`, `province`, `country`, `country_code`, `camera`, `lens`, `film`, `headline`, `instructions`, `source`, `gps: { lat, lng }`.
 
@@ -141,6 +142,31 @@ Le champ `iptc.gps` alimente `<SeriesMap>`.
 ---
 
 ## Modes avancés
+
+### Pages d'index de section
+
+Un corpus un peu grand range ses séries par rubriques. Un `index.md` posé sur un dossier de rangement n'est pas une série : il n'a pas de date, et il n'a rien à faire dans la liste des séries. Il se déclare `type: section` (spec §1.10) :
+
+```yaml
+---
+type: section
+title: "Archives"
+description: "Séries anciennes, rangées par époque."
+---
+
+Texte affiché en tête de la page de rubrique.
+```
+
+`date` n'est alors pas requise, et l'entrée est écartée de `getSeriesList()`, `querySeries()`, `getAllTags()`, `getAllCollections()` et des routes générées. Les séries rangées dans le dossier restent, elles, des séries à part entière.
+
+Deux helpers pour construire la page de rubrique :
+
+```ts
+const sections = await getSections();       // → les entrées `type: section`, triées par slug
+if (isSection(entry)) { /* … */ }           // → discriminant explicite
+```
+
+La distinction se lit **uniquement** dans `type` : une série sans `date` reste une série invalide, jamais une section devinée.
 
 ### Collections hiérarchiques
 
@@ -298,11 +324,20 @@ import {
 
 ### `getSeriesList()`
 
-Toutes les séries triées par date décroissante.
+Toutes les séries triées par date décroissante. Écarte les pages d'index de section (`type: section`).
 
 ```ts
 const series = await getSeriesList();
 // Series[]
+```
+
+### `getSections()` · `isSection(entry)`
+
+Les pages d'index de section (spec §1.10) — ce que `getSeriesList()` écarte.
+
+```ts
+const sections = await getSections();  // Series[], triées par slug
+isSection(entry);                      // boolean
 ```
 
 ### `getSeriesBySlug(slug)`

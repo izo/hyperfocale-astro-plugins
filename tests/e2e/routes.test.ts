@@ -212,3 +212,31 @@ describe('routes inexistantes', () => {
     expect(fileExists('series/bretagne-2024/2/index.html')).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests — Page d'index de section (spec §1.10, #SPEC-001)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('page d\'index de section (§1.10)', () => {
+  // Le seul fait que `beforeAll` ait abouti prouve le correctif central :
+  // `archives/index.md` porte `type: section` et n'a pas de `date`, ce qui
+  // faisait échouer la validation de la collection — donc tout le build.
+  it('le build passe avec un index.md `type: section` sans date', () => {
+    expect(fileExists('series/index.html')).toBe(true);
+  });
+
+  it('la section n\'apparaît pas dans le listing des séries', () => {
+    const html = htmlOf('series/index.html');
+    expect(html).not.toContain('Archives');
+    expect(html).not.toContain('href="/series/archives/"');
+  });
+
+  it('aucune page de galerie n\'est générée pour la section', () => {
+    expect(fileExists('series/archives/index.html')).toBe(false);
+  });
+
+  it('les séries rangées dans la section restent des séries à part entière', () => {
+    expect(fileExists('series/archives/concerts-2023/index.html')).toBe(true);
+    expect(htmlOf('series/index.html')).toContain('Concerts 2023');
+  });
+});

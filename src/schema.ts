@@ -13,6 +13,19 @@ export interface SeriesSchemaOptions {
   dateRequired?: boolean;
 }
 
+/**
+ * Natures de contenu reconnues (spec §1.10).
+ *
+ * `section` désigne une page d'index de section — un dossier de rangement
+ * (`archives/music/index.md`) qui n'est pas une série : pas de galerie, pas de
+ * date, absente des listings. L'absence du champ vaut `series`, comportement
+ * de tout le contenu antérieur à la v2.6.
+ */
+export const CONTENT_TYPES = ['series', 'section'] as const;
+
+/** Nature d'un contenu (spec §1.10). */
+export type ContentType = (typeof CONTENT_TYPES)[number];
+
 /** Schéma du bloc `iptc.*` (spec §1.3). */
 const iptcSchema = z.looseObject({
   creator: z.string().optional(),
@@ -81,9 +94,15 @@ const remoteFileSchema = z.object({
  */
 export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
   const { dateRequired = true } = options;
-  return z.looseObject({
+  const schema = z.looseObject({
+    type: z.enum(CONTENT_TYPES).default('series'),
     title: z.string(),
-    date: dateRequired ? z.coerce.date() : z.coerce.date().optional(),
+    // `date` est déclarée optionnelle ici, puis rendue obligatoire par le
+    // `check` ci-dessous : une page d'index de section (§1.10) n'est pas datée,
+    // là où une série l'est. Un champ ne pouvant être requis conditionnellement
+    // dans un shape Zod, l'arbitrage se fait après coup — et `.check()` survit
+    // à `.extend()`, ce dont dépend l'API d'extension (#DATA-004).
+    date: z.coerce.date().optional(),
     description: z.string().optional(),
     location: z.string().optional(),
     lang: z.string().optional(),
@@ -98,6 +117,20 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     images: z.array(remoteImageSchema).optional(),
     attachments: z.array(attachmentMetaSchema).optional(),
     files: z.array(remoteFileSchema).optional(),
+  });
+
+  if (!dateRequired) return schema;
+
+  return schema.check((ctx) => {
+    if (ctx.value.type === 'section' || ctx.value.date !== undefined) return;
+    ctx.issues.push({
+      code: 'custom',
+      path: ['date'],
+      input: ctx.value.date,
+      message:
+        'Le champ `date` est requis pour une série. ' +
+        'Une page de rangement se déclare `type: section` et n\'est alors pas datée (spec §1.10).',
+    });
   });
 }
 
@@ -128,6 +161,8 @@ export function seriesSchema({ image }: SchemaContext, options: SeriesSchemaOpti
  * pour les entrées sans date. Utilisez `SeriesDataOptionalDate` dans ce cas.
  */
 export interface SeriesData {
+  /** Nature du contenu (spec §1.10). Absent du frontmatter → `series`. */
+  type: ContentType;
   title: string;
   date: Date;
   description?: string;
@@ -186,5 +221,16 @@ export interface Attachment {
  * (`dateRequired: false`).
  */
 export interface SeriesDataOptionalDate extends Omit<SeriesData, 'date'> {
+  date?: Date;
+}
+
+/**
+ * Données d'une page d'index de section (spec §1.10).
+ *
+ * Une section range des séries sans en être une : `date` est sans objet, et si
+ * elle est présente, aucun tri ne s'appuie dessus.
+ */
+export interface SectionData extends Omit<SeriesData, 'type' | 'date'> {
+  type: 'section';
   date?: Date;
 }
