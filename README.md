@@ -556,6 +556,17 @@ Version JSON-sérialisable d'une série pour les Astro Islands (React, Vue, Svel
 const data = serializeSeries(serie); // { id, collection, body?, data: { …, date?: string } }
 ```
 
+### `getCollectionFetchCount()`
+
+Nombre d'appels réels à `getCollection` depuis le chargement du module — un par *cache miss*. Sert à vérifier que le cache tient sur un build donné.
+
+```bash
+HYPERFOCALE_DEBUG_CACHE=1 astro build
+# [hyperfocale] getCollection("series") — appel #1, 126 entrées
+```
+
+Mesuré sur un build de **126 séries produisant 127 pages : un seul appel**. Le cache module-level survit à l'ensemble du build SSG ; aucun préchauffage explicite n'est nécessaire.
+
 ### `resetSeriesCache()`
 
 Réinitialise le cache module-level. À appeler dans les teardowns de tests pour éviter les fuites entre cas.

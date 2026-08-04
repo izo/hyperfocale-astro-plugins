@@ -290,6 +290,10 @@ export const seriesCollection = defineCollection({
               'import.meta.env.HYPERFOCALE_DATE_REQUIRED': JSON.stringify(dateRequired),
               'import.meta.env.HYPERFOCALE_GALLERY_LAYOUT': JSON.stringify(galleryLayout),
               'import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION': JSON.stringify(imageOptimization),
+              // Trace des appels à getCollection — `HYPERFOCALE_DEBUG_CACHE=1 astro build`.
+              'import.meta.env.HYPERFOCALE_DEBUG_CACHE': JSON.stringify(
+                process.env['HYPERFOCALE_DEBUG_CACHE'] === '1',
+              ),
             },
           },
         });
