@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
-import { PRESETS, resolvePreset, type PresetName } from './presets.js';
+import { PRESETS, resolvePreset, type PresetName, type DeprecatedPresetName } from './presets.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 
@@ -18,11 +18,13 @@ const RESOLVED_VIRTUAL_LAYOUT_ID = `\0${VIRTUAL_LAYOUT_ID}`;
  */
 export interface HyperfocaleOptions {
   /**
-   * Preset de domaine : pré-remplit `prefix`, `collectionName` et `dateRequired`
-   * pour un usage courant (`photo`, `portfolio`, `music`, `catalog`, `press`, `recipe`).
-   * Toute option fournie explicitement l'emporte sur la valeur du preset.
+   * Profil de domaine : pré-remplit `prefix`, `collectionName` et `dateRequired`
+   * (`series`, `portfolio`, `music`, `catalog`, `press`, `recipe` — Annexe G de
+   * la spec). Toute option fournie explicitement l'emporte sur le preset.
+   *
+   * `photo` reste accepté comme alias de `series`, avec un avertissement.
    */
-  preset?: PresetName;
+  preset?: PresetName | DeprecatedPresetName;
 
   /**
    * Préfixe des routes automatiques.
@@ -276,5 +278,5 @@ export const seriesCollection = defineCollection({
 
 export { seriesSchema, baseSeriesSchema, CONTENT_TYPES } from './schema.js';
 export type { SeriesData, SeriesDataOptionalDate, SectionData, ContentType } from './schema.js';
-export { PRESETS, resolvePreset } from './presets.js';
-export type { PresetName, PresetConfig } from './presets.js';
+export { PRESETS, PRESET_ALIASES, resolvePreset } from './presets.js';
+export type { PresetName, DeprecatedPresetName, PresetConfig } from './presets.js';
