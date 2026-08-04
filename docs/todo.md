@@ -62,6 +62,11 @@ prefixes:
 
 ## Done
 
+- [x] #DOC-007 [P2] Re-vérifier la conformité après §1.10 et §1.5.1 #spec #effort-s
+  > ✅ **Terminé** le 2026-08-04
+  **Zone** : `docs/reports/`
+  **Résumé** : audit de **v0.10.0** contre la spec **v2.7-draft** → `docs/reports/conformite-spec-2026-08-04.md`. Score **92 %** (77 % au 27/07), **aucun gap critique restant** : C1 (§1.10) et C2 (§1.5.1) sont refermés, et M3 (dérive du module virtuel) avec eux — sa gravité avait été sous-estimée, il annulait la portée de C1 pour tout site passant par `hyperfocale init`. Le ❓ de §1.2 est levé : le demo-site porte désormais une série rangée à deux niveaux, assertée en e2e. Les presets passent de ⚠️ *déviant* à 🟡 *partiel* sans que le plugin change — l'Annexe G v2.7 a standardisé quatre profils repris du plugin et tranché que les préfixes localisés sont conformes ; seul `photo` → `series` reste. Gaps ouverts : line-up §1.8 (H2), et `pageSize` (M1), signalé pour la troisième fois consécutive pour un quart de journée d'effort. Correction à porter côté spec : §0.5 décrit encore le plugin en v0.8.0 avec §1.10 ❌.
+
 - [x] #SPEC-002 [P1] Manifeste d'images externalisé (§1.5.1) — `images.json` #spec #effort-m
   > ✅ **Terminé** le 2026-08-04
   **Zone** : `src/helpers/index.ts`
