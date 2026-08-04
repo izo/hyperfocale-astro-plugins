@@ -7,6 +7,30 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.12.0] — 2026-08-04
+
+### Ajouté
+
+- **Line-up des sous-séries** (spec §1.8, gap H2) : `getSubSeries(containerId)` retourne les sous-séries d'une série conteneur, et la page de détail les affiche automatiquement. C'était la dernière fonctionnalité *positivement absente* du rapport de conformité — aucune fonction ne reliait un conteneur à ses sous-séries. Le helper ne retient que les entrées situées **exactement un segment plus bas** : §1.8 limite l'imbrication à un niveau, et `archives/music/concerts/<slug>/` est une série *rangée* (§1.2), pas une sous-série de quatrième niveau. Tri par `lineup_order` croissant, date décroissante à défaut ; le champ est ajouté au schéma. Deux tokens `--hf-lineup-gap` et `--hf-lineup-heading-size`.
+- **Option `imageOptimization`** (`'auto' | 'disabled'`, gap ARCH-004) : `'disabled'` sert les fichiers d'origine sans passer par `astro:assets`, pour un site dont les images sont déjà optimisées en amont. Les dimensions restent transmises au HTML — les omettre échangerait un problème d'optimisation contre des décalages de mise en page.
+- **`getCollectionFetchCount()`** et le flag `HYPERFOCALE_DEBUG_CACHE=1` (gap ARCH-005) : comptent les appels réels à `getCollection`. La mesure sur un build de **126 séries produisant 127 pages donne un seul appel** — le cache module-level survit à l'ensemble du build SSG. Le `warmSeriesCache()` que la carte envisageait aurait été du code mort ; il n'est pas ajouté.
+- **Documentation de l'option `preset`** : elle existait depuis la 0.8.0 sans figurer dans le README. La table des six profils y est ajoutée, avec la raison des préfixes francisés (§2.0.1 : la colonne `prefix` de l'Annexe G est une recommandation).
+
+### Changé
+
+- **Le preset canonique s'appelle `series`** (gap H1), nom standardisé par l'Annexe G de la spec — il s'appelait `photo`, si bien qu'un site suivant la documentation de la spec ne trouvait pas le preset qu'elle nomme. C'était le dernier écart de vocabulaire relevé par §0.5.
+- **Le `srcset` haute densité est omis en développement.** Quand un site délègue l'optimisation à son hébergeur (Vercel, Netlify, Cloudflare), les URLs générées pointent vers un endpoint inexistant en local : chaque variante répondait 404. Le rendu de production est inchangé.
+
+### Corrigé
+
+- **`cover` avec `imageOptimization: 'disabled'`** tombait sur la branche placeholder de `<SeriesCard>`, l'image de repli n'étant calculée que lorsque `cover` est absent. Une branche explicite sert le `cover` en `<img>` brut.
+
+### Rétro-compatibilité
+
+`photo` reste accepté comme alias de `series`, avec un avertissement au build, et sera retiré en 1.0 : renommer un vocabulaire ne justifie pas de casser les sites existants du jour au lendemain. Aucun autre changement cassant — les défauts reproduisent le comportement 0.11.0.
+
+---
+
 ## [0.11.0] — 2026-08-04
 
 ### Ajouté
