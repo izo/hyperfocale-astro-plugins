@@ -73,6 +73,22 @@ export interface HyperfocaleOptions {
   galleryLayout?: 'grid' | 'column';
 
   /**
+   * Traitement des images par `astro:assets`.
+   *
+   * `'auto'` (défaut) laisse Astro optimiser : conversion WebP, dimensions,
+   * et `srcset` haute densité en production. Le `srcset` est omis en dev, où
+   * les endpoints d'optimisation d'un hébergeur (Vercel, Netlify, Cloudflare)
+   * n'existent pas et répondraient 404 sur chaque variante.
+   *
+   * `'disabled'` sert les fichiers d'origine, sans passer par `astro:assets` —
+   * pour un site dont les images sont déjà optimisées en amont, ou servies par
+   * un CDN qui s'en charge.
+   *
+   * @default 'auto'
+   */
+  imageOptimization?: 'auto' | 'disabled';
+
+  /**
    * Injecter les routes automatiques (`/{prefix}/`, `/{prefix}/[...slug]/`…).
    * À `false`, le site consommateur câble ses propres pages avec les helpers et composants.
    * @default true
@@ -101,6 +117,7 @@ export interface NormalizedHyperfocaleOptions {
   /** Chemin du layout consommateur, ou `undefined` pour le layout brut interne. */
   layout: string | undefined;
   galleryLayout: 'grid' | 'column';
+  imageOptimization: 'auto' | 'disabled';
   injectRoutes: boolean;
   listRoute: boolean;
 }
@@ -123,6 +140,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const dateRequired = options.dateRequired ?? preset?.dateRequired ?? true;
   const layout = options.layout;
   const galleryLayout = options.galleryLayout ?? 'grid';
+  const imageOptimization = options.imageOptimization ?? 'auto';
   const injectRoutes = options.injectRoutes ?? true;
   const listRoute = options.listRoute ?? true;
 
@@ -141,9 +159,12 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   if (!['grid', 'column'].includes(galleryLayout)) {
     throw new Error(`[hyperfocale] L'option "galleryLayout" doit être 'grid' ou 'column'. Reçu: ${galleryLayout}`);
   }
+  if (!['auto', 'disabled'].includes(imageOptimization)) {
+    throw new Error(`[hyperfocale] L'option "imageOptimization" doit être 'auto' ou 'disabled'. Reçu: ${imageOptimization}`);
+  }
 
   const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
-  return { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes, listRoute };
+  return { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, imageOptimization, injectRoutes, listRoute };
 }
 
 /**
@@ -155,7 +176,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
-  const { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, injectRoutes, listRoute } =
+  const { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, imageOptimization, injectRoutes, listRoute } =
     normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
@@ -266,6 +287,7 @@ export const seriesCollection = defineCollection({
               'import.meta.env.HYPERFOCALE_COLLECTION_NAME': JSON.stringify(collectionName),
               'import.meta.env.HYPERFOCALE_DATE_REQUIRED': JSON.stringify(dateRequired),
               'import.meta.env.HYPERFOCALE_GALLERY_LAYOUT': JSON.stringify(galleryLayout),
+              'import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION': JSON.stringify(imageOptimization),
             },
           },
         });

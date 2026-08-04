@@ -77,6 +77,7 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
 | `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
+| `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
 
 ---
 
@@ -167,6 +168,20 @@ if (isSection(entry)) { /* … */ }           // → discriminant explicite
 ```
 
 La distinction se lit **uniquement** dans `type` : une série sans `date` reste une série invalide, jamais une section devinée.
+
+### Déploiement et optimisation des images
+
+Par défaut, `astro:assets` traite les images au build : conversion WebP, dimensions, et `srcset` haute densité pour les écrans Retina.
+
+**Le `srcset` est omis en développement.** Quand un site délègue l'optimisation à son hébergeur — `@astrojs/vercel`, `@astrojs/netlify`, Cloudflare Images — les URLs générées pointent vers un endpoint (`/_vercel/image?…`) qui n'existe pas en local : chaque variante du `srcset` répondrait 404. Le rendu de production est inchangé.
+
+Si vos images sont déjà optimisées en amont, ou servies par un CDN qui s'en charge, court-circuitez le traitement :
+
+```js
+hyperfocale({ imageOptimization: 'disabled' })
+```
+
+Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redimensionnement. Les dimensions déclarées restent transmises au HTML, ce qui préserve la réservation d'espace et évite les décalages de mise en page.
 
 ### Collections hiérarchiques
 

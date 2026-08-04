@@ -22,6 +22,15 @@ const { images, allImages, page, totalPages, baseUrl } = Astro.props;
 // largeur, ratios naturels — ne recadre pas les diptyques ni les portraits).
 const galleryLayout = (import.meta.env.HYPERFOCALE_GALLERY_LAYOUT ?? 'grid') as 'grid' | 'column';
 
+// Traitement des images (option `imageOptimization`).
+//
+// `disabled` sert le fichier d'origine, sans passer par `astro:assets`.
+// En `auto`, le `srcset` haute densité est omis en dev : quand le site délègue
+// l'optimisation à son hébergeur (Vercel, Netlify, Cloudflare), ces endpoints
+// n'existent pas localement et chaque variante du srcset répond 404.
+const optimizeImages = (import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION ?? 'auto') !== 'disabled';
+const densities = import.meta.env.DEV ? undefined : [1, 2];
+
 // Normalise l'URL de base : retire le slash final
 const base = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
 
@@ -50,12 +59,22 @@ function pageUrl(p: number): string {
           aria-label={`Ouvrir l'image ${globalIndex + 1}`}
           data-lightbox-index={globalIndex}
         >
-          {galleryLayout === 'column' ? (
+          {!optimizeImages ? (
+            <img
+              src={image.src}
+              alt={alt}
+              width={image.width || undefined}
+              height={image.height || undefined}
+              class="hf-gallery__img"
+              loading={globalIndex === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          ) : galleryLayout === 'column' ? (
             <Image
               src={image as Parameters<typeof Image>[0]['src']}
               alt={alt}
               width={1000}
-              densities={[1, 2]}
+              densities={densities}
               class="hf-gallery__img"
               loading={globalIndex === 0 ? 'eager' : 'lazy'}
             />
