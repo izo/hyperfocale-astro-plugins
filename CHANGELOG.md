@@ -7,6 +7,24 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Corrigé
+
+- **`theme: 'light'` et `theme: 'dark'` n'avaient aucun effet** (#FE-012). Lève le point *Connu* de la 0.15.0 ci-dessous. `base.css` articule ses trois blocs sur `data-hf-theme`, attribut que **rien n'écrivait** ; `import.meta.env.HYPERFOCALE_THEME` était bien défini et lu nulle part. Tout site retombait donc sur le comportement `'auto'` : celui qui demandait `'light'` obtenait quand même le sombre sous `prefers-color-scheme: dark`.
+
+  L'attribut est désormais posé par un script inline sur le stage `head-inline`, exécuté en synchrone dans le `<head>` — donc avant le premier paint, sans transition visible. Le poser en SSR aurait été plus direct et sans JavaScript, mais n'aurait couvert que le layout de repli interne : dès qu'un site passe son propre `layout`, ou rend `SeriesGallery` dans ses pages, le plugin ne rend plus le `<html>`. Or c'est le cas que le README recommande.
+
+  `'auto'` et `'none'` n'émettent rien — le premier parce que le CSS nu se comporte déjà ainsi, le second parce qu'aucune feuille n'est servie. Sans JavaScript, on retombe sur `'auto'`, soit exactement le comportement d'avant ce correctif : la dégradation n'est pas une régression.
+
+  Le CSS n'est pas touché : il était déjà écrit pour ces trois blocs, il lui manquait l'attribut qui les sélectionne.
+
+### Rétro-compatibilité
+
+Aucun changement cassant, mais **un changement de rendu** : un site qui passait `theme: 'light'` ou `theme: 'dark'` voyait jusqu'ici le comportement `'auto'`, et va désormais obtenir ce qu'il demandait. C'est la correction attendue ; elle reste visible.
+
+---
+
 ## [0.15.0] — 2026-08-12
 
 Le premier site à monter le plugin en **couche data seule** — schéma et helpers, pages entièrement maison — a montré que le thème partait quand même. Il peut désormais être coupé. Aucun changement cassant.
@@ -20,12 +38,6 @@ Le premier site à monter le plugin en **couche data seule** — schéma et help
   Non cassant : le défaut reste `'auto'`, et `'light'`/`'dark'`/`'auto'` injectent comme avant.
 
 ### Corrigé
-
-- **`theme: 'light'` et `theme: 'dark'` n'avaient aucun effet** (#FE-012). `base.css` articule ses trois blocs sur `data-hf-theme`, attribut que **rien n'écrivait** ; `import.meta.env.HYPERFOCALE_THEME` était bien défini et lu nulle part. Tout site retombait donc sur le comportement `'auto'` : celui qui demandait `'light'` obtenait quand même le sombre sous `prefers-color-scheme: dark`. Découvert en traitant `theme: 'none'`.
-
-  L'attribut est désormais posé par un script inline sur le stage `head-inline`, exécuté en synchrone dans le `<head>` — donc avant le premier paint, sans transition visible. Le poser en SSR aurait été plus direct, mais n'aurait couvert que le layout de repli interne : dès qu'un site passe son propre `layout`, ou rend `SeriesGallery` dans ses pages, le plugin ne rend plus le `<html>`. Or c'est le cas que le README recommande.
-
-  `'auto'` et `'none'` n'émettent rien — le premier parce que le CSS nu se comporte déjà ainsi, le second parce qu'aucune feuille n'est servie. Sans JavaScript, on retombe sur `'auto'`, soit exactement le comportement d'avant ce correctif : la dégradation n'est pas une régression.
 
 - **La ligne de log annonçait un préfixe de routes inexistant.** Avec `injectRoutes: false`, « Initialisation hyperfocale (prefix: /series, …) » laissait croire que des routes étaient montées sous `/series`, alors qu'il n'en existait aucune. Le préfixe n'est désormais annoncé que s'il sert : `routes: /series` ou `routes: aucune`.
 
