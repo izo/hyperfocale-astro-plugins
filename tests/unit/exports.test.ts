@@ -34,3 +34,45 @@ describe('package exports — composants .astro', () => {
     });
   }
 });
+
+// ─── Vocabulaires du schéma exposés à la racine ──────────────────────────────
+
+/**
+ * Même principe que la liste de composants ci-dessus : dérivée du module, pas
+ * maintenue à la main.
+ *
+ * Régression : `schema.ts` porte trois vocabulaires publics — `CONTENT_TYPES`,
+ * `ATTACHMENT_KINDS`, `EMBED_PLATFORMS` — et seul le premier était réexporté par
+ * l'entrée racine. Les deux autres n'étaient atteignables que via `/helpers`,
+ * sous-chemin qui importe `astro:content` et n'est donc pas chargeable hors
+ * runtime Astro. Un consommateur écrivant un formulaire ou un lint n'avait aucun
+ * moyen simple de connaître les valeurs licites.
+ */
+describe('package exports — vocabulaires du schéma', () => {
+  it('réexporte à la racine tous les vocabulaires de schema.ts', async () => {
+    const schema = await import('../../src/schema.js');
+    const root = await import('../../src/index.js');
+
+    // Un vocabulaire : export SCREAMING_SNAKE dont la valeur est un tableau.
+    const vocabularies = Object.keys(schema).filter(
+      (key) => /^[A-Z][A-Z0-9_]*$/.test(key) && Array.isArray((schema as Record<string, unknown>)[key]),
+    );
+
+    expect(vocabularies.length).toBeGreaterThan(0);
+    expect(Object.keys(root)).toEqual(expect.arrayContaining(vocabularies));
+  });
+
+  it('expose les trois vocabulaires connus', async () => {
+    const root = await import('../../src/index.js');
+    expect(root.CONTENT_TYPES).toEqual(['series', 'section']);
+    expect(root.ATTACHMENT_KINDS).toEqual(['video', 'audio', 'document', 'file']);
+    expect(root.EMBED_PLATFORMS).toEqual([
+      'vimeo',
+      'youtube',
+      'dailymotion',
+      'soundcloud',
+      'bandcamp',
+      'spotify',
+    ]);
+  });
+});
