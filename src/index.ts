@@ -40,9 +40,21 @@ export interface HyperfocaleOptions {
 
   /**
    * Thème visuel : clair, sombre, ou selon l'OS.
+   *
+   * `'none'` n'injecte **aucune** feuille de style. Destiné au site qui monte le
+   * plugin en couche data — schéma et helpers, ses propres pages — et n'affiche
+   * donc aucun composant du plugin : les 30 custom properties `--hf-*` partaient
+   * jusqu'ici sur toutes ses pages sans qu'une seule règle les lise.
+   *
+   * ⚠️ À ne pas confondre avec `injectRoutes: false`, qui coupe les routes mais
+   * pas le thème. Les deux sont indépendants **à dessein** : un site peut très
+   * bien câbler ses propres pages avec `SeriesGallery` ou `SeriesLightbox`, et
+   * ceux-là ont besoin du thème. C'est l'usage des composants qui commande, pas
+   * celui des routes.
+   *
    * @default 'auto'
    */
-  theme?: 'light' | 'dark' | 'auto';
+  theme?: 'light' | 'dark' | 'auto' | 'none';
 
   /**
    * Nom de la collection Astro Content dans content.config.ts.
@@ -113,7 +125,7 @@ export interface HyperfocaleOptions {
 export interface NormalizedHyperfocaleOptions {
   prefix: string;
   pageSize: number;
-  theme: 'light' | 'dark' | 'auto';
+  theme: 'light' | 'dark' | 'auto' | 'none';
   collectionName: string;
   dateRequired: boolean;
   /** Chemin du layout consommateur, ou `undefined` pour le layout brut interne. */
@@ -152,8 +164,10 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   if (pageSize < 1) {
     throw new Error(`[hyperfocale] L'option "pageSize" doit être un entier >= 1. Reçu: ${pageSize}`);
   }
-  if (!['light', 'dark', 'auto'].includes(theme)) {
-    throw new Error(`[hyperfocale] L'option "theme" doit être 'light', 'dark' ou 'auto'. Reçu: ${theme}`);
+  if (!['light', 'dark', 'auto', 'none'].includes(theme)) {
+    throw new Error(
+      `[hyperfocale] L'option "theme" doit être 'light', 'dark', 'auto' ou 'none'. Reçu: ${theme}`,
+    );
   }
   if (!collectionName || collectionName.trim() === '') {
     throw new Error(`[hyperfocale] L'option "collectionName" ne peut pas être vide.`);
@@ -191,7 +205,13 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
     name: 'hyperfocale',
     hooks: {
       'astro:config:setup': ({ injectRoute, injectScript, updateConfig, logger, config }) => {
-        logger.info(`Initialisation hyperfocale (prefix: ${prefix}, collection: ${collectionName}, theme: ${theme})`);
+        // Le préfixe n'est annoncé que s'il sert à quelque chose : avec
+        // `injectRoutes: false`, la ligne « prefix: /series » laissait croire
+        // que des routes étaient montées là, alors qu'il n'en existe aucune.
+        logger.info(
+          `Initialisation hyperfocale (collection: ${collectionName}, ` +
+          `routes: ${injectRoutes ? prefix : 'aucune'}, theme: ${theme})`,
+        );
 
         // Vérifier que src/content.config.ts référence la collection. On accepte
         // soit le module virtuel `seriesCollection`, soit une déclaration maison
@@ -236,7 +256,13 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
           });
         }
 
-        injectScript('page-ssr', `import "${themeFile}";`);
+        // Le thème part sur **toutes** les pages du site, pas seulement les
+        // routes injectées — c'est voulu : un site qui rend `SeriesGallery` dans
+        // ses propres pages en a besoin. D'où l'opt-out explicite plutôt qu'un
+        // garde sur `injectRoutes`, qui priverait cet usage-là de ses styles.
+        if (theme !== 'none') {
+          injectScript('page-ssr', `import "${themeFile}";`);
+        }
 
         // Usage dans src/content.config.ts du projet consommateur :
         //   import { seriesCollection } from 'virtual:hyperfocale/collection';

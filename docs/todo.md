@@ -28,6 +28,23 @@ prefixes:
 
 ## Backlog
 
+- [ ] #FE-012 [P2] L'option `theme` n'a aucun effet #thème #effort-m
+
+  **Issue à créer.** Découvert en traitant le thème injecté à tort (`#ARCH-006`).
+  **Zone** : `src/index.ts`, `src/theme/base.css`
+  `theme: 'light'` et `theme: 'dark'` ne font **rien**. La valeur est posée dans
+  `import.meta.env.HYPERFOCALE_THEME`, que **rien ne lit** — vérifié, aucune
+  occurrence hors de sa définition. Et rien n'écrit jamais l'attribut
+  `data-hf-theme` sur lequel `base.css` articule ses trois blocs. La feuille part
+  toujours entière, donc le comportement est toujours `auto` : le site qui
+  demande `theme: 'light'` obtient quand même le sombre sous
+  `prefers-color-scheme: dark`.
+  Le README annonce pourtant « `'auto'` suit `prefers-color-scheme` », ce qui
+  laisse entendre que les deux autres ne le suivent pas.
+  **À trancher** : émettre `data-hf-theme` depuis le layout injecté, ou n'émettre
+  que le bloc CSS demandé. Le second change ce qui est servi aux consommateurs
+  existants — à traiter comme un correctif de comportement, pas un ajout.
+
 ## Todo
 
 ## In Progress
@@ -35,6 +52,27 @@ prefixes:
 ## Blocked
 
 ## Review
+
+- [ ] #ARCH-006 [P2] Le thème s'injectait même quand personne ne le lit #thème #effort-s
+
+  **Issue à créer.** Remonté par `laurenceguenoun.com`, premier site à monter le
+  plugin en couche data seule (voir son `docs/audits/plugin-hyperfocale-20260812.md`).
+  **Zone** : `src/index.ts`, `README.md`, `tests/unit/consumer-options.test.ts`
+  `injectScript('page-ssr', …)` était appelé **hors** du garde `injectRoutes`. Un
+  site sans routes ni composants du plugin embarquait les 30 custom properties
+  `--hf-*` sur toutes ses pages — mesuré à **1 643 octets, 29 % de son bundle
+  CSS**, sans qu'une seule règle les lise.
+  **Correctif** : valeur d'opt-out `theme: 'none'`, et **non** un garde sur
+  `injectRoutes`. Les deux options restent indépendantes à dessein — un site peut
+  couper les routes et rendre `SeriesGallery` dans ses propres pages, et celui-là
+  a besoin du thème. Les lier l'aurait dépouillé en silence.
+  **Au passage** : la ligne de log annonçait « prefix: /series » avec
+  `injectRoutes: false`, laissant croire à des routes inexistantes. Elle dit
+  désormais `routes: aucune`.
+  **Vérifié** : 209 tests verts, dont 8 nouveaux sur l'injection. Validé par
+  mutation — neutraliser le garde fait bien échouer le test, et lui seul.
+  **Reste** : créer l'issue, publier une 0.15.0, et faire passer le site dessus
+  (il tourne encore sur la 0.13.0 du npm).
 
 ## Done
 

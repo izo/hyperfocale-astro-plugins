@@ -141,3 +141,63 @@ describe('routes injectées', () => {
     ]);
   });
 });
+
+// ─── Feuille de thème effectivement injectée (`theme: 'none'`) ───────────────
+
+/**
+ * Même principe que `injectedPatterns`, côté `injectScript` : accepter
+ * `theme: 'none'` ne prouve rien, c'est l'absence d'injection qu'il faut voir.
+ *
+ * Régression d'origine : `injectScript` était appelé inconditionnellement, hors
+ * du garde `injectRoutes`. Un site montant le plugin en couche data embarquait
+ * les 30 custom properties `--hf-*` sur toutes ses pages — mesuré à 1 643 octets,
+ * 29 % de son bundle CSS — sans qu'une seule règle les lise.
+ */
+function injectedScripts(options: Parameters<typeof hyperfocale>[0] = {}): string[] {
+  const scripts: string[] = [];
+  const setup = hyperfocale(options).hooks['astro:config:setup'];
+  if (!setup) throw new Error('hook astro:config:setup absent de l’intégration');
+  setup({
+    injectRoute: () => {},
+    injectScript: (_stage: string, content: string) => void scripts.push(content),
+    updateConfig: () => {},
+    logger: { info: () => {}, warn: () => {} },
+    config: { root: new URL('file:///tmp/hyperfocale-test/') },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } as any);
+  return scripts;
+}
+
+describe("thème injecté", () => {
+  it('injecte base.css par défaut', () => {
+    const scripts = injectedScripts();
+    expect(scripts).toHaveLength(1);
+    expect(scripts[0]).toMatch(/theme[/\\]base\.css/);
+  });
+
+  it("theme: 'none' n'injecte aucune feuille", () => {
+    expect(injectedScripts({ theme: 'none' })).toEqual([]);
+  });
+
+  it.each(['light', 'dark', 'auto'] as const)(
+    "theme: '%s' injecte toujours la feuille",
+    (theme) => {
+      expect(injectedScripts({ theme })).toHaveLength(1);
+    },
+  );
+
+  it("injectRoutes: false n'implique pas la coupure du thème", () => {
+    // Les deux options sont indépendantes à dessein : un site peut câbler ses
+    // propres pages avec SeriesGallery, qui a besoin des variables --hf-*.
+    expect(injectedScripts({ injectRoutes: false })).toHaveLength(1);
+  });
+
+  it("theme: 'none' n'empêche pas l'injection des routes", () => {
+    expect(injectedPatterns({ theme: 'none' })).toHaveLength(3);
+  });
+
+  it('rejette un thème inconnu', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => hyperfocale({ theme: 'nope' as any })).toThrowError(/theme/);
+  });
+});

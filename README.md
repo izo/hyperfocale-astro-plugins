@@ -58,7 +58,7 @@ export default defineConfig({
     hyperfocale({
       prefix: '/series',  // préfixe des routes           (défaut)
       pageSize: 12,       // images par page              (défaut)
-      theme: 'auto',      // 'light' | 'dark' | 'auto'    (défaut)
+      theme: 'auto',      // 'light' | 'dark' | 'auto' | 'none'  (défaut 'auto')
       collectionName: 'series', // nom de la collection   (défaut)
       dateRequired: true,       // `date` obligatoire      (défaut)
     }),
@@ -75,7 +75,7 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `preset` | `PresetName` | — | Profil de domaine : pré-remplit `prefix`, `collectionName` et `dateRequired` (voir ci-dessous). Toute option explicite l'emporte. |
 | `prefix` | `string` | `'/series'` | Préfixe des routes injectées. Doit commencer par `/`. |
 | `pageSize` | `number` | `12` | Nombre d'images par page dans la galerie paginée (≥ 1). |
-| `theme` | `'light' \| 'dark' \| 'auto'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. |
+| `theme` | `'light' \| 'dark' \| 'auto' \| 'none'` | `'auto'` | Thème CSS injecté. `'auto'` suit `prefers-color-scheme`. `'none'` n'injecte **aucune** feuille — voir *Couche data seule*. |
 | `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
 | `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
@@ -604,7 +604,7 @@ afterEach(() => resetSeriesCache());
 
 ## Thème
 
-Le plugin injecte un thème CSS configurable via l'option `theme` (`'light'`, `'dark'`, `'auto'`).
+Le plugin injecte un thème CSS via l'option `theme` (`'light'`, `'dark'`, `'auto'`, `'none'`).
 
 Surchargez les variables dans votre CSS global pour personnaliser l'apparence :
 
@@ -618,6 +618,28 @@ Surchargez les variables dans votre CSS global pour personnaliser l'apparence :
   --hf-card-radius:   4px;
 }
 ```
+
+### Couche data seule — `theme: 'none'`
+
+Le thème part sur **toutes** les pages du site, pas seulement les routes injectées.
+C'est voulu : un site qui rend `SeriesGallery` ou `SeriesLightbox` dans ses propres
+pages en a besoin. `injectRoutes: false` ne le coupe donc pas — les deux options sont
+indépendantes, et c'est l'usage des **composants** qui commande, pas celui des routes.
+
+Un site qui n'utilise **ni les routes ni les composants** — schéma et helpers seulement,
+pages entièrement maison — ne lit aucune des 30 custom properties `--hf-*`. Elles
+partaient malgré tout sur chacune de ses pages : mesuré sur un site réel à **1 643 octets,
+29 % de son bundle CSS**, entièrement mort. Coupez-les :
+
+```js
+hyperfocale({
+  injectRoutes: false,   // je câble mes propres pages
+  theme: 'none',         // …et je n'affiche aucun composant du plugin
+})
+```
+
+Gardez `theme: 'auto'` dès que vous rendez un seul composant du plugin, faute de quoi il
+s'affichera sans styles.
 
 ---
 
