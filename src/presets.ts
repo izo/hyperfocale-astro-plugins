@@ -5,7 +5,18 @@
  * obligation : §2.0.1 autorise un preset à fixer le sien. Ceux du plugin sont
  * localisés en français, ce que §0.5 de la spec reconnaît comme conforme.
  */
-export type PresetName = 'series' | 'portfolio' | 'music' | 'catalog' | 'press' | 'recipe';
+export type PresetName =
+  | 'series'
+  | 'portfolio'
+  | 'music'
+  | 'catalog'
+  | 'press'
+  | 'recipe'
+  | 'event'
+  | 'app'
+  | 'book'
+  | 'place'
+  | 'screen';
 
 /**
  * Noms conservés pour ne pas casser les sites existants, mais qui ne sont pas
@@ -20,12 +31,20 @@ export interface PresetConfig {
 }
 
 export const PRESETS: Record<PresetName, PresetConfig> = {
-  series:    { collectionName: 'series',   prefix: '/series',       dateRequired: true  },
-  portfolio: { collectionName: 'projects', prefix: '/projets',      dateRequired: false },
-  music:     { collectionName: 'albums',   prefix: '/discographie', dateRequired: true  },
-  catalog:   { collectionName: 'items',    prefix: '/catalogue',    dateRequired: false },
-  press:     { collectionName: 'articles', prefix: '/presse',       dateRequired: true  },
-  recipe:    { collectionName: 'recipes',  prefix: '/recettes',     dateRequired: false },
+  series:    { collectionName: 'series',   prefix: '/series',        dateRequired: true  },
+  portfolio: { collectionName: 'projects', prefix: '/projets',       dateRequired: false },
+  // `dateRequired: false` suit G.8, qui déclare la date de sortie optionnelle :
+  // « démos et sorties non datées restent valides ». La valeur était à `true`
+  // depuis la 0.8.0 — c'était le dernier écart de fond avec l'Annexe G.
+  music:     { collectionName: 'albums',   prefix: '/discographie',  dateRequired: false },
+  catalog:   { collectionName: 'items',    prefix: '/catalogue',     dateRequired: false },
+  press:     { collectionName: 'articles', prefix: '/presse',        dateRequired: true  },
+  recipe:    { collectionName: 'recipes',  prefix: '/recettes',      dateRequired: false },
+  event:     { collectionName: 'events',   prefix: '/evenements',    dateRequired: true  },
+  app:       { collectionName: 'apps',     prefix: '/applications',  dateRequired: false },
+  book:      { collectionName: 'books',    prefix: '/livres',        dateRequired: false },
+  place:     { collectionName: 'places',   prefix: '/lieux',         dateRequired: false },
+  screen:    { collectionName: 'screens',  prefix: '/ecrans',        dateRequired: false },
 };
 
 /**
