@@ -262,6 +262,27 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
         // garde sur `injectRoutes`, qui priverait cet usage-là de ses styles.
         if (theme !== 'none') {
           injectScript('page-ssr', `import "${themeFile}";`);
+
+          // `base.css` articule ses trois blocs sur `data-hf-theme`, attribut que
+          // rien n'écrivait : `theme: 'light'` et `theme: 'dark'` étaient donc
+          // sans effet, tout site retombant sur le comportement `auto`.
+          //
+          // L'attribut est posé par script plutôt qu'en SSR parce que le plugin
+          // ne rend le `<html>` que sur son layout de repli : dès qu'un site
+          // passe son propre `layout`, ou rend `SeriesGallery` dans ses pages, le
+          // document ne lui appartient plus. `head-inline` s'exécute en synchrone
+          // dans le `<head>`, donc avant le premier paint — pas de flash.
+          //
+          // `auto` n'émet rien : son comportement est déjà celui du CSS nu, et un
+          // attribut superflu sur chaque page du site ne rendrait aucun service.
+          // Sans JavaScript, on retombe donc sur `auto` — la dégradation reproduit
+          // exactement le comportement d'avant ce correctif.
+          if (theme === 'light' || theme === 'dark') {
+            injectScript(
+              'head-inline',
+              `document.documentElement.dataset.hfTheme=${JSON.stringify(theme)}`,
+            );
+          }
         }
 
         // Usage dans src/content.config.ts du projet consommateur :

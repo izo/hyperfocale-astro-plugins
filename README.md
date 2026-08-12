@@ -606,6 +606,21 @@ afterEach(() => resetSeriesCache());
 
 Le plugin injecte un thème CSS via l'option `theme` (`'light'`, `'dark'`, `'auto'`, `'none'`).
 
+| Valeur | Effet |
+|--------|-------|
+| `'auto'` *(défaut)* | Suit `prefers-color-scheme` |
+| `'light'` | Palette claire, quelle que soit la préférence système |
+| `'dark'` | Palette sombre, quelle que soit la préférence système |
+| `'none'` | Aucune feuille injectée — voir *Couche data seule* |
+
+`'light'` et `'dark'` posent `data-hf-theme` sur `<html>` par un script inline
+exécuté dans le `<head>`, donc avant le premier rendu — le thème demandé s'affiche
+sans transition visible. Le plugin ne rendant le `<html>` que sur son layout de
+repli, c'est ce qui permet à l'option de valoir aussi sous votre propre layout et
+dans vos pages maison.
+
+Sans JavaScript, l'attribut n'est pas posé et le thème retombe sur `'auto'`.
+
 Surchargez les variables dans votre CSS global pour personnaliser l'apparence :
 
 ```css
