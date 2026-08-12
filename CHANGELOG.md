@@ -7,7 +7,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.16.0] — 2026-08-12
+
+Referme le point *Connu* de la 0.15.0 : l'option `theme` agit enfin sur l'apparence.
 
 ### Corrigé
 

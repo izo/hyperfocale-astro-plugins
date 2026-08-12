@@ -1,6 +1,6 @@
 {
   "name": "@regrets/hyperfocale",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
   "license": "MIT",
