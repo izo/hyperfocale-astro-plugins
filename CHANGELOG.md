@@ -7,6 +7,22 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Ajouté
+
+- **`theme: 'none'`** — n'injecte aucune feuille de style. Le thème partait jusqu'ici sur **toutes** les pages du site, inconditionnellement : `injectScript('page-ssr', …)` était appelé hors du garde `injectRoutes`. Un site montant le plugin en couche data — schéma et helpers, pages entièrement maison, aucun composant du plugin rendu — embarquait donc les 30 custom properties `--hf-*` sur chacune de ses pages sans qu'une seule règle les lise. Mesuré sur `laurenceguenoun.com` : **1 643 octets, 29 % de son bundle CSS**, entièrement mort.
+
+  Le correctif est une valeur d'opt-out, **pas** un garde sur `injectRoutes`. Les deux options restent indépendantes à dessein : un site peut parfaitement couper les routes injectées et rendre `SeriesGallery` ou `SeriesLightbox` dans ses propres pages — ceux-là ont besoin du thème. C'est l'usage des composants qui commande, pas celui des routes. Lier les deux aurait privé cet usage de ses styles, en silence.
+
+  Non cassant : le défaut reste `'auto'`, et `'light'`/`'dark'`/`'auto'` injectent comme avant.
+
+### Corrigé
+
+- **La ligne de log annonçait un préfixe de routes inexistant.** Avec `injectRoutes: false`, « Initialisation hyperfocale (prefix: /series, …) » laissait croire que des routes étaient montées sous `/series`, alors qu'il n'en existait aucune. Le préfixe n'est désormais annoncé que s'il sert : `routes: /series` ou `routes: aucune`.
+
+---
+
 ## [0.14.0] — 2026-08-12
 
 Les onze profils de l'Annexe G sont couverts, et le dernier écart de fond entre les presets et l'annexe est refermé. Aucun changement cassant.
