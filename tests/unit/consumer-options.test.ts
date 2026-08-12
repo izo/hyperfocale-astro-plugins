@@ -153,19 +153,28 @@ describe('routes injectées', () => {
  * les 30 custom properties `--hf-*` sur toutes ses pages — mesuré à 1 643 octets,
  * 29 % de son bundle CSS — sans qu'une seule règle les lise.
  */
-function injectedScripts(options: Parameters<typeof hyperfocale>[0] = {}): string[] {
-  const scripts: string[] = [];
+function injectedScriptEntries(
+  options: Parameters<typeof hyperfocale>[0] = {},
+): Array<{ stage: string; content: string }> {
+  const scripts: Array<{ stage: string; content: string }> = [];
   const setup = hyperfocale(options).hooks['astro:config:setup'];
   if (!setup) throw new Error('hook astro:config:setup absent de l’intégration');
   setup({
     injectRoute: () => {},
-    injectScript: (_stage: string, content: string) => void scripts.push(content),
+    injectScript: (stage: string, content: string) => void scripts.push({ stage, content }),
     updateConfig: () => {},
     logger: { info: () => {}, warn: () => {} },
     config: { root: new URL('file:///tmp/hyperfocale-test/') },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
   return scripts;
+}
+
+/** La feuille de style seule — l'attribut `data-hf-theme` part sur un autre stage. */
+function injectedScripts(options: Parameters<typeof hyperfocale>[0] = {}): string[] {
+  return injectedScriptEntries(options)
+    .filter((s) => s.stage === 'page-ssr')
+    .map((s) => s.content);
 }
 
 describe("thème injecté", () => {
@@ -199,5 +208,61 @@ describe("thème injecté", () => {
   it('rejette un thème inconnu', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => hyperfocale({ theme: 'nope' as any })).toThrowError(/theme/);
+  });
+});
+
+// ─── `data-hf-theme` effectivement posé (#FE-012) ────────────────────────────
+
+/**
+ * `base.css` articule ses trois blocs sur `data-hf-theme` — attribut que rien
+ * n'écrivait. `theme: 'light'` et `theme: 'dark'` étaient donc sans effet : tout
+ * site retombait sur `auto`, et celui qui demandait `'light'` obtenait quand même
+ * le sombre sous `prefers-color-scheme: dark`.
+ *
+ * Ce qui compte ici n'est pas qu'un script soit émis, mais **sur quel stage** :
+ * `head-inline` s'exécute en synchrone dans le `<head>`, donc avant le premier
+ * paint. Le poser sur `page` ou `before-hydration` rendrait la bonne valeur après
+ * un flash de thème.
+ */
+const themeAttrScripts = (options: Parameters<typeof hyperfocale>[0] = {}) =>
+  injectedScriptEntries(options).filter((s) => s.stage === 'head-inline');
+
+describe('attribut data-hf-theme', () => {
+  it.each(['light', 'dark'] as const)("theme: '%s' pose l’attribut", (theme) => {
+    const [script, ...extra] = themeAttrScripts({ theme });
+    expect(extra).toEqual([]);
+    expect(script?.content).toContain('documentElement');
+    expect(script?.content).toContain(`"${theme}"`);
+  });
+
+  it('émet sur `head-inline`, avant le premier paint', () => {
+    // Sur un autre stage, la valeur arriverait après un flash de thème.
+    expect(themeAttrScripts({ theme: 'dark' })).toHaveLength(1);
+    expect(injectedScriptEntries({ theme: 'dark' }).map((s) => s.stage))
+      .toEqual(['page-ssr', 'head-inline']);
+  });
+
+  it.each(['auto', 'none'] as const)("theme: '%s' ne pose aucun attribut", (theme) => {
+    // `auto` : le CSS nu se comporte déjà ainsi, l'attribut ne servirait à rien.
+    // `none` : aucune feuille n'est servie, il n'y a rien à piloter.
+    expect(themeAttrScripts({ theme })).toEqual([]);
+  });
+
+  it('le défaut ne pose aucun attribut', () => {
+    expect(themeAttrScripts()).toEqual([]);
+  });
+
+  it('la valeur part sérialisée, pas interpolée nue', () => {
+    // Le contenu est inline dans le `<head>` : une valeur interpolée sans
+    // guillemets y serait lue comme un identifiant, pas comme une chaîne.
+    // `theme` est validé en amont, mais la sérialisation ne doit pas en dépendre.
+    const [script] = themeAttrScripts({ theme: 'light' });
+    expect(script?.content).toContain('"light"');
+  });
+
+  it("l’attribut suit le thème même sans routes injectées", () => {
+    // Un site en couche data qui rend `SeriesGallery` dans ses propres pages a
+    // besoin du thème demandé, pas seulement de la feuille.
+    expect(themeAttrScripts({ theme: 'dark', injectRoutes: false })).toHaveLength(1);
   });
 });
