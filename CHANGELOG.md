@@ -39,6 +39,12 @@ Le premier site à monter le plugin en **couche data seule** — schéma et help
 
 ### Corrigé
 
+- **`theme: 'light'` et `theme: 'dark'` n'avaient aucun effet** (#FE-012). `base.css` articule ses trois blocs sur `data-hf-theme`, attribut que **rien n'écrivait** ; `import.meta.env.HYPERFOCALE_THEME` était bien défini et lu nulle part. Tout site retombait donc sur le comportement `'auto'` : celui qui demandait `'light'` obtenait quand même le sombre sous `prefers-color-scheme: dark`. Découvert en traitant `theme: 'none'`.
+
+  L'attribut est désormais posé par un script inline sur le stage `head-inline`, exécuté en synchrone dans le `<head>` — donc avant le premier paint, sans transition visible. Le poser en SSR aurait été plus direct, mais n'aurait couvert que le layout de repli interne : dès qu'un site passe son propre `layout`, ou rend `SeriesGallery` dans ses pages, le plugin ne rend plus le `<html>`. Or c'est le cas que le README recommande.
+
+  `'auto'` et `'none'` n'émettent rien — le premier parce que le CSS nu se comporte déjà ainsi, le second parce qu'aucune feuille n'est servie. Sans JavaScript, on retombe sur `'auto'`, soit exactement le comportement d'avant ce correctif : la dégradation n'est pas une régression.
+
 - **La ligne de log annonçait un préfixe de routes inexistant.** Avec `injectRoutes: false`, « Initialisation hyperfocale (prefix: /series, …) » laissait croire que des routes étaient montées sous `/series`, alors qu'il n'en existait aucune. Le préfixe n'est désormais annoncé que s'il sert : `routes: /series` ou `routes: aucune`.
 
 ### Connu
