@@ -7,6 +7,18 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Corrigé
+
+- **Le preset `music` refusait une sortie non datée** ([#62](https://github.com/izo/hyperfocale-astro-plugins/issues/62)). `src/presets.ts` portait `dateRequired: true` depuis la 0.8.0, là où l'Annexe G.8 de la spec déclare la date de sortie **optionnelle** — « démos et sorties non datées restent valides ». Un site configuré `preset: 'music'` cassait donc au build sur un contenu que la spec tient pour valide, et que `hyperfocale-cms` produit. C'était le dernier écart de fond entre les presets et l'annexe. La spec fait foi : le plugin s'aligne. Relâcher une obligation n'est pas cassant — tout contenu qui passait continue de passer.
+
+### Ajouté
+
+- **Les cinq profils manquants de l'Annexe G** ([#60](https://github.com/izo/hyperfocale-astro-plugins/issues/60)) : `event` (`events`, `/evenements`, daté), `app` (`apps`, `/applications`), `book` (`books`, `/livres`), `place` (`places`, `/lieux`), `screen` (`screens`, `/ecrans`). Les onze profils de l'annexe sont désormais couverts. `collectionName` et `dateRequired` sont ceux de l'annexe ; seuls les préfixes sont localisés en français, comme les six premiers. Le bloc d'extension propre à chaque profil (`book:`, `place:`…) traverse le schéma sans validation — sa forme est décrite par l'annexe, pas contrainte par le plugin.
+
+---
+
 ## [0.13.0] — 2026-08-04
 
 ### Corrigé

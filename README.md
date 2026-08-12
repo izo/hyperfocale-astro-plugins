@@ -88,18 +88,27 @@ Le plugin ne sert pas que des galeries photo. Un `preset` pré-remplit les trois
 hyperfocale({ preset: 'portfolio' })   // → collection `projects`, routes sous /projets
 ```
 
-| Preset | Collection | Préfixe | `dateRequired` |
-|--------|-----------|---------|----------------|
-| `series` | `series` | `/series` | `true` |
-| `portfolio` | `projects` | `/projets` | `false` |
-| `music` | `albums` | `/discographie` | `true` |
-| `catalog` | `items` | `/catalogue` | `false` |
-| `press` | `articles` | `/presse` | `true` |
-| `recipe` | `recipes` | `/recettes` | `false` |
+| Preset | Collection | Préfixe | `dateRequired` | L'atome |
+|--------|-----------|---------|----------------|---------|
+| `series` | `series` | `/series` | `true` | Une série photo |
+| `portfolio` | `projects` | `/projets` | `false` | Un projet |
+| `music` | `albums` | `/discographie` | `false` | Une sortie (album, EP, single) |
+| `catalog` | `items` | `/catalogue` | `false` | Une pièce du catalogue |
+| `press` | `articles` | `/presse` | `true` | Un article |
+| `recipe` | `recipes` | `/recettes` | `false` | Une recette |
+| `event` | `events` | `/evenements` | `true` | Un événement |
+| `app` | `apps` | `/applications` | `false` | Une application |
+| `book` | `books` | `/livres` | `false` | Un livre lu |
+| `place` | `places` | `/lieux` | `false` | Un lieu |
+| `screen` | `screens` | `/ecrans` | `false` | Un écran |
+
+Les onze profils de l'Annexe G sont couverts. Seul `series`, `press` et `event` exigent une date : ailleurs le contenu est intemporel — une recette, un lieu, une démo non datée restent valides.
 
 Toute option explicite l'emporte sur le preset : `hyperfocale({ preset: 'music', prefix: '/albums' })` garde la collection `albums` mais sert `/albums`.
 
 Les préfixes sont localisés en français. La spec les donne en anglais, mais sa colonne `prefix` est une **recommandation** — §2.0.1 autorise un preset à fixer le sien.
+
+Chaque profil se dote de son propre bloc d'extension au frontmatter — `music:`, `book:`, `place:`… Le schéma les laisse passer tels quels (`z.looseObject`) : leur forme est décrite par l'Annexe G, pas validée par le plugin.
 
 > **`photo` est déprécié.** C'était le nom du profil canonique avant que l'Annexe G ne le standardise sous le nom `series`. Il continue de fonctionner à l'identique, avec un avertissement au build, et sera retiré en 1.0.
 
