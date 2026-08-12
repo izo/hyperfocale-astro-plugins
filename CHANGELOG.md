@@ -7,6 +7,20 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Déprécié
+
+- **`published: boolean`** ([#61](https://github.com/izo/hyperfocale-astro-plugins/issues/61)). `published: false` fait exactement ce que fait `draft: true`, en logique inverse : deux façons d'écrire la même chose, dont une seule est standardisée par la spec (§1.3). §0.5 relevait la redondance depuis la v2.1 en la laissant « à arbitrer » ; c'est `draft` qui reste.
+
+  Le champ continue de fonctionner à l'identique — aucun site ne casse. Un build qui rencontre une série `published: false` l'annonce **une fois**, en nommant les séries concernées : le message part du chemin caché de `getCollection`, pas des filtres, sans quoi il se répéterait à chaque page générée. `published: true` reste muet, Zod appliquant ce défaut de toute façon — un `true` écrit n'est plus distinguable d'un champ absent.
+
+  L'option `querySeries({ published })` suit le même sort. Retrait des deux en 1.0.
+
+  Migration : remplacer `published: false` par `draft: true`, supprimer les `published: true` — ils ne faisaient rien.
+
+---
+
 ## [0.13.0] — 2026-08-04
 
 ### Corrigé

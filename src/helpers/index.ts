@@ -213,11 +213,36 @@ export function getCollectionFetchCount(): number {
   return _collectionFetches;
 }
 
+/**
+ * Avertit une fois par build si le frontmatter emploie encore `published`.
+ *
+ * Seul `published: false` est observable — à `true`, le champ reproduit le
+ * défaut, et Zod ayant appliqué son `.default(true)` on ne distingue de toute
+ * façon plus un `true` écrit d'un champ absent. L'avertissement ne porte donc
+ * que sur les séries réellement masquées par lui.
+ *
+ * Appelé depuis le chemin caché : le cache garantit l'unicité du message,
+ * là où le poser dans les filtres l'aurait répété à chaque page générée.
+ */
+function warnDeprecatedPublished(entries: Series[]): void {
+  const masked = entries.filter((e) => (e.data as Record<string, unknown>).published === false);
+  if (masked.length === 0) return;
+  const sample = masked.slice(0, 3).map((e) => e.id);
+  const rest = masked.length > sample.length ? ` (+${masked.length - sample.length})` : '';
+  console.warn(
+    '[hyperfocale] Le champ `published` est déprécié : utilisez `draft: true`, ' +
+    'qui masque la série de la même façon et que la spec standardise (§1.3). ' +
+    '`published` continue de fonctionner à l\'identique et sera retiré en 1.0. ' +
+    `Séries concernées : ${sample.join(', ')}${rest}.`,
+  );
+}
+
 async function getAllSeriesCached(): Promise<Series[]> {
   if (_seriesCache !== null) return _seriesCache;
   _collectionFetches += 1;
   const result = await getCollection(COLLECTION_NAME as CollectionKey);
   _seriesCache = result;
+  warnDeprecatedPublished(result);
   if (import.meta.env.HYPERFOCALE_DEBUG_CACHE) {
     console.info(
       `[hyperfocale] getCollection("${COLLECTION_NAME}") — appel #${_collectionFetches}, ` +
@@ -257,8 +282,11 @@ export async function getSections(): Promise<Series[]> {
 
 /**
  * Retourne toutes les séries publiées, triées par date décroissante.
- * Exclut `draft: true` et `published: false` en production (spec §1.6),
- * ainsi que les pages d'index de section, en dev comme en prod (spec §1.10).
+ * Exclut `draft: true` en production (spec §1.6), ainsi que les pages d'index
+ * de section, en dev comme en prod (spec §1.10).
+ *
+ * `published: false` masque encore, à l'identique de `draft: true` : le champ
+ * est déprécié, pas retiré (retrait en 1.0). Voir `warnDeprecatedPublished()`.
  */
 export async function getSeriesList(): Promise<Series[]> {
   const all = await getAllSeriesCached();
@@ -534,7 +562,13 @@ export interface QuerySeriesOptions {
   featured?: boolean | 'first';
   /** Slugs à exclure explicitement. */
   exclude?: string[];
-  /** Filtre sur `published` (défaut `true`). */
+  /**
+   * Filtre sur `published` (défaut `true`).
+   *
+   * @deprecated Redondant avec `draft`, en logique inverse — `{ published: false }`
+   * et `{ draft: true }` désignent la même chose. Utilisez `draft`, que la spec
+   * standardise (§1.3). Retrait en 1.0.
+   */
   published?: boolean;
   /** Filtre sur `draft` (défaut `false`). */
   draft?: boolean;

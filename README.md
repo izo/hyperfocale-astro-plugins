@@ -146,7 +146,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est touj
 | `cover` | `image` | — | Couverture. Première image si absent (`getSeriesCover`) |
 | `location` | `string` | — | Lieu associé à la série |
 | `lang` | `string` | — | Code langue (ex. `fr`, `en`) |
-| `published` | `boolean` | `true` | `false` → masquée en production (visible en dev) |
+| `published` | `boolean` | `true` | **Déprécié** — `false` → masquée en production. Faites `draft: true` (voir ci-dessous) |
 | `draft` | `boolean` | `false` | `true` → masquée en production (visible en dev) |
 | `featured` | `boolean` | `false` | Mise en avant (`querySeries({ featured })`) |
 | `tags` | `string[]` | `[]` | Tags libres (`getAllTags`, filtre `querySeries`) |
@@ -160,6 +160,12 @@ Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est touj
 | `files` | `RemoteFile[]` | — | Documents joints en mode distant |
 
 ¹ Optionnel si l'intégration est configurée avec `dateRequired: false`, ou si l'entrée déclare `type: section`.
+
+> **`published` est déprécié.** `published: false` fait exactement ce que fait `draft: true`, en logique inverse — deux façons d'écrire la même chose, dont une seule est standardisée par la spec (§1.3). C'est `draft` qui reste.
+>
+> Le champ continue de fonctionner à l'identique et sera retiré en 1.0. Un build qui rencontre une série `published: false` l'annonce une fois, en nommant les séries concernées. La migration : remplacer `published: false` par `draft: true`, et supprimer les `published: true` — ils ne faisaient rien.
+>
+> `querySeries({ published })` suit le même sort : préférez `querySeries({ draft })`.
 
 **Bloc `iptc`** (tous optionnels, mode `looseObject`) : `creator`, `credit`, `copyright`, `keywords[]`, `city`, `province`, `country`, `country_code`, `camera`, `lens`, `film`, `headline`, `instructions`, `source`, `gps: { lat, lng }`.
 
@@ -505,8 +511,7 @@ const { items, pagination } = await querySeries({
   tags: ['argentique'],       // ET-logique (tous les tags requis)
   featured: 'first',          // true = seulement featured · 'first' = remontées en tête
   exclude: ['voyages/asie/tokyo-2024'],
-  published: true,            // défaut true
-  draft: false,               // défaut false
+  draft: false,               // défaut false — `published` est déprécié, cf. frontmatter
   sort: 'date',               // 'date' (défaut) | 'title' | 'random'
   limit: 12,
   offset: 0,
