@@ -1,8 +1,8 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.13.0"
-updated: 2026-08-04
+version: "0.14.0"
+updated: 2026-08-12
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -37,6 +37,21 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #62 [P2] Preset `music` — `dateRequired` contredisait l'Annexe G.8 #spec #effort-xs
+  > ✅ **Terminé** le 2026-08-12 — PR #66
+  **Zone** : `src/presets.ts`
+  **Résumé** : `music` exigeait une date depuis la 0.8.0, là où G.8 la déclare optionnelle — « démos et sorties non datées restent valides ». Dernier écart de fond avec l'annexe, alors que §0.5 annonçait le plugin aligné depuis la 0.12.0 : un des deux documents disait faux. **La spec fait foi** — le CLAUDE.md de l'umbrella la pose comme source de vérité, les autres projets l'implémentent sans la précéder. Conséquence pratique levée : une sortie non datée produite par `hyperfocale-cms` d'après G.8 cassait le build d'un site `preset: 'music'`. Relâcher une obligation n'est pas cassant.
+
+- [x] #60 [P2] Implémenter les cinq profils manquants de l'Annexe G #spec #effort-xs
+  > ✅ **Terminé** le 2026-08-12 — PR #66
+  **Zone** : `src/presets.ts`, `README.md`
+  **Résumé** : `event`, `app`, `book`, `place`, `screen` rejoignent la table — les onze profils de l'annexe sont couverts. L'issue demandait « quels profils sont réellement nécessaires ? » ; la question ne se pose plus une fois vérifié qu'un preset ne porte que trois champs et que les blocs d'extension par profil (`book:`, `place:`…) traversent `z.looseObject` **sans validation**. Chaque profil coûte une ligne, rien n'est ajouté au schéma. `collectionName` et `dateRequired` sont ceux de l'annexe, seuls les préfixes sont localisés en français comme les six premiers (§2.0.1). Deux invariants que le typecheck ne voit pas sont désormais testés : un préfixe reste un segment d'URL sûr (pas d'accent), et deux profils ne partagent ni préfixe ni collection.
+
+- [x] #61 [P2] Arbitrer `published: boolean` vs `draft: boolean` #schema #effort-s
+  > ✅ **Terminé** le 2026-08-12 — PR #67
+  **Zone** : `src/schema.ts`, `src/helpers/index.ts`, `README.md`, `docs/schema-extensibility.md`
+  **Résumé** : `published: false` fait exactement ce que fait `draft: true`, en logique inverse. §0.5 relevait la redondance depuis la v2.1 en la laissant « à arbitrer » — la spec ne tranchait pas, elle attendait qu'on tranche. C'est `draft` qui reste, seul champ qu'elle standardise (§1.3). **Déprécier plutôt que retirer** : le champ agit encore, aucun site ne casse, retrait en 1.0 — même schéma que l'alias `photo` → `series`. L'avertissement part du chemin caché de `getCollection` et non des filtres : le cache garantit alors qu'il ne sort **qu'une fois par build**, là où le poser dans `getSeriesList()` l'aurait répété à chaque page générée. Il ne se déclenche que sur `published: false`, seul emploi observable — Zod ayant appliqué son `.default(true)`, un `true` écrit n'est plus distinguable d'un champ absent. Le test compare le corpus avant et après migration : les mêmes séries doivent être masquées, et le build redevenir silencieux.
 
 - [x] #M3 [P2] `images[]` — valider les trois formes acceptées par les helpers #schema #effort-xs
   > ✅ **Terminé** le 2026-08-04

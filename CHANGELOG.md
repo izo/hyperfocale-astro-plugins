@@ -7,7 +7,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.14.0] — 2026-08-12
+
+Les onze profils de l'Annexe G sont couverts, et le dernier écart de fond entre les presets et l'annexe est refermé. Aucun changement cassant.
 
 ### Ajouté
 
