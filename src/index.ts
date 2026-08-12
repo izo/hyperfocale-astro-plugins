@@ -349,7 +349,27 @@ export const seriesCollection = defineCollection({
   };
 }
 
-export { seriesSchema, baseSeriesSchema, CONTENT_TYPES } from './schema.js';
-export type { SeriesData, SeriesDataOptionalDate, SectionData, ContentType } from './schema.js';
+// Surface publique du schéma. Les **trois** vocabulaires de `schema.ts` sont
+// exposés ici, et pas seulement `CONTENT_TYPES` : un consommateur qui écrit un
+// formulaire, un lint ou un import depuis un CMS a besoin des valeurs licites,
+// et rien ne justifie qu'il doive passer par `/helpers` — un sous-chemin qui
+// importe `astro:content` et n'est donc pas chargeable hors runtime Astro.
+export {
+  seriesSchema,
+  baseSeriesSchema,
+  CONTENT_TYPES,
+  ATTACHMENT_KINDS,
+  EMBED_PLATFORMS,
+} from './schema.js';
+export type {
+  SeriesData,
+  SeriesDataOptionalDate,
+  SectionData,
+  ContentType,
+  Attachment,
+  AttachmentKind,
+  Embed,
+  EmbedPlatform,
+} from './schema.js';
 export { PRESETS, PRESET_ALIASES, resolvePreset } from './presets.js';
 export type { PresetName, DeprecatedPresetName, PresetConfig } from './presets.js';

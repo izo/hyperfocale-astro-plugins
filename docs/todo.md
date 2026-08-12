@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.17.0"
+version: "0.17.1"
 updated: 2026-08-12
 priorities:
   P0: Critique (bloquant)
@@ -37,6 +37,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #DATA-009 [P2] Deux vocabulaires du schéma absents de l'entrée racine #packaging #effort-xs
+  > ✅ **Terminé** le 2026-08-12 — publié en 0.17.1
+  **Zone** : `src/index.ts`, `tests/unit/exports.test.ts`
+  **Résumé** : `schema.ts` porte trois vocabulaires publics — `CONTENT_TYPES`, `ATTACHMENT_KINDS`, `EMBED_PLATFORMS` — et seul le premier était réexporté par l'entrée racine. Les deux autres n'étaient atteignables que par `/helpers`, **sous-chemin qui importe `astro:content` et n'est donc pas chargeable hors runtime Astro** : un consommateur écrivant un formulaire, un lint ou un import CMS n'avait aucun moyen simple de lire les valeurs licites. Les types suivent (`Attachment`, `AttachmentKind`, `Embed`, `EmbedPlatform`). **Repéré en inspectant le paquet réellement publié en 0.17.0, pas le dépôt** — `npm view exports` et une installation propre, ce que ni le typecheck ni les tests ne regardaient. Le garde ajouté dérive la liste des vocabulaires du module plutôt que de l'énumérer : même principe que la liste de composants dérivée du filesystem, et pour la même raison — une liste tenue à la main prend du retard, c'est ce qui avait livré quatre composants non importables en v0.8.0. **254 tests verts**, validés par mutation : retirer les deux exports fait tomber les deux nouveaux tests.
 
 - [x] #DATA-008 [P1] Implémenter les contenus embarqués (§1.11) #spec #effort-l
   > ✅ **Terminé** le 2026-08-12 — PR #76, publié en 0.17.0. Suit `hyperfocale-spec` PR #20 (2.8-draft).

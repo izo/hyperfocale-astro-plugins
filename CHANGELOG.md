@@ -7,6 +7,22 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.17.1] — 2026-08-12
+
+### Corrigé
+
+- **`ATTACHMENT_KINDS` et `EMBED_PLATFORMS` n'étaient pas exportés par l'entrée racine.** `schema.ts` porte trois vocabulaires publics ; seul `CONTENT_TYPES` y était réexporté. Les deux autres n'étaient atteignables que via `@regrets/hyperfocale/helpers` — un sous-chemin qui importe `astro:content` et **n'est donc pas chargeable hors runtime Astro**. Un consommateur écrivant un formulaire, un lint ou un import depuis un CMS n'avait aucun moyen simple de connaître les valeurs licites.
+
+  Les types suivent : `Attachment`, `AttachmentKind`, `Embed` et `EmbedPlatform` sont désormais exportés à la racine, aux côtés de `SeriesData`, `SectionData` et `ContentType`.
+
+  Repéré en vérifiant le contenu réel du paquet publié en 0.17.0, pas dans le dépôt.
+
+- **Un test garde l'oubli.** Il dérive la liste des vocabulaires du module `schema.ts` — tout export en majuscules dont la valeur est un tableau — et vérifie que la racine les réexporte tous. Même principe que la liste de composants dérivée du filesystem, et pour la même raison : une liste maintenue à la main finit toujours par prendre du retard sur le code. C'est cette dérive-là qui avait déjà livré quatre composants non importables en v0.8.0.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. Ce sont des ajouts à la surface publique ; les chemins d'import existants, `/helpers` compris, continuent de fonctionner à l'identique.
+
 ## [0.17.0] — 2026-08-12
 
 Le plugin sait enfin décrire le média qu'il n'héberge pas. Implémente §1.11 de la spec, portée par ce plugin puis mergée en 2.8-draft. Aucun changement cassant.
