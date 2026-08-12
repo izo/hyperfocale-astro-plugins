@@ -9,6 +9,14 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [Non publié]
 
+### Ajouté
+
+- **Les cinq profils manquants de l'Annexe G** ([#60](https://github.com/izo/hyperfocale-astro-plugins/issues/60)) : `event` (`events`, `/evenements`, daté), `app` (`apps`, `/applications`), `book` (`books`, `/livres`), `place` (`places`, `/lieux`), `screen` (`screens`, `/ecrans`). Les onze profils de l'annexe sont désormais couverts. `collectionName` et `dateRequired` sont ceux de l'annexe ; seuls les préfixes sont localisés en français, comme les six premiers. Le bloc d'extension propre à chaque profil (`book:`, `place:`…) traverse le schéma sans validation — sa forme est décrite par l'annexe, pas contrainte par le plugin.
+
+### Corrigé
+
+- **Le preset `music` refusait une sortie non datée** ([#62](https://github.com/izo/hyperfocale-astro-plugins/issues/62)). `src/presets.ts` portait `dateRequired: true` depuis la 0.8.0, là où l'Annexe G.8 de la spec déclare la date de sortie **optionnelle** — « démos et sorties non datées restent valides ». Un site configuré `preset: 'music'` cassait donc au build sur un contenu que la spec tient pour valide, et que `hyperfocale-cms` produit. C'était le dernier écart de fond entre les presets et l'annexe. La spec fait foi : le plugin s'aligne. Relâcher une obligation n'est pas cassant — tout contenu qui passait continue de passer.
+
 ### Déprécié
 
 - **`published: boolean`** ([#61](https://github.com/izo/hyperfocale-astro-plugins/issues/61)). `published: false` fait exactement ce que fait `draft: true`, en logique inverse : deux façons d'écrire la même chose, dont une seule est standardisée par la spec (§1.3). §0.5 relevait la redondance depuis la v2.1 en la laissant « à arbitrer » ; c'est `draft` qui reste.
@@ -18,6 +26,10 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
   L'option `querySeries({ published })` suit le même sort. Retrait des deux en 1.0.
 
   Migration : remplacer `published: false` par `draft: true`, supprimer les `published: true` — ils ne faisaient rien.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. `music` relâche une obligation — tout contenu qui passait passe encore ; `published` est déprécié, pas retiré ; les cinq profils ajoutés n'affectent aucun preset existant.
 
 ---
 

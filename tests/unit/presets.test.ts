@@ -2,9 +2,15 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PRESETS, PRESET_ALIASES, resolvePreset, type PresetName } from '../../src/presets.js';
 import hyperfocale from '../../src/index.js';
 
+// Les onze profils de l'Annexe G, dans l'ordre où elle les énumère.
+const ALL_PRESETS: PresetName[] = [
+  'series', 'portfolio', 'music', 'catalog', 'press', 'recipe',
+  'event', 'app', 'book', 'place', 'screen',
+];
+
 describe('PRESETS — table de configuration', () => {
-  it('contient exactement 6 presets', () => {
-    expect(Object.keys(PRESETS)).toHaveLength(6);
+  it('couvre les 11 profils de l’Annexe G', () => {
+    expect(Object.keys(PRESETS).sort()).toEqual([...ALL_PRESETS].sort());
   });
 
   it('series : collectionName=series, prefix=/series, dateRequired=true', () => {
@@ -23,11 +29,13 @@ describe('PRESETS — table de configuration', () => {
     });
   });
 
-  it('music : collectionName=albums, prefix=/discographie, dateRequired=true', () => {
+  // G.8 déclare la date de sortie optionnelle — « démos et sorties non datées
+  // restent valides ». Le preset a porté `true` de la 0.8.0 à la 0.13.0 (#62).
+  it('music : collectionName=albums, prefix=/discographie, dateRequired=false', () => {
     expect(PRESETS.music).toEqual({
       collectionName: 'albums',
       prefix: '/discographie',
-      dateRequired: true,
+      dateRequired: false,
     });
   });
 
@@ -54,6 +62,28 @@ describe('PRESETS — table de configuration', () => {
       dateRequired: false,
     });
   });
+
+  // Les cinq profils que l'annexe définissait sans que le plugin les couvre (#60).
+  // `collectionName` et `dateRequired` sont ceux de l'annexe ; seul le prefix est
+  // localisé, comme pour les six premiers.
+  it.each([
+    ['event',  'events',  '/evenements',   true ],
+    ['app',    'apps',    '/applications', false],
+    ['book',   'books',   '/livres',       false],
+    ['place',  'places',  '/lieux',        false],
+    ['screen', 'screens', '/ecrans',       false],
+  ] as const)(
+    '%s : collectionName=%s, prefix=%s, dateRequired=%s',
+    (name, collectionName, prefix, dateRequired) => {
+      expect(PRESETS[name]).toEqual({ collectionName, prefix, dateRequired });
+    },
+  );
+
+  it('un seul profil daté parmi les cinq ajoutés — `event`', () => {
+    const dated = (['event', 'app', 'book', 'place', 'screen'] as const)
+      .filter((n) => PRESETS[n].dateRequired);
+    expect(dated).toEqual(['event']);
+  });
 });
 
 describe('resolvePreset()', () => {
@@ -72,8 +102,7 @@ describe('resolvePreset()', () => {
   });
 
   it('chaque preset retourne un objet avec les 3 clés attendues', () => {
-    const names: PresetName[] = ['series', 'portfolio', 'music', 'catalog', 'press', 'recipe'];
-    for (const name of names) {
+    for (const name of ALL_PRESETS) {
       const config = resolvePreset(name)!;
       expect(config).toHaveProperty('collectionName');
       expect(config).toHaveProperty('prefix');
@@ -82,10 +111,23 @@ describe('resolvePreset()', () => {
   });
 
   it('le prefix commence toujours par /', () => {
-    const names: PresetName[] = ['series', 'portfolio', 'music', 'catalog', 'press', 'recipe'];
-    for (const name of names) {
+    for (const name of ALL_PRESETS) {
       expect(resolvePreset(name)!.prefix).toMatch(/^\//);
     }
+  });
+
+  // Un prefix accentué survivrait au typecheck mais casserait les URLs générées.
+  it('le prefix est un segment d’URL sûr — minuscules ASCII, sans accent', () => {
+    for (const name of ALL_PRESETS) {
+      expect(resolvePreset(name)!.prefix).toMatch(/^\/[a-z0-9-]+$/);
+    }
+  });
+
+  it('deux presets ne partagent jamais le même prefix ni la même collection', () => {
+    const prefixes = ALL_PRESETS.map((n) => PRESETS[n].prefix);
+    const collections = ALL_PRESETS.map((n) => PRESETS[n].collectionName);
+    expect(new Set(prefixes).size).toBe(prefixes.length);
+    expect(new Set(collections).size).toBe(collections.length);
   });
 });
 
