@@ -17,8 +17,8 @@ Le plugin expose deux fonctions pour définir le schéma de votre collection :
 | `cover` | `image?` | — | Image de couverture (traitée par Astro) |
 | `location` | `string?` | — | Lieu de prise de vue |
 | `lang` | `string?` | — | Code ISO 639-1 de la langue |
-| `published` | `boolean` | `true` | Visibilité en production |
-| `draft` | `boolean` | `false` | Mode brouillon |
+| `published` | `boolean` | `true` | **Déprécié** — redondant avec `draft`, retrait en 1.0 |
+| `draft` | `boolean` | `false` | Mode brouillon — `true` masque en production |
 | `featured` | `boolean` | `false` | Mise en avant dans les listings |
 | `tags` | `string[]` | `[]` | Tags éditoriaux |
 | `alt_description` | `string?` | — | Description alternative (a11y) |

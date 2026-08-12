@@ -142,6 +142,11 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     description: z.string().optional(),
     location: z.string().optional(),
     lang: z.string().optional(),
+    // `published` est déprécié : `published: false` fait exactement ce que fait
+    // `draft: true`, en logique inverse. La spec §0.5 le relève depuis la v2.1
+    // comme « extension plugin, redondant avec `draft`, à arbitrer » ; l'arbitrage
+    // est fait. Le champ reste accepté et agissant — un site qui l'emploie ne
+    // casse pas — avec un avertissement au build, et sera retiré en 1.0.
     published: z.boolean().default(true),
     draft: z.boolean().default(false),
     featured: z.boolean().default(false),
@@ -213,6 +218,10 @@ export interface SeriesData {
   };
   location?: string;
   lang?: string;
+  /**
+   * @deprecated Redondant avec `draft`, en logique inverse. Utilisez `draft`,
+   * que la spec standardise (§1.3). Retrait en 1.0.
+   */
   published: boolean;
   draft: boolean;
   featured: boolean;
