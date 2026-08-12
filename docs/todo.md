@@ -69,8 +69,9 @@ prefixes:
   **Au passage** : la ligne de log annonçait « prefix: /series » avec
   `injectRoutes: false`, laissant croire à des routes inexistantes. Elle dit
   désormais `routes: aucune`.
-  **Vérifié** : 209 tests verts, dont 8 nouveaux sur l'injection. Validé par
-  mutation — neutraliser le garde fait bien échouer le test, et lui seul.
+  **Vérifié** : `npm run test:unit` — **167 tests verts** sur 11 fichiers, dont 8
+  nouveaux sur l'injection. Validé par mutation : neutraliser le garde fait
+  échouer `theme: 'none' n'injecte aucune feuille`, et lui seul.
   **Reste** : créer l'issue, publier une 0.15.0, et faire passer le site dessus
   (il tourne encore sur la 0.13.0 du npm).
 
