@@ -7,7 +7,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.17.0] — 2026-08-12
+
+Le plugin sait enfin décrire le média qu'il n'héberge pas. Implémente §1.11 de la spec, portée par ce plugin puis mergée en 2.8-draft. Aucun changement cassant.
 
 ### Ajouté
 
@@ -22,9 +24,15 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 - **Un poster n'est pas une photo de la série.** Une image de `media/` désignée par `embeds[].poster` est désormais **exclue du scan de galerie**. C'est la seule exception au principe « toute image de `media/` alimente la galerie » : sans elle, une série de trois vidéos afficherait trois vignettes parasites, et une série qui n'est *que* de la vidéo se retrouverait avec une galerie faite de ses propres posters. L'exclusion ne porte que sur le scan — `images:` et `images.json` sont des listes écrites, ce qu'elles nomment est voulu.
 
+### Connu
+
+- **Un embed peut refuser de se lancer en local.** Beaucoup d'hébergeurs restreignent leur lecteur au domaine déclaré ; Vimeo notamment sert un challenge anti-bot à tout navigateur piloté. Un embed muet en développement n'est donc pas nécessairement cassé, et **aucun test automatisé ne tranche la question** : le seul contrôle valable est un humain qui clique une vignette en production, dans un navigateur ordinaire. Le build, lui, ne teste que le rendu du HTML.
+
 ### Rétro-compatibilité
 
 Aucun changement cassant. `embeds` est un champ nouveau : aucun contenu existant ne le porte, donc aucune galerie ne change. L'exclusion des posters ne s'applique qu'aux séries portant un `embeds:`.
+
+Nouveau chemin d'import à déclarer si vous utilisez le composant : `@regrets/hyperfocale/components/SeriesEmbeds.astro`.
 
 ## [0.16.0] — 2026-08-12
 
