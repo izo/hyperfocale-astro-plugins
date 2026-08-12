@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.15.0"
+version: "0.16.0"
 updated: 2026-08-12
 priorities:
   P0: Critique (bloquant)
@@ -28,23 +28,6 @@ prefixes:
 
 ## Backlog
 
-- [ ] #FE-012 [P2] L'option `theme` n'a aucun effet #thème #effort-m
-
-  **Issue à créer.** Découvert en traitant le thème injecté à tort (`#ARCH-006`).
-  **Zone** : `src/index.ts`, `src/theme/base.css`
-  `theme: 'light'` et `theme: 'dark'` ne font **rien**. La valeur est posée dans
-  `import.meta.env.HYPERFOCALE_THEME`, que **rien ne lit** — vérifié, aucune
-  occurrence hors de sa définition. Et rien n'écrit jamais l'attribut
-  `data-hf-theme` sur lequel `base.css` articule ses trois blocs. La feuille part
-  toujours entière, donc le comportement est toujours `auto` : le site qui
-  demande `theme: 'light'` obtient quand même le sombre sous
-  `prefers-color-scheme: dark`.
-  Le README annonce pourtant « `'auto'` suit `prefers-color-scheme` », ce qui
-  laisse entendre que les deux autres ne le suivent pas.
-  **À trancher** : émettre `data-hf-theme` depuis le layout injecté, ou n'émettre
-  que le bloc CSS demandé. Le second change ce qui est servi aux consommateurs
-  existants — à traiter comme un correctif de comportement, pas un ajout.
-
 ## Todo
 
 ## In Progress
@@ -54,6 +37,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #FE-012 [P2] L'option `theme` n'avait aucun effet #thème #effort-m
+  > ✅ **Terminé** le 2026-08-12 — PR #71, publié en 0.16.0
+  **Zone** : `src/index.ts`, `README.md`, `tests/unit/consumer-options.test.ts`
+  **Résumé** : `theme: 'light'` et `theme: 'dark'` ne faisaient **rien**. `base.css` articule ses trois blocs sur `data-hf-theme`, attribut que rien n'écrivait ; `import.meta.env.HYPERFOCALE_THEME` était bien défini et lu nulle part. Tout site retombait donc sur `auto`, et celui qui demandait `'light'` obtenait quand même le sombre sous `prefers-color-scheme: dark`. **Le CSS n'a pas été touché** — il était déjà écrit pour les trois cas, il lui manquait l'attribut qui les sélectionne. Des deux pistes que la carte laissait ouvertes, c'est le script inline qui l'emporte : poser l'attribut en SSR dans `BareLayout.astro` aurait été plus direct et sans JavaScript, mais **le plugin ne rend le `<html>` que sur son layout de repli** — dès qu'un site passe son propre `layout`, ou rend `SeriesGallery` dans ses pages, le document ne lui appartient plus, or c'est le cas que le README recommande. Le stage `head-inline` s'exécute en synchrone dans le `<head>`, donc avant le premier paint : pas de flash. `auto` et `none` n'émettent rien — le premier parce que le CSS nu se comporte déjà ainsi, le second parce qu'aucune feuille n'est servie. Sans JavaScript on retombe sur `auto`, soit le comportement d'avant : la dégradation n'est pas une régression. **217 tests verts** (175 unitaires + 42 e2e). Les tests séparent les deux stages — qu'un script soit émis ne prouve rien, c'est qu'il parte sur `head-inline` qui compte. Validés par mutation : neutraliser le garde fait tomber 5 tests, et laisse verts les 3 qui vérifient l'absence d'attribut.
 
 - [x] #ARCH-006 [P2] Le thème s'injectait même quand personne ne le lit #thème #effort-s
   > ✅ **Terminé** le 2026-08-12 — publié en 0.15.0
