@@ -16,7 +16,8 @@ Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une lign
 - **Zéro config requise** — une ligne dans `astro.config.mjs` suffit
 - **CLI `init`** — crée ou met à jour `src/content.config.ts` automatiquement
 - **Routes injectées** — `/series/`, `/series/[slug]/`, pagination native
-- **8 composants prêts** — `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesLightbox`, `SeriesAttachments`, `SeriesFilter`, `SeriesMap`, `SeriesMasonry`
+- **9 composants prêts** — `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesLightbox`, `SeriesAttachments`, `SeriesEmbeds`, `SeriesFilter`, `SeriesMap`, `SeriesMasonry`
+- **Contenus embarqués** — Vimeo, YouTube, SoundCloud… chargés en façade, l'iframe n'arrive qu'au clic
 - **Lightbox native** — navigation clavier ←/→/Esc, aucune dépendance externe
 - **Thème configurable** — CSS custom properties `--hf-*` surchargeables
 - **Schéma extensible** — ajoutez vos champs via `.extend()` Zod
@@ -167,6 +168,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est touj
 | `images` | `ImageEntry[]` | — | Liste d'images curée — trois formes acceptées (voir ci-dessous) |
 | `attachments` | `AttachmentMeta[]` | — | Métadonnées des documents joints locaux |
 | `files` | `RemoteFile[]` | — | Documents joints en mode distant |
+| `embeds` | `Embed[]` | — | Médias hébergés chez un tiers et joués dans la page — Vimeo, YouTube, SoundCloud… (§1.11, voir ci-dessous) |
 
 ¹ Optionnel si l'intégration est configurée avec `dateRequired: false`, ou si l'entrée déclare `type: section`.
 
@@ -364,6 +366,7 @@ import {
   SeriesGallery,
   SeriesLightbox,
   SeriesAttachments,
+  SeriesEmbeds,
   SeriesFilter,
   SeriesMap,
   SeriesMasonry,
@@ -423,6 +426,21 @@ Liste les documents joints non-image d'une série (vidéo, audio, PDF, fichiers)
 |------|------|--------|-------------|
 | `attachments` | `Attachment[]` | — | Documents joints résolus |
 | `heading` | `string` | `« Documents »` | Titre de la section |
+
+### `<SeriesEmbeds embeds={emb} heading="Vidéos" />`
+
+Rend les contenus embarqués d'une série (§1.11) **en façade** : le poster s'affiche, l'iframe n'est insérée qu'au clic. Alimenté par `getSeriesEmbeds()`.
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `embeds` | `Embed[]` | — | Contenus embarqués résolus |
+| `heading` | `string` | `« Vidéos »` | Titre de la section |
+
+Deux raisons à la façade : onze lecteurs montés d'emblée plombent la page, et chacun dépose ses cookies avant même qu'on ait demandé à voir la vidéo. La façade est un `<a href>` vers la page de l'hébergeur — sans JavaScript elle reste un lien fonctionnel, il n'y a jamais de bouton mort.
+
+Un embed dont `platform` n'est pas reconnue, ou dont l'`id` manque, se rend en lien : c'est la dégradation prévue par la spec, et elle vaut pour tout hébergeur que le plugin ne connaît pas.
+
+⚠️ **Beaucoup d'hébergeurs restreignent leur lecteur au domaine déclaré.** Un embed qui refuse de se lancer en local n'est pas nécessairement cassé — c'est un contrôle à faire en production, pas au build.
 
 ### `<SeriesFilter series={arr} filters={['tags','date','location']} />`
 
@@ -536,6 +554,41 @@ Documents joints non-image d'une série (`Attachment[]`), triés alphabétiqueme
 const docs = await getSeriesAttachments('bretagne-2024', serie);
 // Attachment[] : { src, kind: 'video'|'audio'|'document'|'file', title, description?, size? }
 ```
+
+### `getSeriesEmbeds(slug, series?)`
+
+Contenus embarqués d'une série (`Embed[]`), **dans l'ordre du tableau** — aucun tri. Chaque entrée reçoit un `playable` calculé : `platform` reconnue **et** `id` présent.
+
+```ts
+const embeds = await getSeriesEmbeds('documentaire-2024', serie);
+// Embed[] : { url, playable, platform?, id?, title?, description?, poster?, width?, height? }
+```
+
+```yaml
+embeds:
+  - url: "https://vimeo.com/123831041"
+    platform: vimeo          # vimeo · youtube · dailymotion · soundcloud · bandcamp · spotify
+    id: "123831041"          # l'identifiant chez l'hébergeur, pas l'URL
+    title: "Le film"
+    description: "74 min"
+    poster: "./media/poster.jpg"
+    width: 1920
+    height: 1080
+```
+
+**`url` est le seul champ requis**, et c'est délibéré : elle suffit à un rendu valide. La liste des plateformes est **ouverte** — une valeur inconnue reste licite, l'embed dégrade simplement en lien.
+
+> ⚠️ **Un poster n'est pas une photo de la série.** Une image de `media/` référencée par `embeds[].poster` est **exclue du scan de galerie**. C'est la seule exception au principe « toute image de `media/` alimente la galerie » : sans elle, une série de trois vidéos afficherait trois vignettes parasites. L'exclusion ne porte que sur le scan — `images:` et `images.json` sont des listes écrites, ce qu'elles nomment est voulu.
+
+**Frontière avec `getSeriesAttachments()`** : c'est **où vit l'octet**, pas la nature du média.
+
+| | Document joint §1.9 | Contenu embarqué §1.11 |
+|---|---|---|
+| Un `.mp4` dans `media/` | ✅ | ✗ |
+| Un `.mp4` sur son propre CDN (`files:`) | ✅ | ✗ |
+| Une vidéo Vimeo | ✗ | ✅ |
+
+On sert l'octet d'un attachment et une balise native le lit ; l'embed commence là où c'est le lecteur de quelqu'un d'autre qui rend le média.
 
 ### `getSeriesCover(slug, series?)`
 

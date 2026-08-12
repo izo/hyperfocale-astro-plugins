@@ -364,3 +364,69 @@ describe('manifeste d\'images externalisé (§1.5.1)', () => {
     expect(gallery()).not.toContain('class="hf-attachments');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Contenus embarqués — spec §1.11
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `documentaire-2024` porte deux embeds et deux images dans `media/` :
+ * `01.png`, photo de la série, et `poster-vimeo.png`, vignette du premier embed.
+ *
+ * C'est le seul endroit où l'exclusion des posters s'observe réellement : le
+ * glob de Vite est statique et vide en test unitaire, donc le scan de `media/`
+ * ne s'exerce qu'ici, sur un vrai build.
+ */
+describe('contenus embarqués (§1.11)', () => {
+  const page = () => htmlOf('series/documentaire-2024/index.html');
+
+  it('rend la section des embeds', () => {
+    expect(page()).toContain('class="hf-embeds"');
+  });
+
+  it('rend une façade pour un lecteur constructible', () => {
+    // plateforme reconnue + id → data-hf-embed porte l'URL de lecture.
+    expect(page()).toContain('data-hf-embed="https://player.vimeo.com/video/123831041?autoplay=1"');
+  });
+
+  it("n'insère aucune iframe au rendu — la façade attend le clic", () => {
+    expect(page()).not.toContain('<iframe');
+  });
+
+  it('dégrade en lien une plateforme inconnue', () => {
+    const html = page();
+    expect(html).toContain('class="hf-embeds__link"');
+    expect(html).toContain('https://peertube.test/w/abcdef');
+    // Aucune façade construite pour elle : un seul data-hf-embed sur la page.
+    expect(html.match(/data-hf-embed=/g) ?? []).toHaveLength(1);
+  });
+
+  it('conserve un lien fonctionnel sans JavaScript', () => {
+    // La façade est un <a href> vers la page de l'hébergeur : sans JS elle
+    // reste cliquable, il n'y a jamais de bouton mort.
+    expect(page()).toContain('href="https://vimeo.com/123831041"');
+  });
+
+  it('porte titre et description dans la légende', () => {
+    const html = page();
+    expect(html).toContain('Le film');
+    expect(html).toContain('74 min');
+  });
+
+  it('exclut le poster de la galerie — la seule exception au scan', () => {
+    const html = page();
+    // Une seule image de galerie : 01.png. poster-vimeo.png n'y est pas.
+    const galleryImages = html.match(/<img[^>]*class="hf-gallery__img"/g) ?? [];
+    expect(galleryImages).toHaveLength(1);
+  });
+
+  it('le poster reste rendu, mais comme vignette d\'embed', () => {
+    // Mutation : retirer l'exclusion ferait passer la galerie à 2 images ;
+    // retirer le poster du rendu ferait disparaître cette classe.
+    expect(page()).toContain('class="hf-embeds__poster"');
+  });
+
+  it('réserve le ratio pour éviter un décalage à l\'insertion', () => {
+    expect(page()).toContain('aspect-ratio: 1920 / 1080');
+  });
+});

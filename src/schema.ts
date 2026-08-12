@@ -108,6 +108,44 @@ const remoteFileSchema = z.object({
 });
 
 /**
+ * Hébergeurs reconnus pour un contenu embarqué (spec §1.11).
+ *
+ * ⚠️ Liste **ouverte** : la spec la donne comme vocabulaire reconnu, pas comme
+ * énumération fermée. Une plateforme absente d'ici reste licite — elle est
+ * simplement traitée comme inconnue, et l'embed dégrade en lien. D'où le
+ * `z.string()` du schéma plutôt qu'un `z.enum()` : rejeter une plateforme
+ * inconnue ferait échouer un build sur du contenu que la spec tient pour valide.
+ */
+export const EMBED_PLATFORMS = [
+  'vimeo',
+  'youtube',
+  'dailymotion',
+  'soundcloud',
+  'bandcamp',
+  'spotify',
+] as const;
+
+/**
+ * Un contenu embarqué — média hébergé par une plateforme tierce (spec §1.11).
+ *
+ * `url` est le seul champ requis, et c'est délibéré : il suffit à un rendu
+ * valide (un lien). Construire un lecteur demande `platform` **et** `id` ; à
+ * défaut on se rabat sur le lien, sans erreur.
+ */
+const embedSchema = z.object({
+  url: z.url(),
+  platform: z.string().optional(),
+  id: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  // Résolue comme une entrée de manifeste (§1.5.1) : URL absolue, chemin absolu
+  // au site, ou chemin relatif à `index.md`.
+  poster: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+});
+
+/**
  * Schéma de base sans `cover` — utilisable sans `SchemaContext` (#DATA-004).
  *
  * Permet aux sites consommateurs d'étendre le schéma sans dépendance
@@ -161,6 +199,11 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     images: z.array(imageEntrySchema).optional(),
     attachments: z.array(attachmentMetaSchema).optional(),
     files: z.array(remoteFileSchema).optional(),
+    // Médias hébergés chez un tiers et joués dans la page (spec §1.11). À ne pas
+    // confondre avec `attachments`/`files`, qui désignent des fichiers dont on
+    // sert l'octet : la frontière est l'emplacement du fichier, pas la nature
+    // du média.
+    embeds: z.array(embedSchema).optional(),
   });
 
   if (!dateRequired) return schema;
@@ -268,6 +311,29 @@ export interface Attachment {
   title?: string;
   description?: string;
   size?: number;
+}
+
+/** Hébergeur reconnu d'un contenu embarqué — la liste reste ouverte (spec §1.11). */
+export type EmbedPlatform = (typeof EMBED_PLATFORMS)[number];
+
+/**
+ * Contenu embarqué résolu — retourné par `getSeriesEmbeds()` (spec §1.11).
+ *
+ * `poster` est résolu : `ImageMetadata` pour un fichier de `media/` traité par
+ * Astro, chaîne pour une URL distante, `undefined` si absent ou introuvable.
+ * `playable` dit si un lecteur peut être construit — c'est-à-dire si `platform`
+ * est connue **et** `id` présent. Faux, le consommateur rend un lien.
+ */
+export interface Embed {
+  url: string;
+  playable: boolean;
+  platform?: string;
+  id?: string;
+  title?: string;
+  description?: string;
+  poster?: { src: string; width: number; height: number; format: string } | string;
+  width?: number;
+  height?: number;
 }
 
 /**

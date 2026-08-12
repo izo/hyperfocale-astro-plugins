@@ -36,6 +36,33 @@ prefixes:
 
 ## Review
 
+- [ ] #DATA-008 [P1] Implémenter les contenus embarqués (§1.11) #spec #effort-l
+
+  **Issue à créer.** Suit `hyperfocale-spec` PR #20, mergée — la spec est en 2.8-draft.
+  **Zone** : `src/schema.ts`, `src/helpers/index.ts`, `src/components/SeriesEmbeds.astro`,
+  `src/routes/series-detail.astro`, `package.json`, `README.md`, tests, demo-site.
+  Le plugin n'avait aucune notion de média hébergé ailleurs — c'est ce manque qui
+  a motivé §1.11. `embeds[]` au schéma, `getSeriesEmbeds()`, `<SeriesEmbeds>` en
+  façade, rendu avant les documents joints (on regarde les uns, on télécharge les
+  autres).
+  **La règle qui porte le reste** : une image de `media/` désignée par un
+  `poster` est exclue du scan de galerie — seule exception au principe « toute
+  image de `media/` alimente la galerie ». Elle ne s'applique qu'au **scan** :
+  `images:` et `images.json` sont des listes écrites, ce qu'elles nomment est voulu.
+  **Deux choix à ne pas défaire** : la liste des plateformes est ouverte
+  (`z.string()`, pas `z.enum()`) — rejeter un hébergeur inconnu ferait échouer un
+  build sur du contenu que la spec tient pour valide ; et l'URL de lecture se
+  construit dans le composant, §1.11 ne figeant délibérément aucun gabarit d'iframe.
+  **⚠️ `package.json` → `exports`** : un composant absent de ce champ est livré
+  mais non importable. C'est le bug de la v0.8.0 ; `tests/unit/exports.test.ts` le
+  garde, et il a effectivement échoué avant l'ajout.
+  **Vérifié** : **252 tests verts** (210 unitaires + 42 e2e), dont 24 unitaires et
+  9 e2e nouveaux. L'exclusion des posters ne s'observe qu'en e2e — le glob de Vite
+  est statique, donc vide en unitaire. Validée par mutation : la retirer fait
+  passer la galerie de la série de démo à 2 images et tomber ce test, seul.
+  **Reste** : créer l'issue, publier une 0.17.0, puis faire migrer
+  `laurenceguenoun.com` de son `videos[]` local vers `embeds`.
+
 ## Done
 
 - [x] #FE-012 [P2] L'option `theme` n'avait aucun effet #thème #effort-m
