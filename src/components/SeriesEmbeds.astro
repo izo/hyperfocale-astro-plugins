@@ -1,0 +1,328 @@
+---
+import { Image } from 'astro:assets';
+import type { Embed } from '../helpers/index.js';
+
+interface Props {
+  embeds: Embed[];
+  /** Titre de la section (défaut : « Vidéos »). */
+  heading?: string;
+}
+
+const { embeds, heading = 'Vidéos' } = Astro.props;
+
+// Même traitement d'images que SeriesGallery : `disabled` sert le fichier
+// d'origine, et le srcset haute densité est omis en dev, où les endpoints
+// d'optimisation d'un hébergeur n'existent pas et répondraient 404.
+const optimizeImages = (import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION ?? 'auto') !== 'disabled';
+const densities = import.meta.env.DEV ? undefined : [1, 2];
+
+/**
+ * URL de lecture par hébergeur.
+ *
+ * §1.11 ne fige délibérément aucun gabarit d'iframe — « les hébergeurs changent
+ * les leurs plus vite qu'une spec ne se réédite ». C'est donc ici que ça vit,
+ * dans l'adaptateur, où une correction se publie en une version de patch.
+ *
+ * Une plateforme absente de cette table n'est jamais une erreur : `playable` est
+ * alors faux et l'entrée se rend en lien.
+ */
+function playerUrl(embed: Embed): string | null {
+  if (!embed.playable || embed.id === undefined) return null;
+  switch (embed.platform) {
+    case 'vimeo':
+      return `https://player.vimeo.com/video/${embed.id}?autoplay=1`;
+    case 'youtube':
+      return `https://www.youtube-nocookie.com/embed/${embed.id}?autoplay=1`;
+    case 'dailymotion':
+      return `https://www.dailymotion.com/embed/video/${embed.id}?autoplay=1`;
+    case 'soundcloud':
+      return `https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/${embed.id}&auto_play=true`;
+    case 'bandcamp':
+      return `https://bandcamp.com/EmbeddedPlayer/album=${embed.id}/`;
+    case 'spotify':
+      return `https://open.spotify.com/embed/track/${embed.id}`;
+    default:
+      return null;
+  }
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return url;
+  }
+}
+
+// Ratio réservé à l'avance, pour qu'insérer l'iframe ne décale pas la page.
+// 16/9 à défaut de dimensions — le format le plus courant, et un ratio faux
+// reste préférable à un saut de mise en page.
+function ratioOf(embed: Embed): string {
+  if (embed.width && embed.height) return `${embed.width} / ${embed.height}`;
+  return '16 / 9';
+}
+
+const items = embeds.map((embed) => ({
+  embed,
+  player: playerUrl(embed),
+  ratio: ratioOf(embed),
+  label: embed.title ?? hostOf(embed.url),
+}));
+---
+
+{items.length > 0 && (
+  <section class="hf-embeds" aria-label={heading}>
+    <h2 class="hf-embeds__heading">{heading}</h2>
+    <ul class="hf-embeds__list">
+      {items.map(({ embed, player, ratio, label }) => (
+        <li class="hf-embeds__item">
+          <figure class="hf-embeds__figure">
+            {player === null ? (
+              /*
+               * Dégradation prévue par §1.11 : sans `platform` reconnue ET `id`,
+               * aucun lecteur n'est constructible. `url` suffit à faire un lien,
+               * et c'est précisément pour ça qu'elle est le seul champ requis.
+               */
+              <a class="hf-embeds__link" href={embed.url} rel="noopener noreferrer" target="_blank">
+                {embed.poster !== undefined && (
+                  typeof embed.poster === 'string' ? (
+                    <img class="hf-embeds__poster" src={embed.poster} alt="" loading="lazy" />
+                  ) : (
+                    <Image
+                      class="hf-embeds__poster"
+                      src={embed.poster}
+                      alt=""
+                      loading="lazy"
+                      widths={optimizeImages ? undefined : []}
+                      densities={densities}
+                    />
+                  )
+                )}
+                <span class="hf-embeds__label">{label}</span>
+                <span class="hf-embeds__host">{hostOf(embed.url)}</span>
+              </a>
+            ) : (
+              /*
+               * Façade : le poster s'affiche, l'iframe n'est insérée qu'au clic.
+               * Onze lecteurs montés d'emblée plomberaient la page, et chacun
+               * dépose ses cookies avant même qu'on ait demandé à voir la vidéo.
+               *
+               * Le `<a>` n'est pas décoratif : sans JavaScript il reste un lien
+               * fonctionnel vers la page de l'hébergeur. Le script le neutralise
+               * en le remplaçant, il n'y a donc jamais de bouton mort.
+               */
+              <a
+                class="hf-embeds__facade"
+                href={embed.url}
+                rel="noopener noreferrer"
+                data-hf-embed={player}
+                data-hf-embed-title={label}
+                style={`aspect-ratio: ${ratio}`}
+              >
+                {embed.poster !== undefined && (
+                  typeof embed.poster === 'string' ? (
+                    <img class="hf-embeds__poster" src={embed.poster} alt="" loading="lazy" />
+                  ) : (
+                    <Image
+                      class="hf-embeds__poster"
+                      src={embed.poster}
+                      alt=""
+                      loading="lazy"
+                      widths={optimizeImages ? undefined : []}
+                      densities={densities}
+                    />
+                  )
+                )}
+                <span class="hf-embeds__play" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor">
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
+                </span>
+                <span class="hf-embeds__sr">Lire {label}</span>
+              </a>
+            )}
+            {(embed.title || embed.description) && (
+              <figcaption class="hf-embeds__caption">
+                {embed.title && <span class="hf-embeds__title">{embed.title}</span>}
+                {embed.description && <span class="hf-embeds__description">{embed.description}</span>}
+              </figcaption>
+            )}
+          </figure>
+        </li>
+      ))}
+    </ul>
+  </section>
+)}
+
+<script>
+  // Façade → iframe au clic. Délégation sur le document : le composant peut être
+  // rendu plusieurs fois sur une page sans multiplier les écouteurs.
+  document.addEventListener('click', (event) => {
+    const target = event.target as Element | null;
+    const facade = target?.closest<HTMLAnchorElement>('[data-hf-embed]');
+    if (!facade) return;
+
+    event.preventDefault();
+
+    const src = facade.dataset.hfEmbed;
+    if (!src) return;
+
+    const iframe = document.createElement('iframe');
+    iframe.src = src;
+    iframe.title = facade.dataset.hfEmbedTitle ?? 'Lecteur vidéo';
+    iframe.loading = 'lazy';
+    iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
+    iframe.allowFullscreen = true;
+    iframe.className = 'hf-embeds__player';
+    // Le ratio réservé par la façade est reporté sur l'iframe : sans lui, la
+    // substitution ferait sauter la page de la hauteur du poster.
+    iframe.style.aspectRatio = facade.style.aspectRatio || '16 / 9';
+
+    facade.replaceWith(iframe);
+    // Le focus suit le lecteur, sinon il retombe sur <body> et la navigation
+    // clavier repart du haut de la page.
+    iframe.focus();
+  });
+</script>
+
+<style>
+  .hf-embeds {
+    margin-top: var(--hf-embeds-gap, var(--hf-attachments-gap, 2rem));
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  .hf-embeds__heading {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--hf-color-text, #111);
+    margin: 0 0 0.75rem;
+  }
+
+  .hf-embeds__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--hf-embeds-item-gap, 2rem);
+  }
+
+  .hf-embeds__figure {
+    margin: 0;
+  }
+
+  .hf-embeds__facade {
+    position: relative;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    border-radius: var(--hf-embeds-radius, var(--hf-card-radius, 4px));
+    background: var(--hf-color-surface, #f5f5f5);
+    cursor: pointer;
+  }
+
+  .hf-embeds__poster {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hf-embeds__play {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    transition: background var(--hf-transition, 200ms ease);
+  }
+
+  .hf-embeds__play svg {
+    padding: 0.9rem 0.9rem 0.9rem 1rem;
+    border-radius: 50%;
+    background: var(--hf-color-overlay, rgba(0, 0, 0, 0.85));
+  }
+
+  .hf-embeds__facade:hover .hf-embeds__play,
+  .hf-embeds__facade:focus-visible .hf-embeds__play {
+    background: rgba(0, 0, 0, 0.15);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hf-embeds__play {
+      transition: none;
+    }
+  }
+
+  .hf-embeds__facade:focus-visible {
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  /* Le lecteur remplace la façade : mêmes dimensions, même arrondi. */
+  .hf-embeds__player {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: var(--hf-embeds-radius, var(--hf-card-radius, 4px));
+  }
+
+  .hf-embeds__link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.6rem 0.85rem;
+    text-decoration: none;
+    background: var(--hf-attachments-bg, var(--hf-color-surface, #f5f5f5));
+    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border-radius: var(--hf-embeds-radius, var(--hf-card-radius, 4px));
+    color: var(--hf-color-text, #111);
+  }
+
+  .hf-embeds__link:focus-visible {
+    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline-offset: 2px;
+  }
+
+  .hf-embeds__label {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .hf-embeds__host {
+    font-size: 0.8rem;
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  .hf-embeds__caption {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .hf-embeds__title {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--hf-color-text, #111);
+  }
+
+  .hf-embeds__description {
+    font-size: 0.85rem;
+    color: var(--hf-color-text-muted, #666);
+  }
+
+  /* Libellé réservé aux lecteurs d'écran — la façade est déjà décrite
+     visuellement par son poster et son bouton. */
+  .hf-embeds__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

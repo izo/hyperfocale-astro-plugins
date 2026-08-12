@@ -1,6 +1,7 @@
 import { getCollection } from 'astro:content';
 import type { CollectionEntry, CollectionKey } from 'astro:content';
-import type { Attachment, AttachmentKind } from '../schema.js';
+import { EMBED_PLATFORMS } from '../schema.js';
+import type { Attachment, AttachmentKind, Embed } from '../schema.js';
 
 /**
  * Nom de la collection lue par les helpers.
@@ -21,7 +22,8 @@ const COLLECTION_NAME: string =
  * le preset `portfolio` (collection `projects`), le type était une erreur.
  */
 export type Series = CollectionEntry<CollectionKey>;
-export type { Attachment, AttachmentKind } from '../schema.js';
+export type { Attachment, AttachmentKind, Embed, EmbedPlatform } from '../schema.js';
+export { EMBED_PLATFORMS } from '../schema.js';
 
 export interface PaginationResult<T> {
   items: T[];
@@ -431,14 +433,56 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
       .filter((img): img is ImageMetadata => img !== null);
   }
 
+  // Scan de `media/`, moins les vignettes d'embeds (§1.11).
+  //
+  // C'est la **seule** exception au principe « toute image de `media/` alimente
+  // la galerie ». Sans elle, une série de trois vidéos afficherait trois
+  // vignettes parasites entre ses photos — et une série qui n'est *que* de la
+  // vidéo se retrouverait avec une galerie faite de ses propres posters.
+  //
+  // L'exclusion ne porte que sur ce chemin, le scan. Les deux autres — `images:`
+  // et `images.json` — sont des listes écrites : ce qu'elles nomment est voulu,
+  // et §1.11 confie au lint le soin de signaler qu'une image y est aussi poster.
+  const posters = posterFilenames(series);
+
   return Object.entries(_imageGlob)
-    .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)
+    .filter(([path]) => {
+      const m = matchMedia(path);
+      return m !== null && m.dirSlug === dirSlug && !posters.has(m.filename);
+    })
     .sort(([pathA], [pathB]) => {
       const fileA = pathA.split('/').pop() ?? '';
       const fileB = pathB.split('/').pop() ?? '';
       return fileA.localeCompare(fileB);
     })
     .map(([, module]) => module.default);
+}
+
+/**
+ * Noms de fichiers de `media/` servant de vignette à un embed (§1.11).
+ *
+ * Ne retient que les posters en chemin relatif : une URL absolue ne désigne
+ * aucun fichier local, elle n'a donc rien à exclure du scan. Le dossier n'entre
+ * pas dans le calcul — les posters d'une série ne peuvent désigner que son
+ * propre `media/`, §1.6 interdisant la récursion.
+ *
+ * @internal Exporté pour les tests, comme `matchMedia` et pour la même raison :
+ * le glob de Vite est statique et vide hors runtime Astro, si bien que le scan
+ * lui-même ne s'observe qu'en e2e. C'est ici que se décide l'exclusion.
+ */
+export function posterFilenames(series?: Series): Set<string> {
+  const embeds = series?.data['embeds'] as Array<{ poster?: string }> | undefined;
+  if (!embeds || embeds.length === 0) return new Set();
+
+  const names = new Set<string>();
+  for (const embed of embeds) {
+    const poster = embed.poster;
+    if (typeof poster !== 'string' || poster === '') continue;
+    if (/^https?:\/\//.test(poster) || poster.startsWith('/')) continue;
+    const filename = (poster.replace(/^\.\//, '').split('/').pop() ?? '').trim();
+    if (filename !== '') names.add(filename);
+  }
+  return names;
 }
 
 // Classes de documents joints par extension (spec §1.9)
@@ -521,6 +565,85 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
         ...(meta?.description !== undefined && { description: meta.description }),
       };
     });
+}
+
+/**
+ * Retourne les contenus embarqués d'une série, dans l'ordre du tableau (spec §1.11).
+ *
+ * Un embed est un média hébergé chez un tiers et joué dans la page — à ne pas
+ * confondre avec un document joint §1.9, dont on sert l'octet. La frontière est
+ * l'emplacement du fichier, pas la nature du média : un `.mp4` de `media/` ou
+ * d'un CDN à soi reste un attachment.
+ *
+ * Chaque entrée reçoit un `playable` calculé : `platform` reconnue **et** `id`
+ * présent. Faux, le consommateur rend un lien — c'est la dégradation prévue par
+ * la spec, et elle vaut aussi pour un hébergeur que le plugin ne connaît pas.
+ *
+ * Le `poster` est résolu comme une entrée de manifeste (§1.5.1) : un chemin
+ * relatif est cherché dans `media/` et rendu en `ImageMetadata` optimisable,
+ * une URL absolue est retournée telle quelle. Introuvable, la clé est absente —
+ * jamais d'échec de build.
+ *
+ * Aucun tri : l'ordre du tableau fait foi.
+ */
+export async function getSeriesEmbeds(slug: string, series?: Series): Promise<Embed[]> {
+  const list = series?.data['embeds'] as
+    | Array<{
+        url?: string;
+        platform?: string;
+        id?: string;
+        title?: string;
+        description?: string;
+        poster?: string;
+        width?: number;
+        height?: number;
+      }>
+    | undefined;
+  if (!list || list.length === 0) return [];
+
+  const dirSlug = slug.replace(/\/index$/, '');
+
+  return list
+    .map((entry): Embed | null => {
+      // §1.11 : « une entrée sans url DOIT être ignorée ». Le schéma Zod l'exige
+      // déjà, mais les helpers sont appelables sur des données non validées —
+      // tests, contenu chargé hors Content Layer.
+      if (typeof entry.url !== 'string' || entry.url === '') return null;
+
+      const platform = entry.platform?.toLowerCase();
+      const known = platform !== undefined && (EMBED_PLATFORMS as readonly string[]).includes(platform);
+
+      const poster = resolvePoster(entry.poster, dirSlug);
+
+      return {
+        url: entry.url,
+        playable: known && typeof entry.id === 'string' && entry.id !== '',
+        ...(platform !== undefined && { platform }),
+        ...(entry.id !== undefined && { id: entry.id }),
+        ...(entry.title !== undefined && { title: entry.title }),
+        ...(entry.description !== undefined && { description: entry.description }),
+        ...(poster !== undefined && { poster }),
+        ...(entry.width !== undefined && { width: entry.width }),
+        ...(entry.height !== undefined && { height: entry.height }),
+      };
+    })
+    .filter((e): e is Embed => e !== null);
+}
+
+/**
+ * Résout un `poster` d'embed selon les trois formes d'URL de §1.5.1.
+ * Retourne `undefined` si le champ est absent, vide, ou introuvable dans `media/`.
+ */
+function resolvePoster(poster: string | undefined, dirSlug: string): Embed['poster'] {
+  if (typeof poster !== 'string' || poster === '') return undefined;
+  if (/^https?:\/\//.test(poster) || poster.startsWith('/')) return poster;
+
+  const filename = (poster.replace(/^\.\//, '').split('/').pop() ?? '').trim();
+  const found = Object.entries(_imageGlob).find(([path]) => {
+    const m = matchMedia(path);
+    return m !== null && m.dirSlug === dirSlug && m.filename === filename;
+  });
+  return found ? found[1].default : undefined;
 }
 
 /**

@@ -10,5 +10,7 @@ export type {
   SerializedSeries,
   Attachment,
   AttachmentKind,
+  Embed,
+  EmbedPlatform,
 } from '../helpers/index.js';
 export type { SeriesData, SeriesDataOptionalDate } from '../schema.js';

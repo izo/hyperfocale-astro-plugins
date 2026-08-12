@@ -7,6 +7,25 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Ajouté
+
+- **Contenus embarqués (spec §1.11)** — le champ `embeds`, pour un média hébergé par une plateforme tierce et joué dans la page : Vimeo, YouTube, Dailymotion, SoundCloud, Bandcamp, Spotify. `url` est le seul champ requis ; `platform`, `id`, `title`, `description`, `poster`, `width` et `height` sont optionnels.
+
+  Le plugin n'avait **aucune** notion de média hébergé ailleurs. `attachments[]` ne référence que des fichiers de `media/`, `files[]` n'a ni vignette ni dimensions, et `SeriesAttachments` rend un `<video>` natif — incapable de produire le lecteur d'un tiers. Un site portant de la vidéo devait donc étendre le schéma lui-même.
+
+  - `getSeriesEmbeds(slug, series?)` résout les entrées dans l'ordre du tableau, sans tri, et calcule un `playable` : `platform` reconnue **et** `id` présent.
+  - `<SeriesEmbeds>` les rend **en façade** — le poster s'affiche, l'iframe n'arrive qu'au clic. Onze lecteurs montés d'emblée plombent la page, et chacun dépose ses cookies avant qu'on ait demandé à voir la vidéo. La façade est un `<a href>` : sans JavaScript elle reste un lien fonctionnel, jamais un bouton mort.
+  - La liste des plateformes est **ouverte**. Une valeur inconnue reste licite et dégrade en lien — un `z.enum()` ferait échouer un build sur du contenu que la spec tient pour valide.
+  - La construction de l'URL de lecture vit dans le composant, pas dans le schéma : §1.11 ne fige aucun gabarit d'iframe, les hébergeurs changeant les leurs plus vite qu'une spec ne se réédite.
+
+- **Un poster n'est pas une photo de la série.** Une image de `media/` désignée par `embeds[].poster` est désormais **exclue du scan de galerie**. C'est la seule exception au principe « toute image de `media/` alimente la galerie » : sans elle, une série de trois vidéos afficherait trois vignettes parasites, et une série qui n'est *que* de la vidéo se retrouverait avec une galerie faite de ses propres posters. L'exclusion ne porte que sur le scan — `images:` et `images.json` sont des listes écrites, ce qu'elles nomment est voulu.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. `embeds` est un champ nouveau : aucun contenu existant ne le porte, donc aucune galerie ne change. L'exclusion des posters ne s'applique qu'aux séries portant un `embeds:`.
+
 ## [0.16.0] — 2026-08-12
 
 Referme le point *Connu* de la 0.15.0 : l'option `theme` agit enfin sur l'apparence.

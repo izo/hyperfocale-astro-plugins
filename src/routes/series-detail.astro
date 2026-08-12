@@ -1,9 +1,10 @@
 ---
 import { render } from 'astro:content';
 import Layout from 'virtual:hyperfocale/layout';
-import { getSeriesList, getSeriesImages, getSeriesAttachments, getSubSeries, paginateImages } from '../helpers/index.js';
+import { getSeriesList, getSeriesImages, getSeriesAttachments, getSeriesEmbeds, getSubSeries, paginateImages } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 import SeriesAttachments from '../components/SeriesAttachments.astro';
+import SeriesEmbeds from '../components/SeriesEmbeds.astro';
 import SeriesList from '../components/SeriesList.astro';
 
 export async function getStaticPaths() {
@@ -26,6 +27,7 @@ if (!slug || !series) {
 
 const allImages = await getSeriesImages(slug, series);
 const attachments = await getSeriesAttachments(slug, series);
+const embeds = await getSeriesEmbeds(slug, series);
 // Line-up : vide pour une série ordinaire, peuplé pour un conteneur (spec §1.8).
 const subSeries = await getSubSeries(slug);
 const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1);
@@ -74,6 +76,10 @@ const { Content } = await render(series);
     totalPages={totalPages}
     baseUrl={baseUrl}
   />
+
+  {/* Contenus embarqués (spec §1.11) — avant les documents joints : ce sont
+      des médias à regarder, là où les pièces jointes sont à télécharger. */}
+  <SeriesEmbeds embeds={embeds} />
 
   {/* Documents joints après la galerie (spec §1.9) */}
   <SeriesAttachments attachments={attachments} />
