@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.14.0"
+version: "0.15.0"
 updated: 2026-08-12
 priorities:
   P0: Critique (bloquant)
@@ -53,29 +53,12 @@ prefixes:
 
 ## Review
 
-- [ ] #ARCH-006 [P2] Le thème s'injectait même quand personne ne le lit #thème #effort-s
-
-  **Issue à créer.** Remonté par `laurenceguenoun.com`, premier site à monter le
-  plugin en couche data seule (voir son `docs/audits/plugin-hyperfocale-20260812.md`).
-  **Zone** : `src/index.ts`, `README.md`, `tests/unit/consumer-options.test.ts`
-  `injectScript('page-ssr', …)` était appelé **hors** du garde `injectRoutes`. Un
-  site sans routes ni composants du plugin embarquait les 30 custom properties
-  `--hf-*` sur toutes ses pages — mesuré à **1 643 octets, 29 % de son bundle
-  CSS**, sans qu'une seule règle les lise.
-  **Correctif** : valeur d'opt-out `theme: 'none'`, et **non** un garde sur
-  `injectRoutes`. Les deux options restent indépendantes à dessein — un site peut
-  couper les routes et rendre `SeriesGallery` dans ses propres pages, et celui-là
-  a besoin du thème. Les lier l'aurait dépouillé en silence.
-  **Au passage** : la ligne de log annonçait « prefix: /series » avec
-  `injectRoutes: false`, laissant croire à des routes inexistantes. Elle dit
-  désormais `routes: aucune`.
-  **Vérifié** : `npm run test:unit` — **167 tests verts** sur 11 fichiers, dont 8
-  nouveaux sur l'injection. Validé par mutation : neutraliser le garde fait
-  échouer `theme: 'none' n'injecte aucune feuille`, et lui seul.
-  **Reste** : créer l'issue, publier une 0.15.0, et faire passer le site dessus
-  (il tourne encore sur la 0.13.0 du npm).
-
 ## Done
+
+- [x] #ARCH-006 [P2] Le thème s'injectait même quand personne ne le lit #thème #effort-s
+  > ✅ **Terminé** le 2026-08-12 — publié en 0.15.0
+  **Zone** : `src/index.ts`, `README.md`, `tests/unit/consumer-options.test.ts`
+  **Résumé** : remonté par `laurenceguenoun.com`, premier site à monter le plugin en couche data seule (voir son `docs/audits/plugin-hyperfocale-20260812.md`). `injectScript('page-ssr', …)` était appelé **hors** du garde `injectRoutes` : un site sans routes ni composants du plugin embarquait les 30 custom properties `--hf-*` sur toutes ses pages — 1 643 octets, 29 % de son bundle CSS — sans qu'une seule règle les lise. Le correctif est une valeur d'opt-out `theme: 'none'`, et **non** un garde sur `injectRoutes` : les deux options restent indépendantes à dessein, un site peut couper les routes et rendre `SeriesGallery` dans ses propres pages, et celui-là a besoin du thème. Les lier l'aurait dépouillé en silence. Au passage, la ligne de log annonçait « prefix: /series » avec `injectRoutes: false`, laissant croire à des routes inexistantes ; elle dit désormais `routes: aucune`. **209 tests verts** sur la suite complète (167 unitaires + 42 e2e), dont 8 nouveaux sur l'injection réelle plutôt que sur l'acceptation de l'option — validés par mutation : neutraliser le garde fait échouer `theme: 'none' n'injecte aucune feuille`, et lui seul. **Le gain ne s'obtient pas seul** : retirer ces octets fait passer la feuille sous le seuil d'inlining d'Astro (4 ko), qui la recopie alors dans chaque page — +40 040 octets sur le site témoin jusqu'à ce que `build.inlineStylesheets: 'never'` rétablisse la feuille partagée. Documenté en mise en garde dans le CHANGELOG.
 
 - [x] #62 [P2] Preset `music` — `dateRequired` contredisait l'Annexe G.8 #spec #effort-xs
   > ✅ **Terminé** le 2026-08-12 — PR #66

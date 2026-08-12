@@ -7,7 +7,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.15.0] — 2026-08-12
+
+Le premier site à monter le plugin en **couche data seule** — schéma et helpers, pages entièrement maison — a montré que le thème partait quand même. Il peut désormais être coupé. Aucun changement cassant.
 
 ### Ajouté
 
@@ -20,6 +22,16 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 ### Corrigé
 
 - **La ligne de log annonçait un préfixe de routes inexistant.** Avec `injectRoutes: false`, « Initialisation hyperfocale (prefix: /series, …) » laissait croire que des routes étaient montées sous `/series`, alors qu'il n'en existait aucune. Le préfixe n'est désormais annoncé que s'il sert : `routes: /series` ou `routes: aucune`.
+
+### Connu
+
+- **L'option `theme` reste sans effet sur l'apparence.** `theme: 'light'` et `theme: 'dark'` ne changent rien : la valeur est posée dans `import.meta.env.HYPERFOCALE_THEME`, que rien ne lit, et aucun code n'écrit l'attribut `data-hf-theme` sur lequel `base.css` articule ses trois blocs. La feuille part toujours entière, donc le comportement est toujours celui d'`auto`. Cette version n'y touche pas — le corriger change ce qui est servi aux sites existants, ce qui relève d'un correctif de comportement à part entière. `'none'`, lui, agit bien : il ne s'agit pas de choisir un thème mais de n'en injecter aucun.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. Le défaut reste `'auto'` ; `'light'`, `'dark'` et `'auto'` injectent la feuille exactement comme avant. Un site qui ne passe pas `theme` ne voit aucune différence, hormis une ligne de log plus exacte.
+
+**Mise en garde de mesure** : sur un site où la coupure fait passer une feuille sous le seuil d'inlining d'Astro (4 ko), celui-ci se met à la recopier dans chaque page — l'économie peut se retourner en surcoût. Observé sur `laurenceguenoun.com` : **+40 040 octets** au total, jusqu'à ce que `build.inlineStylesheets: 'never'` rétablisse la feuille partagée. Vérifiez le poids produit après la bascule, pas seulement les octets retirés.
 
 ---
 
