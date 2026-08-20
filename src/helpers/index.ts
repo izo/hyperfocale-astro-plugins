@@ -48,7 +48,11 @@ export interface ImageMetadata {
 }
 
 // Cache module-level — évite N appels getCollection par build (#MVP-003)
-let _seriesCache: Series[] | null = null;
+//
+// Indexé par nom de collection Astro : un site multilingue interroge plusieurs
+// collections dans un même build (`series` pour l'anglais, `series_fr` pour le
+// français) et un cache scalaire servirait la première à toutes les suivantes.
+const _seriesCache = new Map<string, Series[]>();
 
 // Glob hoissé — évalué une seule fois par Vite au build, supporte les slugs hiérarchiques (#ARCH-003)
 //
@@ -239,15 +243,16 @@ function warnDeprecatedPublished(entries: Series[]): void {
   );
 }
 
-async function getAllSeriesCached(): Promise<Series[]> {
-  if (_seriesCache !== null) return _seriesCache;
+async function getAllSeriesCached(collectionName: string = COLLECTION_NAME): Promise<Series[]> {
+  const cached = _seriesCache.get(collectionName);
+  if (cached !== undefined) return cached;
   _collectionFetches += 1;
-  const result = await getCollection(COLLECTION_NAME as CollectionKey);
-  _seriesCache = result;
+  const result = await getCollection(collectionName as CollectionKey);
+  _seriesCache.set(collectionName, result);
   warnDeprecatedPublished(result);
   if (import.meta.env.HYPERFOCALE_DEBUG_CACHE) {
     console.info(
-      `[hyperfocale] getCollection("${COLLECTION_NAME}") — appel #${_collectionFetches}, ` +
+      `[hyperfocale] getCollection("${collectionName}") — appel #${_collectionFetches}, ` +
       `${result.length} entrées`,
     );
   }
@@ -256,7 +261,7 @@ async function getAllSeriesCached(): Promise<Series[]> {
 
 /** Réinitialise le cache — à appeler dans les teardowns de tests. */
 export function resetSeriesCache(): void {
-  _seriesCache = null;
+  _seriesCache.clear();
   _collectionFetches = 0;
 }
 
@@ -272,13 +277,36 @@ export function isSection(entry: Series): boolean {
 }
 
 /**
+ * Retourne la collection **brute**, telle que la rend Astro : aucun filtre,
+ * aucun tri. Sections, brouillons et dépubliés compris.
+ *
+ * `getSeriesList()` répond au besoin courant — il écarte les sections, les
+ * brouillons en production, et trie par date. Celui-ci sert le cas où le
+ * consommateur a **ses propres règles** et ne peut pas hériter de celles du
+ * plugin : un site qui masque des séries selon un critère que le plugin ignore,
+ * qui trie autrement, ou dont le contrat de pagination diffère.
+ *
+ * Sans lui, un tel site n'a pas d'autre choix que d'appeler `getCollection()`
+ * en direct — et de réimplémenter le cache que ce module tient déjà. C'est
+ * exactement la duplication que la convergence de `mathieu-drouet.com` cherche
+ * à supprimer : il exclut les séries privées de tous ses listings, une notion
+ * qui n'a pas vocation à remonter ici.
+ *
+ * Le résultat est le tableau **mis en cache** : ne pas le muter. Trier ou
+ * filtrer se fait sur une copie (`[...await getAllSeries()]`).
+ */
+export async function getAllSeries(collectionName?: string): Promise<Series[]> {
+  return getAllSeriesCached(collectionName);
+}
+
+/**
  * Retourne les pages d'index de section (spec §1.10), triées par slug.
  *
  * Le pendant de `getSeriesList()` : ce que celui-ci écarte, celui-ci le rend —
  * de quoi bâtir une page de rubrique (titre, body, puis les séries du dossier).
  */
-export async function getSections(): Promise<Series[]> {
-  const all = await getAllSeriesCached();
+export async function getSections(collectionName?: string): Promise<Series[]> {
+  const all = await getAllSeriesCached(collectionName);
   return all.filter(isSection).sort((a, b) => a.id.localeCompare(b.id));
 }
 
@@ -290,8 +318,8 @@ export async function getSections(): Promise<Series[]> {
  * `published: false` masque encore, à l'identique de `draft: true` : le champ
  * est déprécié, pas retiré (retrait en 1.0). Voir `warnDeprecatedPublished()`.
  */
-export async function getSeriesList(): Promise<Series[]> {
-  const all = await getAllSeriesCached();
+export async function getSeriesList(collectionName?: string): Promise<Series[]> {
+  const all = await getAllSeriesCached(collectionName);
   return all
     .filter((entry: Series) => {
       if (isSection(entry)) return false;
@@ -323,9 +351,9 @@ export async function getSeriesList(): Promise<Series[]> {
  *
  * @example getSubSeries('printemps-bourges-2008') → les séries de chaque artiste
  */
-export async function getSubSeries(containerId: string): Promise<Series[]> {
+export async function getSubSeries(containerId: string, collectionName?: string): Promise<Series[]> {
   const prefix = `${containerId}/`;
-  const all = await getAllSeriesCached();
+  const all = await getAllSeriesCached(collectionName);
 
   const subs = all.filter((entry) => {
     if (isSection(entry)) return false;
@@ -352,8 +380,8 @@ export async function getSubSeries(containerId: string): Promise<Series[]> {
  * Retourne une série par son slug (plat ou hiérarchique).
  * Lève une erreur si la série est introuvable.
  */
-export async function getSeriesBySlug(slug: string): Promise<Series> {
-  const all = await getAllSeriesCached();
+export async function getSeriesBySlug(slug: string, collectionName?: string): Promise<Series> {
+  const all = await getAllSeriesCached(collectionName);
   const entry = all.find((s) => s.id === slug);
   if (!entry) {
     throw new Error(`[hyperfocale] Série introuvable pour le slug : "${slug}"`);
@@ -676,6 +704,16 @@ export function paginateImages<T>(
 export interface QuerySeriesOptions {
   /** Filtre sur le premier segment du slug (collection parente). */
   collection?: string;
+  /**
+   * Collection **Astro** à interroger. Défaut : celle configurée par
+   * l'intégration (`collectionName`), sinon `series`.
+   *
+   * À ne pas confondre avec `collection` ci-dessus, qui filtre sur le premier
+   * segment du slug (`music`, `fashion`…) *à l'intérieur* d'une collection.
+   * Celle-ci choisit la collection elle-même — ce dont a besoin un site
+   * multilingue qui tient une collection par locale (`series`, `series_fr`).
+   */
+  collectionName?: string;
   /** Filtre ET-logique sur les tags (toutes les tags doivent être présentes). */
   tags?: string[];
   /**
@@ -729,11 +767,12 @@ export async function querySeries(options: QuerySeriesOptions = {}): Promise<Que
     sort = 'date',
     limit,
     offset = 0,
+    collectionName,
   } = options;
 
   const d = (s: Series) => s.data as Record<string, unknown>;
 
-  const filtered = (await getAllSeriesCached()).filter((entry) => {
+  const filtered = (await getAllSeriesCached(collectionName)).filter((entry) => {
     if (isSection(entry)) return false; // spec §1.10 — un rangement n'est pas un contenu
     if ((d(entry).published ?? true) !== published) return false;
     if ((d(entry).draft ?? false) !== draft) return false;
@@ -796,8 +835,8 @@ export function getParentCollection(id: string): string | null {
  * Retourne tous les tags distincts de la collection, triés par fréquence décroissante.
  * No-op si `tags` n'est pas dans le schéma du site consommateur (#DATA-005).
  */
-export async function getAllTags(): Promise<{ name: string; count: number }[]> {
-  const all = await getAllSeriesCached();
+export async function getAllTags(collectionName?: string): Promise<{ name: string; count: number }[]> {
+  const all = await getAllSeriesCached(collectionName);
   const counts = new Map<string, number>();
   for (const entry of all) {
     if (isSection(entry)) continue;
@@ -815,8 +854,8 @@ export async function getAllTags(): Promise<{ name: string; count: number }[]> {
  * Retourne toutes les collections parentes (premier segment du slug),
  * triées par nombre de séries décroissant (#DATA-005).
  */
-export async function getAllCollections(): Promise<{ slug: string; name: string; count: number }[]> {
-  const all = await getAllSeriesCached();
+export async function getAllCollections(collectionName?: string): Promise<{ slug: string; name: string; count: number }[]> {
+  const all = await getAllSeriesCached(collectionName);
   const counts = new Map<string, number>();
   for (const entry of all) {
     if (isSection(entry)) continue;
