@@ -501,6 +501,19 @@ const series = await getSeriesList();
 // Series[]
 ```
 
+### `getAllSeries(collectionName?)`
+
+La collection **brute**, telle que la rend Astro : aucun filtre, aucun tri. Sections, brouillons et dépubliés compris.
+
+Pour le consommateur qui a ses propres règles de visibilité, de tri ou de pagination et ne peut pas hériter de celles du plugin. Sans lui, il devrait appeler `getCollection()` en direct et réimplémenter le cache que ce module tient déjà.
+
+```ts
+const brut = await getAllSeries('series_fr');
+const visibles = brut.filter((s) => !s.data.private);  // règle propre au site
+```
+
+> Le tableau rendu est celui du cache — ne pas le muter. Trier ou filtrer se fait sur une copie : `[...await getAllSeries()]`.
+
 ### `getSections()` · `isSection(entry)`
 
 Les pages d'index de section (spec §1.10) — ce que `getSeriesList()` écarte.

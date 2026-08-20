@@ -58,6 +58,7 @@ vi.mock('astro:content', async (importOriginal) => ({
 }));
 
 const {
+  getAllSeries,
   getSeriesList,
   getSeriesBySlug,
   querySeries,
@@ -152,5 +153,42 @@ describe('helpers — collection Astro explicite', () => {
 
   it('une collection inconnue rend une liste vide, sans lever', async () => {
     await expect(getSeriesList('series_xx')).resolves.toEqual([]);
+  });
+});
+
+describe('getAllSeries — collection brute', () => {
+  beforeEach(() => {
+    resetSeriesCache();
+    fetches.length = 0;
+  });
+
+  it('rend la collection telle quelle, sections et brouillons compris', async () => {
+    const all = await getAllSeries('series');
+    expect(all).toHaveLength(EN.length);
+    expect(all.map((s) => s.id)).toEqual(EN.map((s) => s.id));
+  });
+
+  it('ne filtre pas ce que getSeriesList écarte', async () => {
+    const CORPUS_MIXTE = 'series_mixte';
+    CORPUS[CORPUS_MIXTE] = [
+      entry(CORPUS_MIXTE, 'rubrique', { type: 'section', title: 'Rubrique' }),
+      entry(CORPUS_MIXTE, 'brouillon', { title: 'Brouillon', date: new Date('2024-01-01'), draft: true }),
+      entry(CORPUS_MIXTE, 'publiee', { title: 'Publiée', date: new Date('2024-02-01') }),
+    ];
+
+    const brut = await getAllSeries(CORPUS_MIXTE);
+    const filtre = await getSeriesList(CORPUS_MIXTE);
+
+    expect(brut).toHaveLength(3);
+    // getSeriesList écarte la section ; le brouillon ne l'est qu'en production.
+    expect(brut.length).toBeGreaterThan(filtre.length);
+    expect(brut.some((s) => s.id === 'rubrique')).toBe(true);
+    expect(filtre.some((s) => s.id === 'rubrique')).toBe(false);
+  });
+
+  it('partage le cache avec les autres helpers — une lecture pour les deux', async () => {
+    await getAllSeries('series');
+    await getSeriesList('series');
+    expect(fetches).toEqual(['series']);
   });
 });

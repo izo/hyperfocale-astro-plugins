@@ -277,6 +277,29 @@ export function isSection(entry: Series): boolean {
 }
 
 /**
+ * Retourne la collection **brute**, telle que la rend Astro : aucun filtre,
+ * aucun tri. Sections, brouillons et dépubliés compris.
+ *
+ * `getSeriesList()` répond au besoin courant — il écarte les sections, les
+ * brouillons en production, et trie par date. Celui-ci sert le cas où le
+ * consommateur a **ses propres règles** et ne peut pas hériter de celles du
+ * plugin : un site qui masque des séries selon un critère que le plugin ignore,
+ * qui trie autrement, ou dont le contrat de pagination diffère.
+ *
+ * Sans lui, un tel site n'a pas d'autre choix que d'appeler `getCollection()`
+ * en direct — et de réimplémenter le cache que ce module tient déjà. C'est
+ * exactement la duplication que la convergence de `mathieu-drouet.com` cherche
+ * à supprimer : il exclut les séries privées de tous ses listings, une notion
+ * qui n'a pas vocation à remonter ici.
+ *
+ * Le résultat est le tableau **mis en cache** : ne pas le muter. Trier ou
+ * filtrer se fait sur une copie (`[...await getAllSeries()]`).
+ */
+export async function getAllSeries(collectionName?: string): Promise<Series[]> {
+  return getAllSeriesCached(collectionName);
+}
+
+/**
  * Retourne les pages d'index de section (spec §1.10), triées par slug.
  *
  * Le pendant de `getSeriesList()` : ce que celui-ci écarte, celui-ci le rend —

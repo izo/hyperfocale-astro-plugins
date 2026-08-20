@@ -19,6 +19,12 @@ Les helpers savent lire plusieurs collections dans un même build. Aucun changem
 
   `collectionName` ne se confond pas avec l'option `collection` de `querySeries`, qui filtre sur le premier segment du slug (`music`, `fashion`) **à l'intérieur** d'une collection. L'une choisit la collection, l'autre filtre dedans ; les deux se combinent.
 
+- **`getAllSeries(collectionName?)` — la collection brute.** Aucun filtre, aucun tri : sections, brouillons et dépubliés compris. `getSeriesList()` reste le helper du besoin courant ; celui-ci sert le consommateur qui a **ses propres règles** et ne peut pas hériter de celles du plugin.
+
+  Sans lui, un tel site doit appeler `getCollection()` en direct et réimplémenter le cache que ce module tient déjà. C'est le cas de `mathieu-drouet.com`, qui exclut les séries privées de tous ses listings — une notion qui n'a pas vocation à remonter dans le plugin, et qui l'obligeait donc à dupliquer toute la couche de lecture pour l'appliquer.
+
+  Le tableau rendu est celui du cache : le muter corromprait les lectures suivantes. Trier ou filtrer se fait sur une copie.
+
 ### Corrigé
 
 - **Le cache servait une collection pour une autre.** `_seriesCache` était scalaire : la première collection lue était rendue à toutes les requêtes suivantes du build, quelle que soit la collection demandée. Sur un site bilingue, cela rendait des titres anglais sur les pages françaises — **sans erreur ni avertissement**, ce qui est le pire mode de défaillance possible. Le cache est désormais indexé par collection : une lecture par collection et par build.
