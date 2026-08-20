@@ -475,7 +475,24 @@ import {
 } from '@regrets/hyperfocale/helpers';
 ```
 
-### `getSeriesList()`
+Tous les helpers qui lisent la collection acceptent un **nom de collection Astro** en
+dernier argument. Sans argument, ils lisent celle qu'a configurée l'intégration
+(`collectionName`), sinon `series` — le comportement historique.
+
+C'est ce qu'attend un site **multilingue** qui tient une collection par locale : sans cet
+argument, les helpers servaient la première collection interrogée à toutes les requêtes
+suivantes du même build, silencieusement.
+
+```ts
+const en = await getSeriesList();              // collection configurée
+const fr = await getSeriesList('series_fr');   // une autre collection du même build
+```
+
+Concerne `getSeriesList`, `getSeriesBySlug`, `getSections`, `getSubSeries`, `getAllTags`,
+`getAllCollections`, et `querySeries` via l'option `collectionName`. Le cache est indexé
+par collection : une lecture par collection et par build, pas une pour toutes.
+
+### `getSeriesList(collectionName?)`
 
 Toutes les séries triées par date décroissante. Écarte les pages d'index de section (`type: section`).
 
@@ -534,7 +551,8 @@ API de requête flexible — remplace `getSeriesList()` dès qu'il faut filtrer,
 
 ```ts
 const { items, pagination } = await querySeries({
-  collection: 'voyages',      // premier segment du slug
+  collectionName: 'series_fr', // collection Astro à lire (défaut : celle configurée)
+  collection: 'voyages',      // premier segment du slug — à ne pas confondre
   tags: ['argentique'],       // ET-logique (tous les tags requis)
   featured: 'first',          // true = seulement featured · 'first' = remontées en tête
   exclude: ['voyages/asie/tokyo-2024'],

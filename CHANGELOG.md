@@ -7,6 +7,28 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.18.0] — 2026-08-20
+
+Les helpers savent lire plusieurs collections dans un même build. Aucun changement cassant.
+
+### Ajouté
+
+- **Nom de collection Astro en argument.** `getSeriesList`, `getSeriesBySlug`, `getSections`, `getSubSeries`, `getAllTags` et `getAllCollections` acceptent une collection en dernier argument ; `querySeries` la reçoit via l'option `collectionName`. Sans argument, chacun lit la collection configurée par l'intégration — le comportement historique, inchangé.
+
+  Le besoin vient d'un site **multilingue** : `mathieu-drouet.com` tient une collection par locale (`series` pour l'anglais, `series_fr` pour le français) et interroge les deux dans le même build. Les helpers n'avaient aucun moyen de désigner l'une plutôt que l'autre — `COLLECTION_NAME` est une constante de module figée à l'import, et l'intégration n'expose qu'une valeur par build.
+
+  `collectionName` ne se confond pas avec l'option `collection` de `querySeries`, qui filtre sur le premier segment du slug (`music`, `fashion`) **à l'intérieur** d'une collection. L'une choisit la collection, l'autre filtre dedans ; les deux se combinent.
+
+### Corrigé
+
+- **Le cache servait une collection pour une autre.** `_seriesCache` était scalaire : la première collection lue était rendue à toutes les requêtes suivantes du build, quelle que soit la collection demandée. Sur un site bilingue, cela rendait des titres anglais sur les pages françaises — **sans erreur ni avertissement**, ce qui est le pire mode de défaillance possible. Le cache est désormais indexé par collection : une lecture par collection et par build.
+
+  Neuf tests tiennent le comportement (`tests/unit/multi-collection.test.ts`), dont un qui compte les lectures réelles par collection — un cache scalaire fait passer les tests de résultat tout en servant le mauvais corpus, donc seul le compte de lectures prouve l'indexation.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. Tous les arguments sont optionnels et retombent sur le comportement antérieur ; les 203 tests existants passent sans modification.
+
 ## [0.17.1] — 2026-08-12
 
 ### Corrigé
