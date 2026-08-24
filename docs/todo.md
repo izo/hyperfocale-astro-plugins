@@ -30,19 +30,6 @@ prefixes:
 
 ## Todo
 
-- [ ] #SEC-002 [P1] `embeds[].id` interpolé sans contrainte dans les URL de lecture #sécurité #effort-xs
-
-  **Source** : audit 2026-08-24
-  **Zone** : `src/components/SeriesEmbeds.astro:29-47`, `src/schema.ts:136`
-
-  `playerUrl()` interpole `embed.id` directement dans l'URL du lecteur, alors que le schéma déclare `id: z.string().optional()` sans contrainte de format et que `playable` ne vérifie qu'une chaîne non vide. Un id valant `123?autoplay=0&x=` ou `../../autre` détourne l'URL produite ; le cas SoundCloud est le plus fragile, l'id atterrissant dans un paramètre `url=` déjà encodé.
-
-  **Ce n'est pas un XSS** — Astro échappe les attributs et le préfixe `https://<hôte>/` tient. L'impact se limite au détournement vers une autre ressource du même hébergeur.
-
-  **Checklist** :
-  - [ ] `encodeURIComponent(embed.id)` à l'interpolation — préférable à un `regex` au schéma, qui rejetterait du contenu que la spec tient pour valide (même logique que la liste ouverte de plateformes)
-  - [ ] Test unitaire : un id portant `?`, `&` et `/` produit une URL dont le chemin reste intact
-
 - [ ] #TEST-004 [P2] Trois helpers publics sans aucun test #tests #effort-s
 
   **Source** : audit 2026-08-24
@@ -64,6 +51,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #SEC-002 [P1] `embeds[].id` pouvait détourner l'URL de lecture #sécurité #effort-xs
+  > ✅ **Terminé** le 2026-08-24 — audit `docs/reports/audit-summary-2026-08-24.md`
+  **Zone** : `src/components/SeriesEmbeds.astro`, `tests/e2e/routes.test.ts`, fixture `garde-injection`
+  **Résumé** : `playerUrl()` interpolait `embed.id` directement dans l'URL du lecteur, alors que le schéma le laisse libre (`z.string()`) et que `playable` ne vérifie qu'une chaîne non vide. Un id valant `1?autoplay=0&x=1` ouvrait une query string dans une URL dont le chemin devait s'arrêter à l'identifiant ; SoundCloud était le plus fragile, l'id y atterrissant dans un paramètre `url=` déjà encodé. **Ce n'était pas un XSS** — Astro échappe les attributs et le préfixe `https://<hébergeur>/` tenait ; l'effet se limitait au détournement vers une autre ressource du même hébergeur, ce qui explique le P1 et non le P0. **Le choix qui porte le correctif** : encoder à la construction plutôt que contraindre au schéma. Un `z.string().regex(…)` ferait échouer un build sur un identifiant qu'un hébergeur vient de changer, alors que §1.11 tient la liste des plateformes pour **ouverte** — la même raison qui a fait préférer `z.string()` à `z.enum()` pour `platform` en 0.17.0. Vérifié non cassant sur les six formats d'id réels (Vimeo, YouTube, Dailymotion, SoundCloud, Bandcamp, Spotify) : `encodeURIComponent` les laisse tous intacts. **274 tests verts**, dont 3 nouveaux. Validés par mutation : neutraliser l'encodage fait tomber les 2 tests qui portent dessus. Le 3e passe dans les deux cas **par construction** — il garde contre la régression inverse, un encodage qui casserait `playable` et ferait perdre la façade.
 
 - [x] #SEC-001 [P0] Les données de contenu pouvaient rompre un `<script>` (XSS stocké) #sécurité #effort-s
   > ✅ **Terminé** le 2026-08-24 — audit `docs/reports/audit-summary-2026-08-24.md`

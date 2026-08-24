@@ -7,6 +7,18 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Sécurité
+
+- **`embeds[].id` pouvait détourner l'URL de lecture** (#SEC-002). `playerUrl()` interpolait l'identifiant directement dans l'URL du lecteur, alors que le schéma le laisse libre (`z.string()`). Un `id` valant `1?autoplay=0&x=1` ouvrait une query string et ajoutait un paramètre à une URL dont le chemin devait s'arrêter à l'identifiant ; le cas SoundCloud était le plus fragile, l'identifiant y atterrissant dans un paramètre `url=` déjà encodé.
+
+  Ce n'était **pas** un XSS — Astro échappe les attributs, et le préfixe `https://<hébergeur>/` restait en place. L'effet se limitait au détournement vers une autre ressource du même hébergeur.
+
+  Le correctif encode l'identifiant à la construction de l'URL, pour les six hébergeurs. **La contrainte n'est pas remontée au schéma**, à dessein : y figer un gabarit ferait échouer un build sur un identifiant qu'un hébergeur vient de changer, alors que §1.11 tient justement la liste des plateformes pour ouverte. Aucun identifiant réel n'est altéré — les six hébergeurs n'emploient que des caractères qu'`encodeURIComponent` laisse intacts.
+
+---
+
 ## [0.18.1] — 2026-08-24
 
 Correctif de sécurité. Aucun changement d'API, aucun contenu rejeté — toute série qui passait passe encore.

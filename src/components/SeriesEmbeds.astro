@@ -28,19 +28,27 @@ const densities = import.meta.env.DEV ? undefined : [1, 2];
  */
 function playerUrl(embed: Embed): string | null {
   if (!embed.playable || embed.id === undefined) return null;
+  // `id` traverse le schéma sans contrainte de format (`z.string()`), et c'est
+  // voulu : figer un gabarit rejetterait au build un identifiant qu'un hébergeur
+  // vient de changer. L'encoder au moment de construire l'URL obtient la sûreté
+  // sans ce coût — un `?`, un `&` ou un `/` cesse d'être un séparateur et
+  // redevient une donnée. Aucun identifiant réel n'est altéré : les six
+  // hébergeurs n'emploient que des caractères qu'`encodeURIComponent` laisse
+  // intacts.
+  const id = encodeURIComponent(embed.id);
   switch (embed.platform) {
     case 'vimeo':
-      return `https://player.vimeo.com/video/${embed.id}?autoplay=1`;
+      return `https://player.vimeo.com/video/${id}?autoplay=1`;
     case 'youtube':
-      return `https://www.youtube-nocookie.com/embed/${embed.id}?autoplay=1`;
+      return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
     case 'dailymotion':
-      return `https://www.dailymotion.com/embed/video/${embed.id}?autoplay=1`;
+      return `https://www.dailymotion.com/embed/video/${id}?autoplay=1`;
     case 'soundcloud':
-      return `https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/${embed.id}&auto_play=true`;
+      return `https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/${id}&auto_play=true`;
     case 'bandcamp':
-      return `https://bandcamp.com/EmbeddedPlayer/album=${embed.id}/`;
+      return `https://bandcamp.com/EmbeddedPlayer/album=${id}/`;
     case 'spotify':
-      return `https://open.spotify.com/embed/track/${embed.id}`;
+      return `https://open.spotify.com/embed/track/${id}`;
     default:
       return null;
   }
