@@ -30,20 +30,6 @@ prefixes:
 
 ## Todo
 
-- [ ] #TEST-004 [P2] Trois helpers publics sans aucun test #tests #effort-s
-
-  **Source** : audit 2026-08-24
-  **Zone** : `tests/unit/helpers.test.ts`
-
-  `getSeriesCover`, `serializeSeries` et `getParentCollection` sont exportés par l'API publique et n'apparaissent **nulle part** dans `tests/` — vérifié par recherche du symbole sur tout le répertoire, zéro occurrence pour les trois. Le ratio global est pourtant bon (1,38 ligne de test par ligne de code) : c'est un trou ponctuel, pas une négligence de fond.
-
-  `serializeSeries` est le plus exposé — il façonne ce qu'un site passe à ses îlots client.
-
-  **Checklist** :
-  - [ ] `getSeriesCover` — cover déclarée, cover absente, série introuvable
-  - [ ] `serializeSeries` — forme du retour, champs optionnels absents
-  - [ ] `getParentCollection` — slug imbriqué, slug racine
-
 ## In Progress
 
 ## Blocked
@@ -51,6 +37,11 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #TEST-004 [P2] Trois helpers publics sans aucun test #tests #effort-s
+  > ✅ **Terminé** le 2026-08-24 — audit `docs/reports/audit-summary-2026-08-24.md`
+  **Zone** : `tests/unit/helpers-uncovered.test.ts` (nouveau)
+  **Résumé** : `getSeriesCover`, `serializeSeries` et `getParentCollection` étaient exportés par l'API publique et n'apparaissaient **nulle part** dans `tests/` — zéro occurrence du symbole sur tout le répertoire. Trou ponctuel et non négligence de fond : le ratio du dépôt est bon par ailleurs. 19 tests ajoutés, **293 verts** au total, et plus aucun helper public sans couverture. **Validés par mutation, cinq fois** : `indexOf`→`lastIndexOf` (2 tombent), retour du suffixe au lieu du préfixe (3), `Date` non convertie en ISO (1), `date` non retirée de `data` (1), dernière image au lieu de la première (2). Aucune mutation ne passe inaperçue. Trois tests méritent d'être signalés parce qu'ils fixent un contrat plutôt qu'ils ne vérifient un calcul : `render` doit être **omis** — c'est la raison d'être de `serializeSeries`, une île React recevrait la fonction comme `undefined` — l'ordre de `images[]` fait foi contre tout tri introduit en amont, et `getParentCollection('/x')` rend une chaîne vide, cas dégénéré documenté pour que sa modification soit délibérée. **Aucune entrée au CHANGELOG** : rien ne change pour un consommateur, et le gonfler d'ajouts internes lui ferait perdre sa valeur de signal.
 
 - [x] #SEC-002 [P1] `embeds[].id` pouvait détourner l'URL de lecture #sécurité #effort-xs
   > ✅ **Terminé** le 2026-08-24 — audit `docs/reports/audit-summary-2026-08-24.md`
