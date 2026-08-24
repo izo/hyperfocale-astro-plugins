@@ -1,6 +1,6 @@
 # hyperfocale — Plugin Astro 7
 
-Plugin d'intégration Astro pour galeries photo (séries). Publié sur le **npm public** : `@regrets/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
+Plugin d'intégration Astro pour contenu structuré en séries. La photo à l'origine ; onze profils de domaine depuis, standardisés en Annexe G de la spec — série, portfolio, musique, catalogue, presse, recettes, événements, apps, livres, lieux, écrans. Publié sur le **npm public** : `@regrets/hyperfocale`. Peer deps : `astro ^7`, `zod ^4`.
 
 > Le paquet vivait sur GitHub Packages, qui réclame une authentification même pour un paquet public : chaque site consommateur devait porter un jeton `read:packages` en local, en CI **et** au déploiement. La publication demande désormais un secret `NPM_TOKEN` ; l'installation ne demande plus rien.
 
@@ -25,7 +25,8 @@ src/
   index.ts          ← point d'entrée de l'intégration (defineIntegration, options)
   schema.ts         ← schéma Zod de la collection + module virtuel Vite
   helpers/          ← API publique TypeScript (getSeriesList, getSeriesBySlug, etc.)
-  components/       ← 8 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox, SeriesAttachments, SeriesFilter, SeriesMap, SeriesMasonry)
+  components/       ← 9 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
+                       SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry)
   routes/           ← pages Astro injectées via injectRoute()
   theme/            ← base.css avec custom properties --hf-*
 tests/
@@ -71,3 +72,5 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 | `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
 | `npx hyperfocale init` | `src/cli/init.ts` — CLI d'initialisation |
+
+Les **trois vocabulaires** du schéma — `CONTENT_TYPES`, `ATTACHMENT_KINDS`, `EMBED_PLATFORMS` — sont exportés par l'entrée racine, pas seulement par `/helpers` : ce sous-chemin importe `astro:content` et n'est donc pas chargeable hors runtime Astro. Un formulaire, un lint ou un import CMS a besoin des valeurs licites sans monter Astro. Tout nouveau vocabulaire public doit être réexporté à la racine — un test le vérifie en dérivant la liste depuis `schema.ts`.
