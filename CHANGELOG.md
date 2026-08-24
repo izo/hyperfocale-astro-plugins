@@ -7,7 +7,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.18.1] — 2026-08-24
+
+Correctif de sécurité. Aucun changement d'API, aucun contenu rejeté — toute série qui passait passe encore.
 
 ### Sécurité
 
@@ -20,6 +22,12 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
   Le correctif remplace `<` par `\u003c` avant l'injection. C'est un échappement JSON valide : `JSON.parse` restitue le `<` d'origine, la donnée est intacte, seule la séquence littérale ne peut plus apparaître. Aucun changement d'API, aucun contenu rejeté.
 
   Cinq tests e2e couvrent les deux sites, sur le HTML réellement produit — le seul niveau où le bug existait.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. L'échappement porte sur la **sérialisation**, pas sur la donnée : `JSON.parse` restitue le `<` d'origine, donc tout consommateur qui lit ces blocs — la lightbox elle-même, un moteur de recherche lisant le JSON-LD — voit exactement ce qu'il voyait. Aucune valeur de frontmatter n'est refusée.
+
+**Mise à jour recommandée pour tous les sites.** Les deux sites d'injection existent depuis 0.16.0 pour le JSON-LD, et depuis bien plus tôt pour la lightbox.
 
 ---
 
