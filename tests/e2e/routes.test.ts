@@ -490,3 +490,34 @@ describe('#SEC-001 · rupture de <script> par le contenu', () => {
     expect(parsed[0]?.alt).toContain('</script>');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #SEC-002 — `embeds[].id` ne doit pas pouvoir détourner l'URL de lecture
+//
+// Le schéma laisse `id` libre (`z.string()`), à dessein : figer un gabarit
+// rejetterait au build un identifiant qu'un hébergeur vient de changer. La
+// sûreté s'obtient donc à la construction de l'URL, par encodage.
+// Fixture : `series/garde-injection/`, embed Vimeo à l'id porteur de `?` et `&`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('#SEC-002 · encodage de l\'identifiant d\'embed', () => {
+  const page = () => htmlOf('series/garde-injection/index.html');
+
+  it('encode les séparateurs d\'URL présents dans l\'id', () => {
+    // `1?autoplay=0&marqueur-id=1` doit arriver encodé dans le chemin.
+    expect(page()).toContain('player.vimeo.com/video/1%3Fautoplay%3D0%26marqueur-id%3D1');
+  });
+
+  it('l\'id ne peut plus ouvrir de query string ni ajouter de paramètre', () => {
+    const html = page();
+    // Non encodé, l'URL aurait porté ces séquences littérales.
+    expect(html).not.toContain('video/1?autoplay=0');
+    expect(html).not.toContain('&marqueur-id=1');
+  });
+
+  it('la façade reste construite — l\'encodage ne dégrade pas en lien', () => {
+    // Mutation inverse : si l'encodage cassait `playable`, on perdrait la façade
+    // et ce test tomberait sans que le précédent le signale.
+    expect(page()).toContain('Garde encodage d\'identifiant');
+  });
+});
