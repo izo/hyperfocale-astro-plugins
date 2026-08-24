@@ -10,9 +10,16 @@ const { images } = Astro.props;
 // Données sérialisées pour le JS client. Injectées via `set:html` : dans un
 // `<script>`, Astro n'évalue pas les expressions `{}` du template — sans ça, le
 // JSON serait rendu littéralement et la lightbox n'aurait aucune image.
+//
+// `set:html` n'échappe rien, et `JSON.stringify` ne touche ni `<` ni `/` : un
+// `alt` contenant `</script>` fermerait la balise, et la suite serait du HTML
+// actif. `\u003c` est un échappement JSON valide — `JSON.parse` restitue le `<`
+// d'origine — donc la séquence ne peut plus apparaître littéralement.
+// Un `alt` n'est pas toujours écrit à la main : `images.json` (§1.5.1) est
+// produit par des outils qui lisent les métadonnées des fichiers.
 const lightboxData = JSON.stringify(
   images.map((img) => ({ src: img.src, width: img.width, height: img.height, alt: img.alt })),
-);
+).replace(/</g, '\\u003c');
 ---
 
 <div

@@ -430,3 +430,63 @@ describe('contenus embarqués (§1.11)', () => {
     expect(page()).toContain('aspect-ratio: 1920 / 1080');
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #SEC-001 — les données de contenu ne doivent pas pouvoir rompre un `<script>`
+//
+// Deux emplacements sérialisent du contenu avec `JSON.stringify` puis l'injectent
+// via `set:html`. `JSON.stringify` ne touche ni `<` ni `/` : sans échappement,
+// une valeur portant `</script>` ferme la balise et la suite devient du HTML actif.
+//
+// Ces tests portent sur le HTML **réellement produit** — c'est le seul niveau où
+// le bug existe. Un test unitaire ne vérifierait que la ligne de correctif.
+// Fixtures : `series/garde-injection/` et `pages/garde-lightbox.astro`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('#SEC-001 · rupture de <script> par le contenu', () => {
+  /** Portion de `html` comprise entre l'ouverture de `<script …attr…>` et le premier `</script>`. */
+  function scriptBody(html: string, attr: string): string {
+    const open = html.indexOf(attr);
+    expect(open, `balise <script ${attr}> absente du HTML produit`).toBeGreaterThan(-1);
+    const start = html.indexOf('>', open) + 1;
+    return html.slice(start, html.indexOf('</script>', start));
+  }
+
+  it('le JSON-LD encaisse un `</script>` dans le titre de la série', () => {
+    const html = htmlOf('series/garde-injection/index.html');
+    const body = scriptBody(html, 'application/ld+json');
+
+    // Le titre est bien passé au JSON-LD — sans quoi le test ne prouverait rien.
+    expect(body).toContain('marqueur-titre');
+    // …mais sous forme échappée : la séquence littérale ne doit pas exister.
+    expect(body).not.toContain('</script>');
+    expect(body).toContain('\\u003c');
+  });
+
+  it('la charge du titre ne devient pas du HTML actif', () => {
+    const html = htmlOf('series/garde-injection/index.html');
+    // `<em>marqueur-titre</em>` ne doit apparaître nulle part comme balise réelle.
+    expect(html).not.toContain('<em>marqueur-titre</em>');
+  });
+
+  it('la lightbox encaisse un `</script>` dans un texte alternatif', () => {
+    const html = htmlOf('garde-lightbox/index.html');
+    const body = scriptBody(html, 'id="hf-lightbox-data"');
+
+    expect(body).toContain('marqueur-lightbox');
+    expect(body).not.toContain('</script>');
+    expect(body).toContain('\\u003c');
+  });
+
+  it('la charge de l\'alt ne devient pas du HTML actif', () => {
+    const html = htmlOf('garde-lightbox/index.html');
+    expect(html).not.toContain('<em>marqueur-lightbox</em>');
+  });
+
+  it('le JSON échappé reste parsable — l\'échappement n\'abîme pas la donnée', () => {
+    const body = scriptBody(htmlOf('garde-lightbox/index.html'), 'id="hf-lightbox-data"');
+    const parsed = JSON.parse(body) as Array<{ alt?: string }>;
+    // `<` est un échappement JSON valide : `JSON.parse` restitue le `<`.
+    expect(parsed[0]?.alt).toContain('</script>');
+  });
+});

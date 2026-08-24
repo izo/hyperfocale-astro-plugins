@@ -17,6 +17,13 @@ interface Props {
 }
 
 const { title, description, lang = 'fr', schema } = Astro.props;
+
+// Même précaution que dans `SeriesLightbox` : `set:html` n'échappe rien et
+// `JSON.stringify` laisse passer `<`. Le vecteur est ici plus large — ce JSON-LD
+// porte le `title` de la série, champ obligatoire, et ce layout est celui servi
+// par défaut quand le site n'en fournit pas.
+const schemaJson =
+  schema === undefined ? undefined : JSON.stringify(schema).replace(/</g, '\\u003c');
 ---
 
 <!DOCTYPE html>
@@ -26,7 +33,7 @@ const { title, description, lang = 'fr', schema } = Astro.props;
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{title}</title>
     {description && <meta name="description" content={description} />}
-    {schema && <script is:inline type="application/ld+json" set:html={JSON.stringify(schema)} />}
+    {schemaJson && <script is:inline type="application/ld+json" set:html={schemaJson} />}
   </head>
   <body>
     <main>
