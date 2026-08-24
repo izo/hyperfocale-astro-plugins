@@ -768,6 +768,24 @@ export const collections = {
 
 > Voir [`docs/schema-extensibility.md`](docs/schema-extensibility.md) pour la documentation complète et les exemples de typage TypeScript.
 
+### Vocabulaires du schéma
+
+Les valeurs licites des champs contraints sont exportées par l'entrée racine — utiles pour construire un `<select>`, écrire un lint de contenu ou valider un import depuis un CMS :
+
+```ts
+import { CONTENT_TYPES, ATTACHMENT_KINDS, EMBED_PLATFORMS } from '@regrets/hyperfocale';
+
+CONTENT_TYPES     // ['series', 'section']
+ATTACHMENT_KINDS  // ['video', 'audio', 'document', 'file']
+EMBED_PLATFORMS   // ['vimeo', 'youtube', 'dailymotion', 'soundcloud', 'bandcamp', 'spotify']
+```
+
+Les types correspondants suivent le même chemin : `ContentType`, `AttachmentKind`, `EmbedPlatform`, ainsi que `Attachment`, `Embed`, `SeriesData` et `SectionData`.
+
+Importez-les depuis la **racine**, jamais depuis `@regrets/hyperfocale/helpers` : ce sous-chemin importe `astro:content` et n'est pas chargeable hors d'un runtime Astro — un script Node, un formulaire d'admin ou un test unitaire échouerait à l'import.
+
+> `EMBED_PLATFORMS` est une liste **ouverte**, pas une contrainte : une plateforme absente reste licite au schéma et dégrade en lien dans `<SeriesEmbeds>`. La liste sert à reconnaître ce que le plugin sait jouer en façade, pas à refuser le reste.
+
 ---
 
 ## CLI
