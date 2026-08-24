@@ -7,7 +7,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.18.2] — 2026-08-24
+
+Second correctif de sécurité issu de l'audit du jour, après la 0.18.1. Aucun changement d'API.
 
 ### Sécurité
 
@@ -16,6 +18,10 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
   Ce n'était **pas** un XSS — Astro échappe les attributs, et le préfixe `https://<hébergeur>/` restait en place. L'effet se limitait au détournement vers une autre ressource du même hébergeur.
 
   Le correctif encode l'identifiant à la construction de l'URL, pour les six hébergeurs. **La contrainte n'est pas remontée au schéma**, à dessein : y figer un gabarit ferait échouer un build sur un identifiant qu'un hébergeur vient de changer, alors que §1.11 tient justement la liste des plateformes pour ouverte. Aucun identifiant réel n'est altéré — les six hébergeurs n'emploient que des caractères qu'`encodeURIComponent` laisse intacts.
+
+### Rétro-compatibilité
+
+Aucun changement cassant. L'encodage porte sur la **construction de l'URL**, pas sur la donnée : `embeds[].id` reste accepté tel qu'il est écrit, et les six formats d'identifiant réellement employés (Vimeo, YouTube, Dailymotion, SoundCloud, Bandcamp, Spotify) traversent `encodeURIComponent` sans être modifiés. Une plateforme hors du vocabulaire reconnu continue de dégrader en lien, comme avant.
 
 ---
 
