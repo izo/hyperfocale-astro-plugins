@@ -1,8 +1,8 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.17.1"
-updated: 2026-08-12
+version: "0.18.0"
+updated: 2026-08-24
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -30,6 +30,33 @@ prefixes:
 
 ## Todo
 
+- [ ] #SEC-002 [P1] `embeds[].id` interpolé sans contrainte dans les URL de lecture #sécurité #effort-xs
+
+  **Source** : audit 2026-08-24
+  **Zone** : `src/components/SeriesEmbeds.astro:29-47`, `src/schema.ts:136`
+
+  `playerUrl()` interpole `embed.id` directement dans l'URL du lecteur, alors que le schéma déclare `id: z.string().optional()` sans contrainte de format et que `playable` ne vérifie qu'une chaîne non vide. Un id valant `123?autoplay=0&x=` ou `../../autre` détourne l'URL produite ; le cas SoundCloud est le plus fragile, l'id atterrissant dans un paramètre `url=` déjà encodé.
+
+  **Ce n'est pas un XSS** — Astro échappe les attributs et le préfixe `https://<hôte>/` tient. L'impact se limite au détournement vers une autre ressource du même hébergeur.
+
+  **Checklist** :
+  - [ ] `encodeURIComponent(embed.id)` à l'interpolation — préférable à un `regex` au schéma, qui rejetterait du contenu que la spec tient pour valide (même logique que la liste ouverte de plateformes)
+  - [ ] Test unitaire : un id portant `?`, `&` et `/` produit une URL dont le chemin reste intact
+
+- [ ] #TEST-004 [P2] Trois helpers publics sans aucun test #tests #effort-s
+
+  **Source** : audit 2026-08-24
+  **Zone** : `tests/unit/helpers.test.ts`
+
+  `getSeriesCover`, `serializeSeries` et `getParentCollection` sont exportés par l'API publique et n'apparaissent **nulle part** dans `tests/` — vérifié par recherche du symbole sur tout le répertoire, zéro occurrence pour les trois. Le ratio global est pourtant bon (1,38 ligne de test par ligne de code) : c'est un trou ponctuel, pas une négligence de fond.
+
+  `serializeSeries` est le plus exposé — il façonne ce qu'un site passe à ses îlots client.
+
+  **Checklist** :
+  - [ ] `getSeriesCover` — cover déclarée, cover absente, série introuvable
+  - [ ] `serializeSeries` — forme du retour, champs optionnels absents
+  - [ ] `getParentCollection` — slug imbriqué, slug racine
+
 ## In Progress
 
 ## Blocked
@@ -37,6 +64,12 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #SEC-001 [P0] Les données de contenu pouvaient rompre un `<script>` (XSS stocké) #sécurité #effort-s
+  > ✅ **Terminé** le 2026-08-24 — audit `docs/reports/audit-summary-2026-08-24.md`
+  **Zone** : `src/layouts/BareLayout.astro`, `src/components/SeriesLightbox.astro`, `tests/e2e/routes.test.ts`, fixtures demo-site
+  **Résumé** : deux emplacements sérialisaient du contenu avec `JSON.stringify` puis l'injectaient via `set:html` dans un `<script>`. `JSON.stringify` **ne touche ni `<` ni `/`** : une valeur portant `</script>` fermait la balise, et la suite devenait du HTML actif. Le vecteur large était le JSON-LD de `BareLayout` — il sérialise `title`, champ **obligatoire** de toute série, et ce layout est celui servi par défaut quand le site n'en fournit pas ; la lightbox exposait `images[].alt`. **Trouvé et confirmé par `astro build` réel**, jamais déduit : le marqueur de test sort de la balise dans le HTML produit. Le modèle de menace SSG (« l'auteur écrit son propre contenu ») ne suffisait pas à classer ça bénin — `images.json` (§1.5.1) est produit par `hyperfocale-exporter` depuis les métadonnées des fichiers, et `hyperfocale-cms` écrit le frontmatter : un `alt` peut arriver d'un champ IPTC sans relecture humaine. **Correctif** : `.replace(/</g, '\\u003c')` sur les deux sites — `\u003c` est un échappement JSON valide, donc `JSON.parse` restitue le `<` et la donnée est intacte, seule la séquence littérale disparaît. **Le `.replace` est dupliqué à dessein** : le factoriser demanderait un module `.ts` de plus, donc une entry tsup de plus, or c'est exactement le mode de panne qui a déjà livré quatre composants non importables en v0.8.0 et deux vocabulaires manquants en 0.17.1. Une ligne dupliquée coûte moins qu'une surface de packaging. **271 tests verts** (215 unitaires + 56 e2e), dont 5 nouveaux. Les tests portent sur le HTML produit — c'est le seul niveau où le bug existe, un test unitaire ne vérifierait que la ligne de correctif. Validés par mutation : neutraliser les deux `.replace` fait tomber les 5, et eux seuls.
+  **Reste** : `#SEC-002` (encodage de `embeds[].id`) reste ouvert, sans lien de cause.
 
 - [x] #DATA-009 [P2] Deux vocabulaires du schéma absents de l'entrée racine #packaging #effort-xs
   > ✅ **Terminé** le 2026-08-12 — publié en 0.17.1

@@ -1,0 +1,22 @@
+---
+// Fixture de non-régression #SEC-001 — ne pas supprimer.
+//
+// Les routes injectées ne rendent que `SeriesGallery` ; la lightbox n'a donc
+// aucune page dans le demo-site, et le second site d'injection resterait hors
+// de portée des tests e2e sans celle-ci.
+import SeriesLightbox from '@regrets/hyperfocale/components/SeriesLightbox.astro';
+
+const images = [
+  {
+    src: '/garde.png',
+    width: 10,
+    height: 10,
+    alt: 'Garde injection </script><em>marqueur-lightbox</em>',
+  },
+];
+---
+
+<html lang="fr">
+  <head><meta charset="utf-8" /><title>Garde lightbox</title></head>
+  <body><SeriesLightbox images={images} /></body>
+</html>

@@ -7,6 +7,22 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Sécurité
+
+- **Les données de contenu pouvaient rompre un `<script>`** (#SEC-001). Deux emplacements sérialisaient du contenu avec `JSON.stringify` puis l'injectaient via `set:html` dans un `<script>` : le JSON-LD du layout de repli (`BareLayout`) et les données de la lightbox. `JSON.stringify` **ne touche ni `<` ni `/`** — une valeur portant `</script>` fermait la balise, et tout ce qui suivait devenait du HTML actif.
+
+  Le vecteur large est le JSON-LD : il sérialise `title`, champ **obligatoire** de toute série, et `BareLayout` est le layout servi par défaut quand le site n'en fournit pas. La lightbox exposait `images[].alt`.
+
+  Le modèle de menace d'un générateur statique — l'auteur écrit son propre contenu — ne suffit pas à classer cela bénin. `images.json` (§1.5.1) est produit par des outils : `hyperfocale-exporter` lit les métadonnées des fichiers, `hyperfocale-cms` écrit le frontmatter. Un texte alternatif peut donc arriver d'un champ IPTC sans jamais passer sous les yeux d'un humain.
+
+  Le correctif remplace `<` par `\u003c` avant l'injection. C'est un échappement JSON valide : `JSON.parse` restitue le `<` d'origine, la donnée est intacte, seule la séquence littérale ne peut plus apparaître. Aucun changement d'API, aucun contenu rejeté.
+
+  Cinq tests e2e couvrent les deux sites, sur le HTML réellement produit — le seul niveau où le bug existait.
+
+---
+
 ## [0.18.0] — 2026-08-20
 
 Les helpers savent lire plusieurs collections dans un même build. Aucun changement cassant.
