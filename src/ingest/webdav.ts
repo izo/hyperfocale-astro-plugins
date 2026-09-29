@@ -11,6 +11,7 @@ import { classifyPath, compareCanonical, isExcluded, normalizePath } from './pat
 import type { ExclusionRule } from './paths.js';
 import type {
   ContentProvider,
+  ListingProblem,
   ProviderCallOptions,
   ProviderCapabilities,
   ProviderListing,
@@ -117,12 +118,24 @@ const PROPFIND_BODY =
   '<d:resourcetype/><d:getcontentlength/><d:getetag/><d:getlastmodified/>' +
   '</d:prop></d:propfind>';
 
+/** URL sans identifiants (`user:pass@`) : un message d'erreur finit dans des journaux. */
+function redact(url: string): string {
+  try {
+    const parsed = new URL(url);
+    parsed.username = '';
+    parsed.password = '';
+    return parsed.href;
+  } catch {
+    return url.replace(/\/\/[^/@]*@/, '//');
+  }
+}
+
 /** Erreur HTTP d'un serveur WebDAV. */
 export class WebDAVError extends Error {
   readonly status: number;
 
   constructor(method: string, url: string, status: number) {
-    super(`[hyperfocale] WebDAV ${method} ${url} : ${status}`);
+    super(`[hyperfocale] WebDAV ${method} ${redact(url)} : ${status}`);
     this.name = 'WebDAVError';
     this.status = status;
   }
@@ -166,9 +179,12 @@ function decodePath(pathname: string): string {
  * `Depth: infinity` est désactivé sur la plupart des serveurs.
  *
  * Pas d'incrémental ni d'identité stable : la réconciliation passe par des
- * listings complets. Empreinte `x-etag` seulement. Une collection illisible
- * n'interrompt pas le parcours et rend le listing `complete: false` ; la
- * racine illisible lève.
+ * listings complets. Empreinte `x-etag` seulement. Une collection illisible,
+ * ou un fichier sans `getcontentlength` — dont la taille serait inventée —,
+ * n'interrompt pas le parcours mais rend le listing `complete: false`, le motif
+ * dans `problems` ; la racine illisible lève. Des identifiants passés dans
+ * l'URL deviennent une authentification basic et ne paraissent dans aucun
+ * message d'erreur.
  */
 export class WebDAVProvider implements ContentProvider {
   readonly type = 'webdav';
@@ -195,11 +211,16 @@ export class WebDAVProvider implements ContentProvider {
 
   constructor(options: WebDAVProviderOptions) {
     this.base = new URL(options.url.endsWith('/') ? options.url : `${options.url}/`);
+    // Des identifiants dans l'URL (`https://user:pass@…`) passent en
+    // authentification basic : `fetch` refuse une telle URL, et elle fuirait
+    // dans les messages d'erreur.
+    const username = options.username ?? (this.base.username !== '' ? decodeURIComponent(this.base.username) : undefined);
+    const password = options.password ?? decodeURIComponent(this.base.password);
+    this.base.username = '';
+    this.base.password = '';
     this.basePath = decodePath(this.base.pathname);
     this.headers =
-      options.username !== undefined
-        ? { Authorization: `Basic ${base64Utf8(`${options.username}:${options.password ?? ''}`)}` }
-        : {};
+      username !== undefined ? { Authorization: `Basic ${base64Utf8(`${username}:${password}`)}` } : {};
     this.fetchFn = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.ignore = options.ignore ?? [];
     this.concurrency = options.concurrency ?? 4;
@@ -238,12 +259,12 @@ export class WebDAVProvider implements ContentProvider {
     return decoded.slice(this.basePath.length).replace(/\/+$/, '').normalize('NFC');
   }
 
-  private toEntry(path: string, resource: DavResource): SnapshotEntry {
+  private toEntry(path: string, resource: DavResource, size: number): SnapshotEntry {
     const modified = resource.lastModified !== undefined ? Date.parse(resource.lastModified) : NaN;
     return {
       path,
       kind: classifyPath(path),
-      size: resource.size ?? 0,
+      size,
       // Empreinte `x-etag` (§4.4) : l'ETag tel que le serveur le rend, guillemets
       // et marque faible compris — opaque, comparable seulement à lui-même.
       ...(resource.etag !== undefined ? { hashes: { 'x-etag': resource.etag } } : {}),
@@ -252,7 +273,7 @@ export class WebDAVProvider implements ContentProvider {
   }
 
   async list(opts: ProviderCallOptions = {}): Promise<ProviderListing> {
-    let complete = true;
+    const problems: ListingProblem[] = [];
     const entries: SnapshotEntry[] = [];
     this.knownCollections.clear();
 
@@ -266,7 +287,7 @@ export class WebDAVProvider implements ContentProvider {
           resources = await this.propfind(this.urlFor(dir, true), '1', opts.signal);
         } catch (err) {
           if (dir === '') throw err;
-          complete = false;
+          problems.push({ path: dir, reason: `collection illisible (${(err as Error).message})` });
           return;
         }
         this.knownCollections.add(dir);
@@ -275,14 +296,18 @@ export class WebDAVProvider implements ContentProvider {
           if (path === null || path === '' || path === dir) continue;
           if (isExcluded(resource.collection ? `${path}/` : path, this.ignore)) continue;
           if (resource.collection) next.push(path);
-          else entries.push(this.toEntry(path, resource));
+          // Sans taille, pas d'entrée fidèle : écartée, et le listing est incomplet.
+          else if (resource.size === undefined || !Number.isInteger(resource.size) || resource.size < 0) {
+            problems.push({ path, reason: '`getcontentlength` absent ou invalide' });
+          } else entries.push(this.toEntry(path, resource, resource.size));
         }
       });
       level = next;
     }
 
     entries.sort((a, b) => compareCanonical(a.path, b.path));
-    return { entries, complete };
+    problems.sort((a, b) => compareCanonical(a.path, b.path));
+    return { entries, complete: problems.length === 0, ...(problems.length > 0 ? { problems } : {}) };
   }
 
   async read(path: string, opts: ProviderCallOptions = {}): Promise<Uint8Array> {
@@ -329,6 +354,6 @@ export class WebDAVProvider implements ContentProvider {
 
     const [resource] = await this.propfind(url, '0', opts.signal);
     if (resource === undefined) throw new WebDAVError('PROPFIND', url, 207);
-    return this.toEntry(target, { ...resource, size: resource.size ?? bytes.length });
+    return this.toEntry(target, resource, resource.size ?? bytes.length);
   }
 }

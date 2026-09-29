@@ -119,6 +119,37 @@ describe('WebDAVProvider', () => {
     await expect(new WebDAVProvider({ url: BASE, fetch: fakeDav(files, { failing: [''] }).fetch }).list()).rejects.toBeInstanceOf(WebDAVError);
   });
 
+  it('un fichier sans getcontentlength est écarté : listing incomplet, motif nommé', async () => {
+    const server = fakeDav({ 'a/index.md': { content: 'x', etag: '"1"' }, 'a/sans-taille.jpg': { content: 'y', etag: '"2"' } });
+    const fetchWithoutLength: typeof fetch = async (input, init) => {
+      const response = await server.fetch(input, init);
+      if (init?.method !== 'PROPFIND') return response;
+      const xml = (await response.text()).replace(/(sans-taille\.jpg<\/d:href>.*?)<d:getcontentlength>\d+<\/d:getcontentlength>/s, '$1');
+      return new Response(xml, { status: 207 });
+    };
+    const listing = await new WebDAVProvider({ url: BASE, fetch: fetchWithoutLength }).list();
+    expect(listing.complete).toBe(false);
+    expect(listing.entries.map((e) => e.path)).toEqual(['a/index.md']);
+    expect(listing.problems).toEqual([{ path: 'a/sans-taille.jpg', reason: '`getcontentlength` absent ou invalide' }]);
+  });
+
+  it('identifiants dans l\'URL : authentification basic, jamais dans une erreur', async () => {
+    const withCredentials = BASE.replace('https://', 'https://mathieu:s%C3%A9cret@');
+    const server = fakeDav({ 'a/index.md': { content: 'x', etag: '"1"' } }, { failing: [''] });
+    const provider = new WebDAVProvider({ url: withCredentials, fetch: server.fetch });
+    const error = await provider.list().catch((e: WebDAVError) => e);
+    expect(error).toBeInstanceOf(WebDAVError);
+    // (« mathieu » figure aussi dans le chemin de la collection : on vise les identifiants.)
+    expect(error.message).not.toContain('@');
+    expect(error.message).not.toContain('cret');
+    expect(server.requests[0]?.url).not.toContain('@');
+    expect(server.requests[0]?.headers.Authorization).toBe(`Basic ${Buffer.from('mathieu:sécret').toString('base64')}`);
+    // Et une URL construite ailleurs est expurgée à la construction de l'erreur.
+    expect(new WebDAVError('GET', 'https://user:hunter2@dav.example.com/x', 404).message).toBe(
+      '[hyperfocale] WebDAV GET https://dav.example.com/x : 404',
+    );
+  });
+
   it('read via GET, chemin encodé ; un chemin invalide est refusé', async () => {
     const server = fakeDav(tree());
     const provider = new WebDAVProvider({ url: BASE.replace(/\/$/, ''), fetch: server.fetch });
