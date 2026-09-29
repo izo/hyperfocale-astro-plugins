@@ -19,7 +19,9 @@ Le principe reste Astro-native : un provider alimente un dossier, le Content Lay
 
   Deux garde-fous tiennent l'invariant « incomplet ≠ suppression » : `createSnapshot` exige `complete` **sans valeur par défaut**, et `applyDelta` lève `CursorResetError` sur un curseur expiré au lieu d'y lire « tout a été supprimé ».
 
-  `validateSnapshot` produit les diagnostics de la spec (§4.10), triplet `code` + `severity` + `path`, un seul par couple. Il va un pas plus loin : les champs sont confrontés à `baseSeriesSchema`, et une violation sans code propre au contrat (`tags: solo`) remonte en `x-schema-invalid` — un frontmatter que le build refuserait ne passe pas en silence.
+  `validateSnapshot` produit les diagnostics de la spec (§4.10), triplet `code` + `severity` + `path`, un seul par couple. Un snapshot s'y vérifie au lieu d'être cru sur parole : rejet structurel (`snapshot-invalid`, `entry-invalid`), `id` recalculé, `kind` confronté au chemin, octets lus confrontés à l'empreinte (`entry-hash-mismatch`), entrées `placeholder` et `conflict` jamais lues. Sur demande (`astroSchema: true`, `--astro-schema`), il va un pas plus loin que le contrat : les champs sont confrontés à `baseSeriesSchema`, et une violation sans code propre (`tags: solo`) remonte en `x-schema-invalid`. Désactivé par défaut, pour que la sortie reste exactement celle de la spec — les fixtures contiennent des frontmatters que le build refuserait et que le contrat tient pour de simples avertissements.
+
+  `guardChangeSet(changeSet, base, target, { read, policy })` lit les fichiers index des deux côtés pour suivre la confidentialité des séries (`private: true`), y compris à travers un déplacement.
 
 - **`@regrets/hyperfocale/ingest/fs`** (Node) — `FilesystemProvider` (parcours récursif, hachage `sha256` + `dropbox` en flux, erreur de lecture → listing incomplet), `hashFile`, `hashBytes`, et `materializeSnapshot`, qui applique un changeset à un dossier : écritures atomiques, contenu vérifié contre l'empreinte du snapshot, rien de supprimé hors du changeset.
 
@@ -29,7 +31,7 @@ Le principe reste Astro-native : un provider alimente un dossier, le Content Lay
 
 - **CLI** — `hyperfocale validate`, `snapshot` et `diff`, sortie lisible ou `--json`, codes de sortie 0 / 1 (diagnostic `error`) / 2 (mauvais usage).
 
-- **Conformité** — les fixtures cross-language de la spec sont copiées à une ref épinglée (`tests/fixtures/spec-ingestion/`, `npm run fixtures:sync` / `fixtures:check`) et rejouées en totalité : 101 cas, tous verts.
+- **Conformité** — les fixtures cross-language de la spec sont copiées à une ref épinglée (`tests/fixtures/spec-ingestion/`, `npm run fixtures:sync` / `fixtures:check`) et rejouées en totalité : 116 cas (hash, chemins, identifiants, snapshots, validation, diff, garde), tous verts.
 
 - **Dépendance** — `js-yaml` passe en `dependencies` (la 4.3 qu'Astro 7 tire déjà, dédupliquée). Le frontmatter y est lu en schéma YAML 1.2 *core* : une date reste le texte écrit, là où le schéma par défaut convertit `2024-02-30` en 1er mars.
 

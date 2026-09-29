@@ -57,7 +57,7 @@ dist/               ← build tsup (gitignored)
 
 ```bash
 npx hyperfocale init                     # défaut quand aucune commande n'est donnée
-npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--json]
+npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--astro-schema] [--json]
 npx hyperfocale snapshot <dossier> [-o fichier] [--ignore <règle>]… [--json]
 npx hyperfocale diff <base.json> <target.json> [--json]
 ```
@@ -92,6 +92,6 @@ Les **trois vocabulaires** du schéma — `CONTENT_TYPES`, `ATTACHMENT_KINDS`, `
 
 - **Frontières** : `./ingest`, `./ingest/dropbox` et `./ingest/webdav` n'importent aucun module `node:*` (importables dans un Worker) ; seul `./ingest/fs` touche Node. L'entrée racine n'importe rien de `src/ingest/`. `tests/unit/ingest/exports.test.ts` le vérifie sur les sources et sur `dist/` — tsup retire le préfixe `node:` au bundle, le test regarde aussi les noms nus.
 - **La spec fait foi** (`izo/hyperfocale-spec`, couche 4, §4.1–4.13) et ses fixtures sont normatives : `tests/unit/ingest/conformance.test.ts` les parcourt toutes. Une évolution du contrat se fait dans la spec, puis `npm run fixtures:sync -- --ref <ref>` ; ne jamais éditer `tests/fixtures/spec-ingestion/` à la main (`npm run fixtures:check` le détecte).
-- **Diagnostics** : triplet `code` + `severity` + `path` (`""` pour le snapshot entier), un seul par couple `(code, path)`. Un contrôle hors contrat se code `x-*` (`x-schema-invalid`, violations de `baseSeriesSchema`).
+- **Diagnostics** : triplet `code` + `severity` + `path` (`""` pour le snapshot entier), un seul par couple `(code, path)`. Un contrôle hors contrat se code `x-*` et reste **optionnel** : `x-schema-invalid` (violations de `baseSeriesSchema`) n'est produit qu'avec `astroSchema: true`, sinon la sortie diverge des fixtures et des autres implémentations.
 - **Frontmatter** : YAML 1.2 *core* (une date reste une chaîne), pas le schéma par défaut de js-yaml qu'emploie Astro — la validation juge le texte écrit.
 - **Incomplet ≠ suppression** : `createSnapshot` exige `complete` sans défaut ; `applyDelta` lève `CursorResetError` sur un curseur expiré.

@@ -50,6 +50,7 @@ export {
   dropboxContentHash,
   sha256Hex,
   toHex,
+  verifyEntryBytes,
 } from './hash.js';
 export type { ContentComparison } from './hash.js';
 
@@ -60,7 +61,7 @@ export { diffSnapshots } from './diff.js';
 export { validateSnapshot } from './validate.js';
 export type { ValidateSnapshotOptions, ValidationRoot } from './validate.js';
 export { guardChangeSet } from './guard.js';
-export type { GuardPolicy, GuardReaders } from './guard.js';
+export type { GuardOptions, GuardPolicy, GuardSide } from './guard.js';
 export { summarizeChangeSet } from './summary.js';
 export type { ChangeSetSummary, MovedSeries } from './summary.js';
 export { buildImagesManifest } from './manifest.js';

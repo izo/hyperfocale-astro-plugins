@@ -20,6 +20,7 @@ import {
   createSnapshot,
   diffSnapshots,
   dropboxContentHash,
+  guardChangeSet,
   isExcluded,
   normalizePath,
   parseSnapshot,
@@ -47,7 +48,7 @@ describe('fixtures de la spec — présence', () => {
     expect(source).toMatch(/^commit=[0-9a-f]{40}$/m);
   });
 
-  it.each(['corpora', 'snapshots', 'validation', 'diff', 'snapshot-id', 'paths', 'hashes'])('%s/ est présent', (dir) => {
+  it.each(['corpora', 'snapshots', 'validation', 'diff', 'guard', 'snapshot-id', 'paths', 'hashes'])('%s/ est présent', (dir) => {
     expect(existsSync(join(FIXTURES, dir))).toBe(true);
   });
 });
@@ -139,7 +140,7 @@ describe('fixtures — validation/ (§4.10)', () => {
         snapshot = parseSnapshot(readFileSync(join(FIXTURES, 'snapshots', `${fixture.corpus}.json`), 'utf-8'));
         read = async (path) => new Uint8Array(readFileSync(join(corpus, ...path.split('/'))));
       } else {
-        // Snapshot inline, éventuellement hors contrat (version inconnue) : passé tel quel.
+        // Snapshot inline, éventuellement mal formé (rejet structurel) : passé tel quel.
         snapshot = fixture.snapshot;
         const files: Record<string, string> = fixture.files ?? {};
         read = async (path) => {
@@ -162,6 +163,26 @@ describe('fixtures — diff/ (§4.7)', () => {
       const { diagnostics: expectedDiagnostics, ...expectedRest } = fixture.expected;
       expect(rest).toEqual(expectedRest);
       expect(triples(diagnostics)).toEqual(triples(expectedDiagnostics));
+    });
+  }
+});
+
+describe('fixtures — guard/ (§4.11)', () => {
+  for (const [name, fixture] of cases('guard')) {
+    it(`${name} — ${fixture.description}`, async () => {
+      const files: Record<'base' | 'target', Record<string, string>> = { base: {}, target: {}, ...fixture.files };
+      const read = async (side: 'base' | 'target', path: string) => {
+        if (!Object.hasOwn(files[side], path)) throw new Error(`lecture hors de \`files.${side}\` : ${path}`);
+        return new TextEncoder().encode(files[side][path]);
+      };
+      const base = fixture.base === null ? null : parseSnapshot(fixture.base);
+      const target = parseSnapshot(fixture.target);
+      // Le changeset fourni est celui du diff : on le vérifie au passage.
+      const { diagnostics: _d, ...changeSet } = diffSnapshots(base, target);
+      const { diagnostics: _e, ...expectedChangeSet } = fixture.changeSet;
+      expect(changeSet).toEqual(expectedChangeSet);
+      const diagnostics = await guardChangeSet(fixture.changeSet, base, target, { read, policy: fixture.policy });
+      expect(triples(diagnostics)).toEqual(fixture.expected);
     });
   }
 });

@@ -8,6 +8,7 @@ export const USAGE = `Usage : hyperfocale [commande]
   validate <dossier> [options]         Valide un corpus (contrat d'ingestion, spec §4.10)
       --root <chemin>[:nodate]         Racine de validation, répétable (défaut : tout le corpus)
       --ignore <règle>                 Exclusion supplémentaire, répétable (« _todo/ »)
+      --astro-schema                   Confronte aussi le frontmatter au schéma du build (x-schema-invalid)
       --json                           Sortie JSON
   snapshot <dossier> [options]         Calcule le ContentSnapshot d'un dossier (spec §4.5)
       -o, --output <fichier>           Écrit le snapshot dans un fichier (défaut : sortie standard)

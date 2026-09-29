@@ -269,8 +269,9 @@ async function exists(abs: string): Promise<boolean> {
   }
 }
 
-/** Le contenu lu ne correspond pas à l'empreinte du snapshot. */
+/** Le contenu lu ne correspond pas à l'empreinte du snapshot (§4.4). */
 export class ContentMismatchError extends Error {
+  readonly code = 'entry-hash-mismatch';
   readonly path: string;
 
   constructor(path: string, algorithm: string) {

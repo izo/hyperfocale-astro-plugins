@@ -110,6 +110,11 @@ describe('createSnapshot / parseSnapshot (§2.5)', () => {
     expect(parseSnapshot(raw)).toEqual(raw);
   });
 
+  it('admet l\'état conflict, sans empreinte', async () => {
+    const snap = await snapshot([{ path: 'a.md', kind: 'content', size: 1, state: 'conflict' }]);
+    expect(parseSnapshot(JSON.stringify(snap)).entries[0]?.state).toBe('conflict');
+  });
+
   it('refuse une version inconnue avec le code snapshot-version-unsupported', async () => {
     const snap = await snapshot([entry('a.md')]);
     try {
@@ -129,6 +134,8 @@ describe('createSnapshot / parseSnapshot (§2.5)', () => {
     ['size négative', { entries: [{ path: 'a', kind: 'other', size: -1 }] }],
     ['hash non chaîne', { entries: [{ path: 'a', kind: 'other', size: 1, hashes: { sha256: 1 } }] }],
     ['state inconnu', { entries: [{ path: 'a', kind: 'other', size: 1, state: 'cloud' }] }],
+    ['algorithme ni enregistré ni x-', { entries: [{ path: 'a', kind: 'other', size: 1, hashes: { md5: 'ab' } }] }],
+    ['sha256 non hexadécimal', { entries: [{ path: 'a', kind: 'other', size: 1, hashes: { sha256: 'ABC' } }] }],
     ['doublon', { entries: [{ path: 'a', kind: 'other', size: 1 }, { path: 'a', kind: 'other', size: 1 }] }],
   ])('refuse : %s', async (_label, patch) => {
     const snap = await snapshot([]);

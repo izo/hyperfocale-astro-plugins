@@ -97,6 +97,14 @@ describe('CLI — validate', () => {
     expect(report.entries).toBeGreaterThan(0);
   });
 
+  it('--astro-schema ajoute x-schema-invalid', async () => {
+    tree({ 'c/ok/index.md': '---\ntitle: T\ndate: 2024-01-01\ntags: solo\n---\n' });
+    expect((await run('validate', 'c')).code).toBe(0);
+    const strict = await run('validate', 'c', '--astro-schema');
+    expect(strict.code).toBe(1);
+    expect(strict.stdout).toContain('x-schema-invalid');
+  });
+
   it('--ignore exclut un dossier du corpus', async () => {
     tree({ 'c/ok/index.md': '---\ntitle: T\ndate: 2024-01-01\n---\n', 'c/_todo/Brouillon/index.md': 'sans frontmatter' });
     expect((await run('validate', 'c')).code).toBe(1);

@@ -100,6 +100,20 @@ export function compareSizeAndHashes(a: SnapshotEntry, b: SnapshotEntry): Conten
   return a.hashes?.[alg] === b.hashes?.[alg] ? 'same' : 'different';
 }
 
+/**
+ * Les octets lus correspondent-ils à l'entrée (§4.4) ? On vérifie le premier
+ * algorithme enregistré qu'elle porte, `sha256` puis `dropbox` ; une valeur
+ * `x-*` est opaque et ne se vérifie pas (`true`). Un écart signe un fichier
+ * modifié entre le listing et la lecture : `entry-hash-mismatch`.
+ */
+export async function verifyEntryBytes(entry: SnapshotEntry, content: Uint8Array | string): Promise<boolean> {
+  const bytes = typeof content === 'string' ? utf8(content) : content;
+  const expected = entry.hashes ?? {};
+  if (expected.sha256 !== undefined) return (await sha256Hex(bytes)) === expected.sha256;
+  if (expected.dropbox !== undefined) return (await dropboxContentHash(bytes)) === expected.dropbox;
+  return true;
+}
+
 /** Ligne canonique d'une entrée pour l'identifiant de snapshot (§4.6). */
 function idLine(entry: SnapshotEntry): string {
   const hashes = Object.entries(entry.hashes ?? {})

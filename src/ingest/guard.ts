@@ -1,13 +1,15 @@
 import { finalizeDiagnostics } from './diff.js';
 import { parseFrontmatter } from './frontmatter.js';
-import { basename, dirname, isIndexFile } from './paths.js';
+import { verifyEntryBytes } from './hash.js';
+import { basename, compareCanonical, dirname, isIndexFile } from './paths.js';
 import { indexFolders } from './series.js';
 import { countKind } from './snapshot.js';
-import type { ContentChangeSet, ContentSnapshot, Diagnostic, EntryKind, ReadFn } from './types.js';
+import type { ContentChangeSet, ContentSnapshot, Diagnostic, EntryKind, SnapshotEntry } from './types.js';
 
 /**
- * Seuils de la garde de publication (§4.11). Le mécanisme est générique, les
- * seuils appartiennent au consumer ; un seuil absent désactive son contrôle.
+ * Seuils de la garde de publication (§4.11), tous facultatifs. Le mécanisme
+ * est générique, les seuils appartiennent au consumer ; un seuil absent
+ * désactive son contrôle.
  */
 export interface GuardPolicy {
   /** Au-delà de ce nombre de séries supprimées : `guard-mass-deletion`. */
@@ -20,54 +22,57 @@ export interface GuardPolicy {
   readonly maxFileBytes?: Partial<Record<EntryKind, number>>;
 }
 
-/**
- * Lecture des fichiers index de part et d'autre du changeset — nécessaire à
- * `guard-private-exposed`, qui compare le champ `private` de base et de
- * target. Seuls les fichiers index dont le contenu a changé sont lus.
- */
-export interface GuardReaders {
-  readonly readBase: ReadFn;
-  readonly readTarget: ReadFn;
+/** Côté du changeset dont on lit un fichier. */
+export type GuardSide = 'base' | 'target';
+
+/** Options de `guardChangeSet` (§4.11). */
+export interface GuardOptions {
+  /**
+   * Octets du fichier `path` dans `base` ou dans `target`. La garde lit les
+   * fichiers index pour connaître la confidentialité des séries.
+   */
+  readonly read: (side: GuardSide, path: string) => Promise<Uint8Array | string>;
+  readonly policy: GuardPolicy;
 }
 
 function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path: string, message: string): Diagnostic {
   return { code, severity, path, message, rule: '§4.11' };
 }
 
-async function isPrivate(read: ReadFn, path: string): Promise<boolean> {
-  const result = parseFrontmatter(await read(path));
-  return result.status === 'ok' && result.data.private === true;
-}
-
 /**
  * Garde de publication (§4.11) : rend des diagnostics `guard-*`. Une erreur
  * interdit l'auto-publication — la décision reste au consumer.
  *
- * - `guard-snapshot-incomplete`, `guard-snapshot-empty` : toujours actifs ;
+ * - `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-private-exposed` :
+ *   toujours évaluées ;
  * - `guard-mass-deletion` : séries supprimées > `maxDeletedSeries`, ou médias
  *   supprimés > `maxDeletedMediaRatio` × médias de base. Une série supprimée
  *   est un dossier porteur dans base qui ne l'est plus dans target, et dont
  *   aucun fichier index n'est la source d'un `moved` ;
  * - `guard-mass-move` (warning) : séries déplacées — dossiers distincts parmi
  *   les `from` des `moved` qui désignent un fichier index — > `maxMovedSeries` ;
- * - `guard-private-exposed` : un fichier index `private: true` dans base ne
- *   l'est plus dans target (champ retiré ou passé à `false`), suivi jusqu'à sa
- *   destination s'il a été déplacé ;
+ * - `guard-private-exposed` : une série privée dans base (au moins un fichier
+ *   index matérialisé déclare `private: true`, booléen YAML), présente dans
+ *   target — au même chemin, ou à la destination de ses fichiers index
+ *   déplacés — et qui n'y est plus privée. Diagnostic sur son dossier dans
+ *   target ; supprimer une série privée n'est pas l'exposer ;
  * - `guard-oversize` : une entrée de target dépasse `maxFileBytes[kind]`.
  *
- * `private` n'est pas un champ du format mais une extension de site : la garde
- * s'applique aux corpus qui l'emploient. D'où `readers`, sans lesquels elle ne
- * saurait rien du contenu des fichiers index.
+ * Les octets lus sont vérifiés contre l'empreinte (§4.4) : un fichier qui
+ * diverge produit `entry-hash-mismatch` et ne déclare rien.
+ *
+ * Seules sont lues les séries de base dont un fichier index a changé — les
+ * autres gardent, à l'octet près, la confidentialité qu'elles avaient.
  */
 export async function guardChangeSet(
   changeSet: ContentChangeSet,
   base: ContentSnapshot | null,
   target: ContentSnapshot,
-  policy: GuardPolicy,
-  readers: GuardReaders,
+  options: GuardOptions,
 ): Promise<Diagnostic[]> {
-  const diagnostics: Diagnostic[] = [];
+  const { read, policy } = options;
   const { maxDeletedSeries, maxDeletedMediaRatio, maxMovedSeries, maxFileBytes } = policy;
+  const diagnostics: Diagnostic[] = [];
 
   if (!target.complete) {
     diagnostics.push(guard('guard-snapshot-incomplete', 'error', '', 'Snapshot incomplet : publication interdite.'));
@@ -76,6 +81,8 @@ export async function guardChangeSet(
     diagnostics.push(guard('guard-snapshot-empty', 'error', '', 'Snapshot sans contenu : publication interdite.'));
   }
 
+  const baseFolders = indexFolders(base?.entries ?? []);
+  const targetFolders = indexFolders(target.entries);
   const movedIndexes = changeSet.moved.filter((move) => isIndexFile(basename(move.from)));
   const movedSeries = new Set(movedIndexes.map((move) => dirname(move.from)));
 
@@ -83,10 +90,7 @@ export async function guardChangeSet(
   // couple code/chemin, §4.10) : ses motifs se cumulent dans le message.
   const massDeletion: string[] = [];
   if (maxDeletedSeries !== undefined) {
-    const targetFolders = indexFolders(target.entries);
-    const deleted = [...indexFolders(base?.entries ?? []).keys()].filter(
-      (folder) => !targetFolders.has(folder) && !movedSeries.has(folder),
-    );
+    const deleted = [...baseFolders.keys()].filter((folder) => !targetFolders.has(folder) && !movedSeries.has(folder));
     if (deleted.length > maxDeletedSeries) {
       massDeletion.push(`${deleted.length} séries supprimées (seuil : ${maxDeletedSeries})`);
     }
@@ -107,15 +111,51 @@ export async function guardChangeSet(
     );
   }
 
-  // Fichiers index dont le contenu a changé, sur place ou en se déplaçant : un
-  // move à contenu identique garde son champ, inutile de le relire.
-  const candidates = [
-    ...changeSet.modified.map(({ path }) => ({ from: path, to: path })),
-    ...movedIndexes.filter((move) => move.modified).map(({ from, to }) => ({ from, to })),
-  ].filter(({ from }) => isIndexFile(basename(from)));
-  for (const { from, to } of candidates) {
-    if ((await isPrivate(readers.readBase, from)) && !(await isPrivate(readers.readTarget, to))) {
-      diagnostics.push(guard('guard-private-exposed', 'error', to, `« ${from} » était privée et ne l'est plus.`));
+  if (base !== null) {
+    const entries = { base: new Map(base.entries.map((e) => [e.path, e])), target: new Map(target.entries.map((e) => [e.path, e])) };
+    // Une série est privée si l'un de ses fichiers index matérialisés, aux
+    // octets conformes, déclare `private: true` (booléen, pas la chaîne).
+    const isPrivate = async (side: GuardSide, indexPaths: readonly string[]): Promise<boolean> => {
+      for (const path of indexPaths) {
+        const entry = entries[side].get(path) as SnapshotEntry;
+        if ((entry.state ?? 'materialized') !== 'materialized') continue;
+        const content = await read(side, path);
+        if (!(await verifyEntryBytes(entry, content))) {
+          diagnostics.push({
+            code: 'entry-hash-mismatch',
+            severity: 'error',
+            path,
+            message: `Octets lus (${side}) différents de l'empreinte : le fichier a changé depuis le listing.`,
+            rule: '§4.4',
+          });
+          continue;
+        }
+        const result = parseFrontmatter(content);
+        if (result.status === 'ok' && result.data.private === true) return true;
+      }
+      return false;
+    };
+
+    const changedIndexes = new Set([
+      ...changeSet.modified.map((m) => m.path),
+      ...changeSet.deleted.map((e) => e.path),
+      ...changeSet.moved.map((m) => m.from),
+    ]);
+    for (const [folder, indexPaths] of baseFolders) {
+      if (!indexPaths.some((path) => changedIndexes.has(path))) continue;
+      if (!(await isPrivate('base', indexPaths))) continue;
+      // Homologue dans target : même dossier s'il porte encore un fichier
+      // index, sinon la destination du premier fichier index déplacé.
+      const firstMove = movedIndexes
+        .filter((move) => dirname(move.from) === folder)
+        .sort((a, b) => compareCanonical(a.from, b.from))[0];
+      const homologue = targetFolders.has(folder) ? folder : firstMove !== undefined ? dirname(firstMove.to) : null;
+      if (homologue === null) continue;
+      if (!(await isPrivate('target', targetFolders.get(homologue) ?? []))) {
+        diagnostics.push(
+          guard('guard-private-exposed', 'error', homologue, `« ${folder} » était privée et ne l'est plus.`),
+        );
+      }
     }
   }
 

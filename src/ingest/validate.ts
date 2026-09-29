@@ -2,7 +2,7 @@ import { baseSeriesSchema } from '../schema.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
-import { computeSnapshotId } from './hash.js';
+import { computeSnapshotId, verifyEntryBytes } from './hash.js';
 import {
   basename,
   classifyPath,
@@ -17,6 +17,7 @@ import {
   normalizePath,
 } from './paths.js';
 import { indexFolders, primaryIndex } from './series.js';
+import { entryStructureError, snapshotStructureError } from './snapshot.js';
 import type { ContentSnapshot, Diagnostic, DiagnosticCode, ReadFn, Severity, SnapshotEntry } from './types.js';
 
 /** Racine de corpus soumise à validation (§4.10). */
@@ -35,6 +36,13 @@ export interface ValidateSnapshotOptions {
   readonly roots?: readonly ValidationRoot[];
   /** Lectures simultanées. Défaut 16. */
   readonly concurrency?: number;
+  /**
+   * Confronte aussi chaque frontmatter à `baseSeriesSchema`, le schéma du build
+   * Astro : ce que le build refuserait sans que le §4.10 le code (`tags: solo`)
+   * remonte en `x-schema-invalid` (error). Désactivé par défaut : la sortie est
+   * alors exactement celle de la spec, identique à toute autre implémentation.
+   */
+  readonly astroSchema?: boolean;
 }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -43,15 +51,19 @@ const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+
 
 // Règle de la spec invoquée par chaque code, reportée dans `Diagnostic.rule`.
 const RULES: Partial<Record<DiagnosticCode, string>> = {
+  'snapshot-invalid': '§4.5',
   'snapshot-version-unsupported': '§4.5',
   'snapshot-incomplete': '§4.5',
   'snapshot-empty': '§4.10',
   'snapshot-id-mismatch': '§4.6',
+  'entry-invalid': '§4.5',
   'entry-path-invalid': '§4.1',
   'entry-kind-mismatch': '§4.3',
   'entry-path-collision': '§4.1',
   'entry-hash-missing': '§4.4',
   'entry-not-materialized': '§4.5',
+  'entry-hash-mismatch': '§4.4',
+  'entry-conflict': '§4.5',
   'slug-invalid': '§1.2',
   'media-nested': '§1.2',
   'media-orphan': '§1.2',
@@ -155,7 +167,7 @@ function manifestReferences(images: readonly unknown[], folder: string, target: 
   });
 }
 
-/** Fichier index lu : `data` à `null` s'il est illisible ou non lu (placeholder). */
+/** Fichier index lu : `data` à `null` s'il est illisible ou non lu (placeholder, conflit, octets divergents). */
 interface ParsedIndex {
   readonly path: string;
   readonly folder: string;
@@ -171,42 +183,61 @@ interface ParsedIndex {
  * Les contrôles d'entrée (`snapshot-*`, `entry-*`) portent sur tout le
  * snapshot ; les contrôles de structure et de frontmatter sur les seules
  * racines configurées — hors racines, les fichiers sont copiés, pas validés.
- * Un snapshot se vérifie, il ne se croit pas sur parole : l'`id` est recalculé,
- * et un `kind` qui contredit le chemin est signalé puis remplacé par la
- * classification recalculée pour la suite. Une entrée au chemin invalide est
- * écartée de tout le reste, et une entrée `placeholder` n'est jamais lue.
+ * Un snapshot se vérifie, il ne se croit pas sur parole : sa structure d'abord
+ * (un document mal formé ne produit que `snapshot-invalid`), puis son `id`,
+ * recalculé, et ses `kind`, confrontés au chemin. Une entrée structurellement
+ * invalide ou au chemin invalide est écartée de tout le reste ; une entrée
+ * `placeholder` ou `conflict` n'est jamais lue ; les octets lus sont vérifiés
+ * contre l'empreinte, et un fichier qui a changé depuis le listing
+ * (`entry-hash-mismatch`) est traité comme non lu.
  *
- * Au-delà du §4.10, les champs sont confrontés à `baseSeriesSchema`, le schéma
- * du build Astro : une violation sans code propre au contrat (`tags: solo`,
- * `featured: "oui"`) remonte en `x-schema-invalid` (error) — préfixe `x-`
- * réservé aux contrôles propres à une implémentation. Un frontmatter que le
- * build refuserait ne passe donc pas en silence.
+ * `snapshot` est un document JSON supposé être un snapshot : il n'a pas besoin
+ * d'être passé par `parseSnapshot`, dont le rejet structurel lève au lieu de
+ * diagnostiquer.
+ *
+ * Avec `astroSchema`, les champs sont en plus confrontés à `baseSeriesSchema`,
+ * le schéma du build Astro : une violation sans code propre au contrat
+ * (`tags: solo`, `featured: "oui"`) remonte en `x-schema-invalid` (error) —
+ * préfixe `x-` réservé aux contrôles propres à une implémentation.
  */
 export async function validateSnapshot(
-  snapshot: ContentSnapshot,
+  snapshot: ContentSnapshot | unknown,
   options: ValidateSnapshotOptions,
 ): Promise<Diagnostic[]> {
-  const version = (snapshot as { version: unknown }).version;
-  if (version !== 1) {
-    return [diagnostic('snapshot-version-unsupported', '', `Version de snapshot ${String(version)} non supportée.`)];
-  }
+  const structure = snapshotStructureError(snapshot);
+  if (structure !== null) return [diagnostic(structure.code, '', `Document rejeté : ${structure.message}`)];
+  const document = snapshot as { id: string; complete: boolean; entries: unknown[] };
 
   const roots = options.roots ?? [{ path: '', dateRequired: true }];
   const concurrency = options.concurrency ?? 16;
   const diagnostics: Diagnostic[] = [];
   const push = (code: DiagnosticCode, path: string, message: string) => diagnostics.push(diagnostic(code, path, message));
 
-  if (!snapshot.complete) {
+  if (!document.complete) {
     push('snapshot-incomplete', '', 'Listing incomplet : aucune publication, donc aucune suppression.');
-  }
-  const recomputed = await computeSnapshotId(snapshot.entries);
-  if (recomputed !== snapshot.id) {
-    push('snapshot-id-mismatch', '', `\`id\` déclaré ${snapshot.id}, recalculé ${recomputed}.`);
   }
 
   // ── Entrées ───────────────────────────────────────────────────────────────
+  const wellFormed: SnapshotEntry[] = [];
+  for (const raw of document.entries) {
+    const error = entryStructureError(raw);
+    if (error === null) {
+      wellFormed.push(raw as SnapshotEntry);
+    } else {
+      const path = typeof (raw as { path?: unknown } | null)?.path === 'string' ? (raw as { path: string }).path : '';
+      push('entry-invalid', path, `Entrée invalide : ${error}.`);
+    }
+  }
+  // L'identifiant ne se recalcule que sur des entrées toutes bien formées.
+  if (wellFormed.length === document.entries.length) {
+    const recomputed = await computeSnapshotId(wellFormed);
+    if (recomputed !== document.id) {
+      push('snapshot-id-mismatch', '', `\`id\` déclaré ${document.id}, recalculé ${recomputed}.`);
+    }
+  }
+
   const retained: SnapshotEntry[] = [];
-  for (const entry of snapshot.entries) {
+  for (const entry of wellFormed) {
     const normalized = normalizePath(entry.path);
     if (!normalized.valid) {
       push('entry-path-invalid', entry.path, `Chemin invalide : ${normalized.reason}.`);
@@ -238,6 +269,8 @@ export async function validateSnapshot(
     }
     if (entry.state === 'placeholder') {
       push('entry-not-materialized', entry.path, 'Fichier non matérialisé (placeholder) : publication impossible.');
+    } else if (entry.state === 'conflict') {
+      push('entry-conflict', entry.path, 'Conflit de version signalé par le provider : publication impossible.');
     } else if (entry.hashes === undefined || Object.keys(entry.hashes).length === 0) {
       push('entry-hash-missing', entry.path, 'Entrée matérialisée sans empreinte.');
     }
@@ -256,12 +289,20 @@ export async function validateSnapshot(
   const folders = indexFolders(scoped);
 
   // ── Lecture ───────────────────────────────────────────────────────────────
-  const readable = (path: string) => byPath.get(path)?.state !== 'placeholder';
+  // Seules les entrées matérialisées se lisent, et leurs octets se vérifient.
+  const readable = (path: string) => (byPath.get(path)?.state ?? 'materialized') === 'materialized';
+  const readVerified = async (path: string): Promise<Uint8Array | string | null> => {
+    const content = await options.read(path);
+    if (await verifyEntryBytes(byPath.get(path) as SnapshotEntry, content)) return content;
+    push('entry-hash-mismatch', path, 'Octets lus différents de l\'empreinte : modifié depuis le listing, un nouveau listing s\'impose.');
+    return null;
+  };
   const indexPaths = [...folders.values()].flat();
   const parsed = await mapConcurrent(indexPaths, concurrency, async (path): Promise<ParsedIndex> => {
     const folder = dirname(path);
-    if (!readable(path)) return { path, folder, data: null };
-    const result = parseFrontmatter(await options.read(path));
+    const content = readable(path) ? await readVerified(path) : null;
+    if (content === null) return { path, folder, data: null };
+    const result = parseFrontmatter(content);
     if (result.status === 'missing') {
       push('frontmatter-missing', path, 'Fichier index sans bloc de frontmatter `---` refermé.');
       return { path, folder, data: null };
@@ -277,7 +318,9 @@ export async function validateSnapshot(
   const manifests = new Map<string, unknown[] | null>();
   const manifestPaths = scoped.filter((e) => basename(e.path) === 'images.json' && readable(e.path)).map((e) => e.path);
   await mapConcurrent(manifestPaths, concurrency, async (path) => {
-    const images = parseManifest(await options.read(path));
+    const content = await readVerified(path);
+    if (content === null) return;
+    const images = parseManifest(content);
     manifests.set(dirname(path), images);
     if (images === null) {
       push('images-json-invalid', path, 'JSON illisible, racine non objet, ou clé `images` absente ou non tableau.');
@@ -285,7 +328,7 @@ export async function validateSnapshot(
   });
 
   // ── Structure ─────────────────────────────────────────────────────────────
-  // Nature d'un dossier porteur (règle 12) : illisible ou placeholder → série.
+  // Nature d'un dossier porteur (règle 13) : illisible, placeholder ou conflit → série.
   const isSection = (folder: string): boolean =>
     field(indexByPath.get(primaryIndex(folders.get(folder) as string[]))?.data ?? {}, 'type') === 'section';
 
@@ -351,13 +394,16 @@ export async function validateSnapshot(
       push('date-invalid', path, `\`date\` n'est pas une date ISO 8601 valide : « ${String(date)} ».`);
     }
 
+    // Deux règles indépendantes, qui se cumulent (règle 10) : l'extension pour
+    // `cover-not-image`, l'existence pour `cover-not-found`.
     const cover = field(data, 'cover');
     if (typeof cover === 'string' && isRelativeReference(cover)) {
       const target = resolveReference(folder, cover);
       const manifest = manifests.get(folder);
       if (!isImagePath(cover)) {
         push('cover-not-image', path, `\`cover\` « ${cover} » ne désigne pas une image.`);
-      } else if (
+      }
+      if (
         target === null ||
         (!byPath.has(target) && !(Array.isArray(manifest) && manifestReferences(manifest, folder, target)))
       ) {
@@ -394,6 +440,7 @@ export async function validateSnapshot(
     // les `embeds`, la `date` d'une série et les `null` (valent absents) sont
     // déjà couverts. La `date` d'une section échappe au §4.10 mais pas au
     // build : elle passe ici.
+    if (options.astroSchema !== true) continue;
     const present = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null));
     const schema = baseSeriesSchema({ dateRequired: false }).safeParse(present);
     if (!schema.success) {

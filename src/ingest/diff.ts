@@ -49,7 +49,8 @@ function incomparable(path: string): Diagnostic {
  *    `hash-incomparable` (warning) ;
  * 2. restent `A` (seulement dans target) et `D` (seulement dans base) ;
  * 3. moves par identité : une `identity` portée par exactement une entrée de
- *    chaque côté. `kind` n'entre pas dans la comparaison — il dérive du chemin ;
+ *    chaque côté. `kind` n'entre pas dans `modified` — il dérive du chemin —
+ *    mais `hash-incomparable` exige, comme en 1, `kind` et `size` égaux ;
  * 4. moves par contenu : même `size` + même premier hash commun, appariement
  *    1:1 unique ; toute entrée qui a une candidate sans appariement unique
  *    reçoit `move-ambiguous` (info) ;
@@ -110,7 +111,8 @@ export function diffSnapshots(base: ContentSnapshot | null, target: ContentSnaps
     const after = afters[0] as SnapshotEntry;
     const verdict = compareSizeAndHashes(before, after);
     moved.push({ from: before.path, to: after.path, before, after, modified: verdict !== 'same' });
-    if (verdict === 'incomparable') diagnostics.push(incomparable(after.path));
+    // Comme à la règle 1 : le diagnostic exige `kind` et `size` égaux.
+    if (verdict === 'incomparable' && before.kind === after.kind) diagnostics.push(incomparable(after.path));
     deleted.delete(before.path);
     added.delete(after.path);
   }

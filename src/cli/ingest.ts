@@ -30,12 +30,13 @@ interface Parsed {
   ignore: string[];
   output?: string;
   json: boolean;
+  astroSchema: boolean;
 }
 
 class UsageError extends Error {}
 
 const OPTIONS: Record<Command, ReadonlySet<string>> = {
-  validate: new Set(['--root', '--ignore', '--json']),
+  validate: new Set(['--root', '--ignore', '--json', '--astro-schema']),
   snapshot: new Set(['-o', '--output', '--ignore', '--json']),
   diff: new Set(['--json']),
 };
@@ -49,7 +50,7 @@ function parseRoot(value: string): ValidationRoot {
 }
 
 function parseArgs(command: Command, argv: readonly string[]): Parsed {
-  const parsed: Parsed = { positional: [], roots: [], ignore: [], json: false };
+  const parsed: Parsed = { positional: [], roots: [], ignore: [], json: false, astroSchema: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] as string;
     if (!arg.startsWith('-') || arg === '-') {
@@ -57,8 +58,9 @@ function parseArgs(command: Command, argv: readonly string[]): Parsed {
       continue;
     }
     if (!OPTIONS[command].has(arg)) throw new UsageError(`option inconnue pour ${command} : ${arg}`);
-    if (arg === '--json') {
-      parsed.json = true;
+    if (arg === '--json' || arg === '--astro-schema') {
+      if (arg === '--json') parsed.json = true;
+      else parsed.astroSchema = true;
       continue;
     }
     const value = argv[++i];
@@ -110,6 +112,7 @@ async function validate(args: Parsed, io: CliIO): Promise<number> {
   const diagnostics = await validateSnapshot(snapshot, {
     read: (path) => provider.read(path),
     ...(args.roots.length > 0 ? { roots: args.roots } : {}),
+    astroSchema: args.astroSchema,
   });
   if (args.json) {
     io.stdout(

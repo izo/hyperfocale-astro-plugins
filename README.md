@@ -794,7 +794,7 @@ Importez-les depuis la **racine**, jamais depuis `@regrets/hyperfocale/helpers` 
 ```bash
 npx hyperfocale              # = npx hyperfocale init
 npx hyperfocale init
-npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--json]
+npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--astro-schema] [--json]
 npx hyperfocale snapshot <dossier> [-o snapshot.json] [--ignore <règle>]… [--json]
 npx hyperfocale diff <base.json> <target.json> [--json]
 ```
@@ -837,8 +837,9 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 - **Snapshot** (§4.5) — liste complète des fichiers : chemins POSIX relatifs, NFC, triés par octets UTF-8 ; `kind` (`content`, `media`, `derived`, `other`) déduit du chemin ; empreintes `sha256`, `dropbox` ou `x-*`. Son `id` est le SHA-256 d'une ligne canonique par entrée : même état, mêmes algorithmes → même `id`, quelle que soit l'implémentation.
 - **Incomplet ≠ suppression.** `createSnapshot` exige `complete` sans valeur par défaut ; un listing qui a raté une page est `complete: false`, et la validation comme la garde le rendent impubliable. `applyDelta` refuse un curseur expiré (`CursorResetError`) plutôt que de l'interpréter comme « tout a été supprimé ».
 - **Changeset** (§4.7) — `added`, `modified`, `deleted`, `moved` ; les déplacements s'infèrent par `identity` puis par contenu, et un appariement ambigu n'en invente aucun.
-- **Diagnostics** (§4.10) — comparés par triplet `code` + `severity` + `path`. Toute erreur interdit la publication automatique. La validation porte sur des **racines** (`roots: [{ path: 'series' }, { path: 'pages', dateRequired: false }]`) ; hors racines, les fichiers sont copiés, pas validés. Au-delà du contrat, les champs sont confrontés à `baseSeriesSchema` : ce que le build refuserait remonte en `x-schema-invalid`.
-- **Garde** (§4.11) — `guardChangeSet` applique des seuils fournis par le site : suppressions massives, déplacements massifs, série privée devenue publique, fichier trop lourd. Un snapshot incomplet ou vide est toujours refusé.
+- **Diagnostics** (§4.10) — comparés par triplet `code` + `severity` + `path`. Toute erreur interdit la publication automatique. La validation porte sur des **racines** (`roots: [{ path: 'series' }, { path: 'pages', dateRequired: false }]`) ; hors racines, les fichiers sont copiés, pas validés. Par défaut, la sortie est exactement celle de la spec — la même que toute autre implémentation. Avec `astroSchema: true` (`--astro-schema` en CLI), les champs sont en plus confrontés à `baseSeriesSchema` : ce que le build refuserait sans que le contrat le code remonte en `x-schema-invalid`.
+- **Octets vérifiés** (§4.4) — tout ce qui est lu (validation, garde, matérialisation) est confronté à l'empreinte de l'entrée : un fichier qui a changé depuis le listing (`entry-hash-mismatch`) rend le snapshot impubliable. Une entrée `placeholder` (non téléchargée) ou `conflict` (copie conflictuelle) n'est jamais lue et bloque la publication.
+- **Garde** (§4.11) — `guardChangeSet(changeSet, base, target, { read, policy })` applique des seuils fournis par le site : suppressions massives, déplacements massifs, fichier trop lourd. Toujours actives : snapshot incomplet ou vide, et série privée (`private: true` sur l'un de ses fichiers index) qui ne l'est plus dans target.
 
 ### Providers
 
@@ -879,9 +880,9 @@ const target = await createSnapshot(listing.entries, {
 const changeSet = diffSnapshots(base, target);
 const diagnostics = [
   ...(await validateSnapshot(target, { read: (path) => source.read(path), roots: [{ path: 'series' }] })),
-  ...(await guardChangeSet(changeSet, base, target, { maxDeletedSeries: 5, maxDeletedMediaRatio: 0.2 }, {
-    readBase: (path) => corpus.read(path),
-    readTarget: (path) => source.read(path),
+  ...(await guardChangeSet(changeSet, base, target, {
+    read: (side, path) => (side === 'base' ? corpus.read(path) : source.read(path)),
+    policy: { maxDeletedSeries: 5, maxDeletedMediaRatio: 0.2 },
   })),
 ];
 if (diagnostics.some((d) => d.severity === 'error')) throw new Error('publication refusée');

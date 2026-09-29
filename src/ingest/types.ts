@@ -14,13 +14,15 @@ export type EntryKind = 'content' | 'media' | 'derived' | 'other';
 export const ENTRY_KINDS = ['derived', 'media', 'content', 'other'] as const satisfies readonly EntryKind[];
 
 /**
- * État de matérialisation d'une entrée (§4.5).
+ * État d'une entrée (§4.5).
  *
  * `placeholder` : le fichier existe côté provider mais ses octets ne sont pas
- * disponibles localement (iCloud Drive non téléchargé). Une telle entrée bloque
- * la publication (`entry-not-materialized`).
+ * disponibles localement (iCloud Drive non téléchargé) — `entry-not-materialized`.
+ * `conflict` : le provider signale un conflit de version (copie conflictuelle
+ * Dropbox, versions concurrentes iCloud) — `entry-conflict`. L'un comme l'autre
+ * bloque la publication, et l'entrée n'est jamais lue.
  */
-export type EntryState = 'materialized' | 'placeholder';
+export type EntryState = 'materialized' | 'placeholder' | 'conflict';
 
 /**
  * Empreintes d'une entrée : `{ "<algorithme>": "<valeur>" }` (§4.4).
@@ -38,7 +40,7 @@ export interface SnapshotEntry {
   readonly kind: EntryKind;
   /** Taille en octets. */
   readonly size: number;
-  /** Requis sauf `state: "placeholder"`. */
+  /** Requis sauf `state: "placeholder"` ou `"conflict"`. */
   readonly hashes?: HashMap;
   /** Identifiant stable du provider, qui survit au renommage. Hors `id`. */
   readonly identity?: string;
@@ -109,15 +111,19 @@ export type Severity = 'error' | 'warning' | 'info';
 
 /** Codes de diagnostic du contrat (§4.10) et de la garde de publication (§4.11). */
 export type DiagnosticCode =
+  | 'snapshot-invalid'
   | 'snapshot-version-unsupported'
   | 'snapshot-incomplete'
   | 'snapshot-empty'
   | 'snapshot-id-mismatch'
+  | 'entry-invalid'
   | 'entry-path-invalid'
   | 'entry-kind-mismatch'
   | 'entry-path-collision'
   | 'entry-hash-missing'
   | 'entry-not-materialized'
+  | 'entry-hash-mismatch'
+  | 'entry-conflict'
   | 'slug-invalid'
   | 'media-nested'
   | 'media-orphan'

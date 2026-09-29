@@ -74,43 +74,73 @@ export class SnapshotFormatError extends Error {
 }
 
 const KINDS = new Set<string>(ENTRY_KINDS);
+const STATES = new Set(['materialized', 'placeholder', 'conflict']);
+const HEX64 = /^[0-9a-f]{64}$/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function checkEntry(raw: unknown, index: number): SnapshotEntry {
-  const fail = (what: string): never => {
-    throw new SnapshotFormatError('snapshot-invalid', `entries[${index}] : ${what}.`);
-  };
-  if (!isRecord(raw)) return fail('objet attendu');
-  if (typeof raw.path !== 'string') fail('`path` doit être une chaîne');
-  if (typeof raw.kind !== 'string' || !KINDS.has(raw.kind)) fail('`kind` inconnu');
+/**
+ * Rejet structurel d'un document (§4.5), dans l'ordre de la spec : `format`,
+ * puis `version`, puis les champs requis. `null` si le document a la forme
+ * d'un snapshot — ses entrées restent à vérifier une à une.
+ */
+export function snapshotStructureError(raw: unknown): { code: SnapshotFormatErrorCode; message: string } | null {
+  if (!isRecord(raw) || raw.format !== 'hyperfocale.snapshot') {
+    return { code: 'snapshot-invalid', message: `ce n'est pas un snapshot (format « ${String(isRecord(raw) ? raw.format : raw)} »).` };
+  }
+  if (raw.version !== 1) {
+    return {
+      code: 'snapshot-version-unsupported',
+      message: `version ${String(raw.version)} non supportée (seule la version 1 est connue).`,
+    };
+  }
+  if (typeof raw.id !== 'string') return { code: 'snapshot-invalid', message: '`id` doit être une chaîne.' };
+  if (typeof raw.createdAt !== 'string') return { code: 'snapshot-invalid', message: '`createdAt` doit être une chaîne.' };
+  if (typeof raw.complete !== 'boolean') return { code: 'snapshot-invalid', message: '`complete` doit être un booléen.' };
+  if (!Array.isArray(raw.entries)) return { code: 'snapshot-invalid', message: '`entries` doit être un tableau.' };
+  return null;
+}
+
+/**
+ * Motif d'invalidité structurelle d'une entrée (§4.5, `entry-invalid`), ou
+ * `null`. Les champs inconnus ne sont pas examinés (passthrough).
+ */
+export function entryStructureError(raw: unknown): string | null {
+  if (!isRecord(raw)) return 'objet attendu';
+  if (typeof raw.path !== 'string') return '`path` doit être une chaîne';
+  if (typeof raw.kind !== 'string' || !KINDS.has(raw.kind)) return `\`kind\` inconnu (« ${String(raw.kind)} »)`;
   if (typeof raw.size !== 'number' || !Number.isInteger(raw.size) || raw.size < 0) {
-    fail('`size` doit être un entier positif ou nul');
+    return '`size` doit être un entier positif ou nul';
+  }
+  if (raw.state !== undefined && (typeof raw.state !== 'string' || !STATES.has(raw.state))) {
+    return `\`state\` inconnu (« ${String(raw.state)} »)`;
   }
   if (raw.hashes !== undefined) {
-    if (!isRecord(raw.hashes)) fail('`hashes` doit être un objet');
-    for (const value of Object.values(raw.hashes as Record<string, unknown>)) {
-      if (typeof value !== 'string') fail('chaque empreinte doit être une chaîne');
+    if (!isRecord(raw.hashes)) return '`hashes` doit être un objet';
+    for (const [alg, value] of Object.entries(raw.hashes)) {
+      if (alg === 'sha256' || alg === 'dropbox') {
+        if (typeof value !== 'string' || !HEX64.test(value)) return `\`${alg}\` doit faire 64 chiffres hexadécimaux minuscules`;
+      } else if (alg.startsWith('x-')) {
+        if (typeof value !== 'string') return `\`${alg}\` doit être une chaîne`;
+      } else {
+        return `algorithme « ${alg} » ni enregistré ni préfixé \`x-\``;
+      }
     }
   }
-  if (raw.state !== undefined && raw.state !== 'materialized' && raw.state !== 'placeholder') {
-    fail('`state` inconnu');
-  }
-  for (const key of ['identity', 'modifiedAt'] as const) {
-    if (raw[key] !== undefined && typeof raw[key] !== 'string') fail(`\`${key}\` doit être une chaîne`);
-  }
-  // Champs inconnus conservés tels quels (passthrough, §4.5).
-  return raw as unknown as SnapshotEntry;
+  return null;
 }
 
 /**
  * Lit un ContentSnapshot (§4.5) depuis du JSON ou un objet déjà parsé.
  *
- * Refuse une version inconnue (`snapshot-version-unsupported`) — un lecteur
- * n'interprète jamais un format qu'il ne connaît pas. Conserve les champs
- * inconnus. Ne recalcule pas l'identifiant et ne réordonne pas les entrées.
+ * Applique le rejet structurel de la spec : ce qui n'est pas un snapshot, une
+ * version inconnue — un lecteur n'interprète jamais un format qu'il ne connaît
+ * pas —, un champ requis mal typé, une entrée structurellement invalide ou un
+ * chemin en double lèvent. Conserve les champs inconnus. Ne recalcule pas
+ * l'identifiant et ne réordonne pas les entrées : c'est le rôle de
+ * `validateSnapshot`, qui rend des diagnostics au lieu de lever.
  *
  * @throws {SnapshotFormatError}
  */
@@ -123,38 +153,19 @@ export function parseSnapshot(input: string | unknown): ContentSnapshot {
       throw new SnapshotFormatError('snapshot-invalid', `JSON illisible (${(err as Error).message}).`);
     }
   }
-  if (!isRecord(raw)) throw new SnapshotFormatError('snapshot-invalid', 'objet attendu.');
-  if (raw.format !== 'hyperfocale.snapshot') {
-    throw new SnapshotFormatError('snapshot-invalid', `format « ${String(raw.format)} » inconnu.`);
-  }
-  if (raw.version !== 1) {
-    throw new SnapshotFormatError(
-      'snapshot-version-unsupported',
-      `version ${String(raw.version)} non supportée (seule la version 1 est connue).`,
-    );
-  }
-  if (typeof raw.id !== 'string') throw new SnapshotFormatError('snapshot-invalid', '`id` manquant.');
-  if (typeof raw.createdAt !== 'string') {
-    throw new SnapshotFormatError('snapshot-invalid', '`createdAt` manquant.');
-  }
-  if (typeof raw.complete !== 'boolean') {
-    throw new SnapshotFormatError('snapshot-invalid', '`complete` doit être un booléen.');
-  }
-  if (raw.source !== undefined && !isRecord(raw.source)) {
-    throw new SnapshotFormatError('snapshot-invalid', '`source` doit être un objet.');
-  }
-  if (!Array.isArray(raw.entries)) {
-    throw new SnapshotFormatError('snapshot-invalid', '`entries` doit être un tableau.');
-  }
-  const entries = raw.entries.map(checkEntry);
+  const structure = snapshotStructureError(raw);
+  if (structure !== null) throw new SnapshotFormatError(structure.code, structure.message);
+
+  const entries = (raw as { entries: unknown[] }).entries;
   const seen = new Set<string>();
-  for (const entry of entries) {
-    if (seen.has(entry.path)) {
-      throw new SnapshotFormatError('snapshot-invalid', `chemin en double « ${entry.path} ».`);
-    }
-    seen.add(entry.path);
-  }
-  return { ...raw, entries } as unknown as ContentSnapshot;
+  entries.forEach((entry, index) => {
+    const error = entryStructureError(entry);
+    if (error !== null) throw new SnapshotFormatError('snapshot-invalid', `entries[${index}] : ${error}.`);
+    const { path } = entry as SnapshotEntry;
+    if (seen.has(path)) throw new SnapshotFormatError('snapshot-invalid', `chemin en double « ${path} ».`);
+    seen.add(path);
+  });
+  return raw as ContentSnapshot;
 }
 
 /** Le curseur d'un provider a expiré : seul un listing complet fait foi. */

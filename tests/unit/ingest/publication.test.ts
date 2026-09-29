@@ -7,11 +7,10 @@ import {
   waitForQuiescence,
 } from '../../../src/ingest/index.js';
 import type { ContentProvider, ProviderCapabilities, ProviderDelta, SnapshotEntry } from '../../../src/ingest/index.js';
-import { entry, memoryReader, snapshot } from './helpers.js';
+import { entry, snapshot } from './helpers.js';
 
 const SERIES = '---\ntitle: S\ndate: 2024-01-01\n---\n';
 const PRIVATE = '---\ntitle: S\ndate: 2024-01-01\nprivate: true\n---\n';
-const noRead = { readBase: memoryReader({}), readTarget: memoryReader({}) };
 
 describe('summarizeChangeSet', () => {
   it('séries ajoutées, modifiées, supprimées ; un changement de sous-série est imputé à la sous-série', async () => {
@@ -56,13 +55,22 @@ describe('summarizeChangeSet', () => {
   });
 });
 
-describe('guardChangeSet (§2.11)', () => {
-  it('incomplet et vide : toujours actifs, sans seuil', async () => {
+describe('guardChangeSet (§4.11)', () => {
+  /** Lecteur par côté ; sans table, un fichier contient son propre chemin (cf. `entry`). */
+  const reader =
+    (files: { base?: Record<string, string>; target?: Record<string, string> } = {}) =>
+    async (side: 'base' | 'target', path: string) =>
+      files[side]?.[path] ?? path;
+
+  it('incomplet et vide : toujours actifs, sans seuil, rien n\'est lu', async () => {
     const target = await snapshot([entry('a/media/01.jpg')], false);
-    const diagnostics = await guardChangeSet(diffSnapshots(null, target), null, target, {}, noRead);
-    expect(diagnostics.map((d) => [d.code, d.severity])).toEqual([
-      ['guard-snapshot-empty', 'error'],
-      ['guard-snapshot-incomplete', 'error'],
+    const read = async () => {
+      throw new Error('aucune lecture attendue');
+    };
+    const diagnostics = await guardChangeSet(diffSnapshots(null, target), null, target, { read, policy: {} });
+    expect(diagnostics.map((d) => [d.code, d.severity, d.path])).toEqual([
+      ['guard-snapshot-empty', 'error', ''],
+      ['guard-snapshot-incomplete', 'error', ''],
     ]);
   });
 
@@ -78,59 +86,73 @@ describe('guardChangeSet (§2.11)', () => {
     ]);
     const target = await snapshot([entry('c/index.md'), entry('c/media/1.jpg')]);
     const cs = diffSnapshots(base, target);
-    const hit = await guardChangeSet(cs, base, target, { maxDeletedSeries: 1, maxDeletedMediaRatio: 0.5 }, noRead);
+    const read = reader();
+    const hit = await guardChangeSet(cs, base, target, { read, policy: { maxDeletedSeries: 1, maxDeletedMediaRatio: 0.5 } });
     // Un seul diagnostic par couple (code, path) : les deux motifs se cumulent.
     expect(hit.map((d) => [d.code, d.path])).toEqual([['guard-mass-deletion', '']]);
     expect(hit[0]?.message).toMatch(/2 séries.*3 médias/);
-    const mediaOnly = await guardChangeSet(cs, base, target, { maxDeletedMediaRatio: 0.5 }, noRead);
+    const mediaOnly = await guardChangeSet(cs, base, target, { read, policy: { maxDeletedMediaRatio: 0.5 } });
     expect(mediaOnly.map((d) => d.code)).toEqual(['guard-mass-deletion']);
-    const ok = await guardChangeSet(cs, base, target, { maxDeletedSeries: 2, maxDeletedMediaRatio: 0.75 }, noRead);
+    const ok = await guardChangeSet(cs, base, target, { read, policy: { maxDeletedSeries: 2, maxDeletedMediaRatio: 0.75 } });
     expect(ok).toEqual([]);
   });
 
   it('déplacements massifs : warning', async () => {
     const base = await snapshot([entry('x/a/index.md', 'a'), entry('x/b/index.md', 'b')]);
     const target = await snapshot([entry('y/a/index.md', 'a'), entry('y/b/index.md', 'b')]);
-    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { maxMovedSeries: 1 }, noRead);
+    const read = reader({ base: { 'x/a/index.md': 'a', 'x/b/index.md': 'b' } });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: { maxMovedSeries: 1 } });
     expect(diagnostics.map((d) => [d.code, d.severity])).toEqual([['guard-mass-move', 'warning']]);
   });
 
-  it('série privée exposée : flag retiré, passé à false, ou perdu en route', async () => {
-    const baseFiles = { 'a/index.md': PRIVATE, 'b/index.md': PRIVATE, 'c/index.md': PRIVATE, 'd/index.md': PRIVATE };
-    const targetFiles = {
-      'a/index.md': SERIES,
-      'b/index.md': PRIVATE.replace('true', 'false'),
-      'c2/index.md': SERIES,
-      'd/index.md': PRIVATE.replace('title: S', 'title: T'),
+  it('série privée exposée : au niveau de la série, suivie jusqu\'à sa destination', async () => {
+    const files = {
+      base: {
+        'a/index.md': PRIVATE,
+        'b/index.md': PRIVATE,
+        'c/index.md': PRIVATE,
+        'd/index.md': PRIVATE,
+        'd/index.en.md': PRIVATE,
+        'e/index.md': PRIVATE,
+        'f/index.md': PRIVATE.replace('true', '"true"'),
+      },
+      target: {
+        'a/index.md': SERIES,
+        'b/index.md': PRIVATE.replace('true', 'false'),
+        'c2/index.md': SERIES,
+        // index.md n'est plus privé, mais index.en.md l'est encore : la série reste privée.
+        'd/index.md': SERIES,
+        'd/index.en.md': PRIVATE,
+        'f/index.md': SERIES,
+      },
     };
-    const base = await snapshot([
-      entry('a/index.md', baseFiles['a/index.md'], { identity: 'a' }),
-      entry('b/index.md', baseFiles['b/index.md'], { identity: 'b' }),
-      entry('c/index.md', baseFiles['c/index.md'], { identity: 'c' }),
-      entry('d/index.md', baseFiles['d/index.md'], { identity: 'd' }),
-    ]);
-    const target = await snapshot([
-      entry('a/index.md', targetFiles['a/index.md'], { identity: 'a' }),
-      entry('b/index.md', targetFiles['b/index.md'], { identity: 'b' }),
-      entry('c2/index.md', targetFiles['c2/index.md'], { identity: 'c' }),
-      entry('d/index.md', targetFiles['d/index.md'], { identity: 'd' }),
-    ]);
-    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, {}, {
-      readBase: memoryReader(baseFiles),
-      readTarget: memoryReader(targetFiles),
-    });
+    const make = (side: 'base' | 'target', identities: Record<string, string>) =>
+      snapshot(Object.entries(files[side]).map(([path, content]) => entry(path, content, { identity: identities[path] ?? path })));
+    const base = await make('base', { 'c/index.md': 'c' });
+    const target = await make('target', { 'c2/index.md': 'c' });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read: reader(files), policy: {} });
+    // e/ supprimée : pas une exposition. f/ : la chaîne "true" ne rend pas privé.
     expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
-      ['guard-private-exposed', 'a/index.md'],
-      ['guard-private-exposed', 'b/index.md'],
-      ['guard-private-exposed', 'c2/index.md'],
+      ['guard-private-exposed', 'a'],
+      ['guard-private-exposed', 'b'],
+      ['guard-private-exposed', 'c2'],
     ]);
+  });
+
+  it('octets lus divergents : entry-hash-mismatch, et le fichier ne déclare rien', async () => {
+    const base = await snapshot([entry('a/index.md', PRIVATE)]);
+    const target = await snapshot([entry('a/index.md', SERIES)]);
+    const read = reader({ base: { 'a/index.md': `${PRIVATE}modifié depuis le listing` }, target: { 'a/index.md': SERIES } });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: {} });
+    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['entry-hash-mismatch', 'a/index.md']]);
   });
 
   it('fichier trop lourd : toute entrée de target, seuil par classe', async () => {
     const big: SnapshotEntry = { ...entry('a/media/big.jpg'), size: 10_000 };
     const base = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }]);
     const target = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }, big]);
-    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { maxFileBytes: { media: 5_000 } }, noRead);
+    const policy = { maxFileBytes: { media: 5_000 } };
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read: reader(), policy });
     expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
       ['guard-oversize', 'a/media/big.jpg'],
       ['guard-oversize', 'a/media/old.jpg'],
@@ -142,7 +164,8 @@ describe('guardChangeSet (§2.11)', () => {
     const base = await snapshot([entry('a/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
     const target = await snapshot([entry('b/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
     const cs = diffSnapshots(base, target);
-    expect(await guardChangeSet(cs, base, target, { maxDeletedSeries: 0 }, noRead)).toEqual([]);
+    const read = reader({ base: { 'a/index.md': 'A' } });
+    expect(await guardChangeSet(cs, base, target, { read, policy: { maxDeletedSeries: 0 } })).toEqual([]);
     expect(summarizeChangeSet(cs, base, target).series.deleted).toEqual([]);
   });
 });
