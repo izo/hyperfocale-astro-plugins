@@ -66,6 +66,13 @@ export interface DropboxListResult {
   readonly cursor: string;
 }
 
+/** Une page de `list_folder` ou de `list_folder/continue`. */
+interface ListPage {
+  readonly entries: DropboxMetadata[];
+  readonly cursor: string;
+  readonly has_more: boolean;
+}
+
 /**
  * Erreur renvoyée par l'API Dropbox. Ne porte jamais le corps brut de la
  * réponse — il peut contenir un jeton renvoyé par un intermédiaire, et une
@@ -325,16 +332,21 @@ export class DropboxClient {
     };
   }
 
-  /** Listing complet d'un dossier, toutes pages suivies. */
-  async listFolder(path: string, options: DropboxListOptions = {}): Promise<DropboxListResult> {
-    type Page = { entries: DropboxMetadata[]; cursor: string; has_more: boolean };
-    let page = await this.rpc<Page>('files/list_folder', this.listArgs(path, options), options.signal);
-    const entries = [...page.entries];
+  /** Suit les pages de `list_folder/continue` à partir d'une première page. */
+  private async paginate(first: ListPage, signal?: AbortSignal): Promise<DropboxListResult> {
+    const entries = [...first.entries];
+    let page = first;
     while (page.has_more) {
-      page = await this.rpc<Page>('files/list_folder/continue', { cursor: page.cursor }, options.signal);
+      page = await this.rpc<ListPage>('files/list_folder/continue', { cursor: page.cursor }, signal);
       entries.push(...page.entries);
     }
     return { entries, cursor: page.cursor };
+  }
+
+  /** Listing complet d'un dossier, toutes pages suivies. */
+  async listFolder(path: string, options: DropboxListOptions = {}): Promise<DropboxListResult> {
+    const first = await this.rpc<ListPage>('files/list_folder', this.listArgs(path, options), options.signal);
+    return this.paginate(first, options.signal);
   }
 
   /**
@@ -342,14 +354,7 @@ export class DropboxClient {
    * @throws {CursorResetError} curseur expiré
    */
   async listFolderContinue(cursor: string, options: ProviderCallOptions = {}): Promise<DropboxListResult> {
-    type Page = { entries: DropboxMetadata[]; cursor: string; has_more: boolean };
-    const entries: DropboxMetadata[] = [];
-    let page: Page = { entries: [], cursor, has_more: true };
-    while (page.has_more) {
-      page = await this.rpc<Page>('files/list_folder/continue', { cursor: page.cursor }, options.signal);
-      entries.push(...page.entries);
-    }
-    return { entries, cursor: page.cursor };
+    return this.paginate({ entries: [], cursor, has_more: true }, options.signal);
   }
 
   /** Curseur de l'état courant, sans lister (mêmes arguments que `listFolder`). */
