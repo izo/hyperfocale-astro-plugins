@@ -1,10 +1,21 @@
 import { CORE_SCHEMA, load } from 'js-yaml';
 
-const decoder = new TextDecoder('utf-8');
+// `fatal` : des octets qui ne forment pas de l'UTF-8 valide rendent le fichier
+// illisible (§4.10, règle 3) au lieu d'être remplacés par U+FFFD en silence.
+// Le BOM initial est retiré par le décodeur.
+const decoder = new TextDecoder('utf-8', { fatal: true });
 
-/** Texte d'un fichier lu en octets ou déjà décodé. */
-export function decodeText(content: Uint8Array | string): string {
-  return typeof content === 'string' ? content : decoder.decode(content);
+/**
+ * Texte UTF-8 d'un fichier lu en octets ou déjà décodé, BOM initial retiré ;
+ * `null` si les octets ne sont pas de l'UTF-8 valide.
+ */
+export function decodeUtf8(content: Uint8Array | string): string | null {
+  if (typeof content === 'string') return content.startsWith('\uFEFF') ? content.slice(1) : content;
+  try {
+    return decoder.decode(content);
+  } catch {
+    return null;
+  }
 }
 
 /** Résultat de la lecture d'un frontmatter. */
@@ -14,23 +25,25 @@ export type FrontmatterResult =
   | { readonly status: 'invalid'; readonly reason: string };
 
 /**
- * Extrait et parse le bloc YAML initial d'un fichier markdown.
+ * Extrait et parse le bloc YAML initial d'un fichier markdown (§4.10, règles 3
+ * à 5).
  *
- * - `missing` : pas de ligne `---` en tête (BOM toléré), ou bloc jamais refermé
- *   — c'est ainsi que le Content Layer d'Astro le lit aussi : sans frontmatter.
- * - `invalid` : YAML illisible, ou qui ne produit pas un mapping.
- * - Un bloc vide vaut `{}` : les champs manquants sont diagnostiqués un à un.
+ * - `missing` : la première ligne ne vaut pas exactement `---`, ou aucune ligne
+ *   suivante ne vaut exactement `---` pour refermer le bloc ;
+ * - `invalid` : UTF-8 invalide, YAML illisible (clé dupliquée comprise), bloc
+ *   vide, ou racine qui n'est pas un mapping.
  *
- * Le parseur est `js-yaml` en schéma `core` : une date nue (`2024-06-15`)
- * reste une chaîne. La validation juge ainsi le texte écrit, et non ce qu'en
- * ferait le schéma par défaut — qui convertit sans broncher `2024-02-30` en
- * 1er mars.
+ * Le YAML s'interprète en schéma 1.2 *core* : une date non guillemetée reste
+ * une chaîne. La validation juge ainsi le texte écrit, et non ce qu'en ferait
+ * le schéma par défaut — qui convertit sans broncher `2024-02-30` en 1er mars.
  */
-export function parseFrontmatter(text: string): FrontmatterResult {
-  const lines = (text.startsWith('\uFEFF') ? text.slice(1) : text).split(/\r?\n/);
-  if (lines[0]?.trimEnd() !== '---') return { status: 'missing' };
+export function parseFrontmatter(content: Uint8Array | string): FrontmatterResult {
+  const text = decodeUtf8(content);
+  if (text === null) return { status: 'invalid', reason: 'octets UTF-8 invalides' };
 
-  const end = lines.findIndex((line, i) => i > 0 && line.trimEnd() === '---');
+  const lines = text.split(/\r?\n/);
+  if (lines[0] !== '---') return { status: 'missing' };
+  const end = lines.indexOf('---', 1);
   if (end === -1) return { status: 'missing' };
 
   let data: unknown;
@@ -39,9 +52,9 @@ export function parseFrontmatter(text: string): FrontmatterResult {
   } catch (err) {
     return { status: 'invalid', reason: (err as Error).message.split('\n')[0] ?? 'YAML illisible' };
   }
-  if (data === undefined || data === null) return { status: 'ok', data: {} };
+  if (data === undefined || data === null) return { status: 'invalid', reason: 'bloc de frontmatter vide' };
   if (typeof data !== 'object' || Array.isArray(data)) {
-    return { status: 'invalid', reason: 'le frontmatter n\'est pas un mapping' };
+    return { status: 'invalid', reason: 'la racine du frontmatter n\'est pas un mapping' };
   }
   return { status: 'ok', data: data as Record<string, unknown> };
 }

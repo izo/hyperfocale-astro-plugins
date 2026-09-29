@@ -35,26 +35,28 @@ describe('validateSnapshot — snapshot et entrées', () => {
   it('version inconnue → snapshot-version-unsupported seul', async () => {
     const { snap, read } = await corpus({ 'a/index.md': SERIES });
     const diagnostics = await validateSnapshot({ ...snap, version: 2 } as unknown as ContentSnapshot, { read });
-    expect(triples(diagnostics)).toEqual([['snapshot-version-unsupported', 'error', undefined]]);
+    expect(triples(diagnostics)).toEqual([['snapshot-version-unsupported', 'error', '']]);
   });
 
   it('snapshot incomplet et vide', async () => {
     const snap = await snapshot([entry('a/media/01.jpg')], false);
     const diagnostics = await validateSnapshot(snap, { read: memoryReader({}) });
     expect(triples(diagnostics)).toEqual([
-      ['snapshot-empty', 'error', undefined],
-      ['snapshot-incomplete', 'error', undefined],
+      ['snapshot-empty', 'error', ''],
+      ['snapshot-incomplete', 'error', ''],
       ['media-orphan', 'warning', 'a/media'],
     ]);
   });
 
-  it('chemin invalide, non NFC, collision de casse, empreinte manquante, placeholder', async () => {
+  it('chemin invalide, non NFC, exclu, collision de casse, empreinte manquante, placeholder', async () => {
     const snap = await snapshot([
       entry('a/index.md', SERIES),
       entry('a/media/01.jpg'),
       entry('a/media/01.JPG'),
+      entry('a/media/01.Jpg'),
       entry('a/b\\c.txt'),
       entry('a/cafe\u0301.txt'),
+      entry('a/media/.DS_Store'),
       { path: 'a/nohash.txt', kind: 'other', size: 1 },
       { path: 'a/media/02.jpg', kind: 'media', size: 1, state: 'placeholder' },
     ]);
@@ -62,10 +64,32 @@ describe('validateSnapshot — snapshot et entrées', () => {
     expect(triples(diagnostics)).toEqual([
       ['entry-path-invalid', 'error', 'a/b\\c.txt'],
       ['entry-path-invalid', 'error', 'a/cafe\u0301.txt'],
+      ['entry-path-invalid', 'error', 'a/media/.DS_Store'],
+      // Le second chemin de chaque groupe dans l'ordre canonique, et les suivants.
+      ['entry-path-collision', 'error', 'a/media/01.Jpg'],
       ['entry-path-collision', 'error', 'a/media/01.jpg'],
       ['entry-not-materialized', 'error', 'a/media/02.jpg'],
       ['entry-hash-missing', 'error', 'a/nohash.txt'],
     ]);
+  });
+
+  it('une entrée au chemin invalide est écartée du reste : ni contenu, ni structure', async () => {
+    const snap = await snapshot([entry('/abs/index.md', 'x'), entry('ok/media/01.jpg')]);
+    const diagnostics = await validateSnapshot(snap, { read: memoryReader({}) });
+    expect(triples(diagnostics)).toEqual([
+      ['snapshot-empty', 'error', ''],
+      ['entry-path-invalid', 'error', '/abs/index.md'],
+      ['media-orphan', 'warning', 'ok/media'],
+    ]);
+  });
+
+  it('un fichier index placeholder n\'est pas lu et vaut série', async () => {
+    const snap = await snapshot([
+      { path: 'a/index.md', kind: 'content', size: 10, state: 'placeholder' },
+      entry('a/media/01.jpg'),
+    ]);
+    const diagnostics = await validateSnapshot(snap, { read: memoryReader({}) });
+    expect(triples(diagnostics)).toEqual([['entry-not-materialized', 'error', 'a/index.md']]);
   });
 });
 
@@ -141,19 +165,35 @@ describe('validateSnapshot — structure', () => {
 });
 
 describe('validateSnapshot — frontmatter', () => {
-  it('frontmatter-missing, frontmatter-invalid (YAML illisible, non-mapping, bloc non refermé)', async () => {
+  it('frontmatter-missing, frontmatter-invalid (YAML illisible, non-mapping, vide, clé dupliquée)', async () => {
     expect(
       await validate({
         'a/index.md': 'Pas de frontmatter',
         'b/index.md': '---\ntitle: [oops\n---\n',
         'c/index.md': '---\n- une liste\n---\n',
         'd/index.md': '---\ntitle: x\n',
+        'e/index.md': '---\n---\n',
+        'f/index.md': '---\ntitle: a\ntitle: b\ndate: 2024-01-01\n---\n',
+        'g/index.md': '--- \ntitle: T\ndate: 2024-01-01\n---\n',
       }),
     ).toEqual([
       ['frontmatter-missing', 'error', 'a/index.md'],
       ['frontmatter-invalid', 'error', 'b/index.md'],
       ['frontmatter-invalid', 'error', 'c/index.md'],
       ['frontmatter-missing', 'error', 'd/index.md'],
+      ['frontmatter-invalid', 'error', 'e/index.md'],
+      ['frontmatter-invalid', 'error', 'f/index.md'],
+      ['frontmatter-missing', 'error', 'g/index.md'],
+    ]);
+  });
+
+  it('des octets UTF-8 invalides rendent le fichier illisible', async () => {
+    const snap = await snapshot([entry('a/index.md', 'x'), entry('a/images.json', 'y')]);
+    const bytes = new Uint8Array([0x2d, 0x2d, 0x2d, 0x0a, 0xff, 0xfe, 0x0a, 0x2d, 0x2d, 0x2d, 0x0a]);
+    const diagnostics = await validateSnapshot(snap, { read: async () => bytes });
+    expect(triples(diagnostics)).toEqual([
+      ['images-json-invalid', 'warning', 'a/images.json'],
+      ['frontmatter-invalid', 'error', 'a/index.md'],
     ]);
   });
 
@@ -165,12 +205,16 @@ describe('validateSnapshot — frontmatter', () => {
     expect(
       await validate({
         'a/index.md': '---\ndate: 2024-01-01\n---\n',
-        'b/index.md': '---\ntitle: "  "\ndate: 2024-01-01\n---\n',
+        'b/index.md': '---\ntitle: ""\ndate: 2024-01-01\n---\n',
         'c/index.md': '---\ntitle: T\n---\n',
         'd/index.md': '---\ntitle: T\ndate: 15/06/2024\n---\n',
         'e/index.md': '---\ntitle: T\ndate: 2024-02-30\n---\n',
-        'f/index.md': '---\ntitle: T\ndate: 2024-01-01\ntype: gallery\n---\n',
-        'g/index.md': '---\n---\n',
+        'f/index.md': '---\ntitle: T\ntype: gallery\n---\n',
+        'g/index.md': '---\ntitle: "  "\ndate: 2024-01-01\n---\n',
+        'h/index.md': '---\ntitle: T\ndate: 2024-06-15 10:00\n---\n',
+        'i/index.md': '---\ntitle: T\ndate: 2024-06-15T24:00\n---\n',
+        'j/index.md': '---\ntitle: T\ndate: 2024\n---\n',
+        'k/index.md': '---\ntitle: T\ndate: ~\ntype: null\n---\n',
       }),
     ).toEqual([
       ['title-missing', 'error', 'a/index.md'],
@@ -178,20 +222,31 @@ describe('validateSnapshot — frontmatter', () => {
       ['date-missing', 'error', 'c/index.md'],
       ['date-invalid', 'error', 'd/index.md'],
       ['date-invalid', 'error', 'e/index.md'],
+      // `type` invalide : le fichier est traité en série, donc daté.
+      ['date-missing', 'error', 'f/index.md'],
       ['type-invalid', 'error', 'f/index.md'],
-      ['date-missing', 'error', 'g/index.md'],
-      ['title-missing', 'error', 'g/index.md'],
+      ['date-invalid', 'error', 'h/index.md'],
+      ['date-invalid', 'error', 'i/index.md'],
+      ['date-invalid', 'error', 'j/index.md'],
+      // `null` vaut absent.
+      ['date-missing', 'error', 'k/index.md'],
     ]);
   });
 
-  it('dates ISO acceptées : date nue, date-heure, fuseau, chaîne citée', async () => {
-    for (const date of ['2024-06-15', '2024-06-15T10:00:00Z', '2024-06-15T10:00:00+02:00', '"2024-06-15"']) {
+  it('dates ISO acceptées : date nue, heure, secondes, fraction, fuseau, chaîne citée', async () => {
+    for (const date of ['2024-06-15', '2024-06-15T10:00', '2024-06-15T10:00:59.123Z', '2024-06-15T10:00:00+02:00', '"2024-02-29"']) {
       expect(await validate({ 'a/index.md': `---\ntitle: T\ndate: ${date}\n---\n` })).toEqual([]);
     }
   });
 
   it('pas de date requise pour une section, ni sous une racine nodate', async () => {
     expect(await validate({ 's/index.md': SECTION })).toEqual([]);
+    // La date d'une section n'est pas vérifiée par le §4.10…
+    expect(await validate({ 's/index.md': '---\ntype: section\ntitle: S\ndate: 2024-02-30\n---\n' })).toEqual([]);
+    // … mais le build la refuserait si elle n'est pas une date du tout.
+    expect(await validate({ 's/index.md': '---\ntype: section\ntitle: S\ndate: hier\n---\n' })).toEqual([
+      ['x-schema-invalid', 'error', 's/index.md'],
+    ]);
     expect(await validate({ 'brands/acme/index.md': '---\ntitle: Acme\n---\n' }, [{ path: 'brands', dateRequired: false }])).toEqual([]);
   });
 
@@ -208,10 +263,10 @@ describe('validateSnapshot — frontmatter', () => {
     ]);
   });
 
-  it('un champ refusé par baseSeriesSchema remonte en frontmatter-invalid', async () => {
-    expect(await validate({ 'a/index.md': '---\ntitle: T\ndate: 2024-01-01\ntags: solo\n---\n' })).toEqual([
-      ['frontmatter-invalid', 'error', 'a/index.md'],
-    ]);
+  it('un champ refusé par baseSeriesSchema remonte en x-schema-invalid, un par fichier', async () => {
+    expect(
+      await validate({ 'a/index.md': '---\ntitle: T\ndate: 2024-01-01\ntags: solo\nfeatured: oui\n---\n' }),
+    ).toEqual([['x-schema-invalid', 'error', 'a/index.md']]);
   });
 
   it('cover-not-found (warning), cover-not-image (error), cover trouvée dans le snapshot ou images.json', async () => {
@@ -255,17 +310,29 @@ describe('validateSnapshot — frontmatter', () => {
     ]);
   });
 
-  it('attachment-not-found : entrée absente de media/', async () => {
-    const fm = '---\ntitle: T\ndate: 2024-01-01\nattachments:\n  - file: ./media/ok.pdf\n  - file: absent.pdf\n  - file: ./ailleurs/x.pdf\n---\n';
-    expect(await validate({ 'a/index.md': fm, 'a/media/ok.pdf': 'x', 'a/ailleurs/x.pdf': 'x' })).toEqual([
+  it('attachment-not-found : référence relative résolue directement dans media/', async () => {
+    const ok = '---\ntitle: T\ndate: 2024-01-01\nattachments:\n  - file: ./media/ok.pdf\n  - file: media/ok.pdf\n---\n';
+    expect(await validate({ 'a/index.md': ok, 'a/media/ok.pdf': 'x' })).toEqual([]);
+    for (const file of ['ok.pdf', './ailleurs/x.pdf', '/a/media/ok.pdf', './media/absent.pdf']) {
+      const fm = `---\ntitle: T\ndate: 2024-01-01\nattachments:\n  - file: "${file}"\n---\n`;
+      expect(await validate({ 'a/index.md': fm, 'a/ok.pdf': 'x', 'a/media/ok.pdf': 'x', 'a/ailleurs/x.pdf': 'x' })).toEqual([
+        ['attachment-not-found', 'warning', 'a/index.md'],
+      ]);
+    }
+    // Entrée sans `file` : introuvable elle aussi, un seul diagnostic par fichier —
+    // et refusée par le schéma du build, qui exige `file`.
+    const many = '---\ntitle: T\ndate: 2024-01-01\nattachments:\n  - title: sans fichier\n  - file: ./media/x.pdf\n---\n';
+    expect(await validate({ 'a/index.md': many })).toEqual([
       ['attachment-not-found', 'warning', 'a/index.md'],
-      ['attachment-not-found', 'warning', 'a/index.md'],
+      ['x-schema-invalid', 'error', 'a/index.md'],
     ]);
   });
 
-  it('embed-url-missing, sans doublon frontmatter-invalid', async () => {
+  it('embed-url-missing : entrée sans url, ou qui n\'est pas un objet ; sans doublon de schéma', async () => {
     const fm = '---\ntitle: T\ndate: 2024-01-01\nembeds:\n  - platform: vimeo\n    id: "1"\n  - url: https://vimeo.com/2\n---\n';
     expect(await validate({ 'a/index.md': fm })).toEqual([['embed-url-missing', 'error', 'a/index.md']]);
+    const scalar = '---\ntitle: T\ndate: 2024-01-01\nembeds:\n  - https://vimeo.com/2\n---\n';
+    expect(await validate({ 'a/index.md': scalar })).toEqual([['embed-url-missing', 'error', 'a/index.md']]);
   });
 
   it('propage une erreur de lecture plutôt que de conclure', async () => {

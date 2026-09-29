@@ -6,7 +6,7 @@
  */
 
 import { mapConcurrent } from './concurrency.js';
-import { toHex, utf8 } from './hash.js';
+import { utf8 } from './hash.js';
 import { classifyPath, compareCanonical, isExcluded, normalizePath } from './paths.js';
 import type { ExclusionRule } from './paths.js';
 import type {
@@ -111,16 +111,6 @@ function parseMultiStatus(xml: string): DavResource[] {
   });
 }
 
-/**
- * Empreinte `x-etag` (§2.4) : un ETag est opaque (`"5f3c-1a"`, `W/"abc"`) alors
- * qu'une empreinte est de l'hexadécimal minuscule. On en prend donc l'hexa des
- * octets UTF-8, guillemets et marque faible retirés — réversible, et
- * comparable seulement à lui-même, comme le veut le préfixe `x-`.
- */
-export function etagHash(etag: string): string {
-  return toHex(utf8(etag.trim().replace(/^W\//, '').replace(/^"(.*)"$/, '$1')));
-}
-
 const PROPFIND_BODY =
   '<?xml version="1.0" encoding="utf-8"?>' +
   '<d:propfind xmlns:d="DAV:"><d:prop>' +
@@ -146,7 +136,7 @@ export interface WebDAVProviderOptions {
   readonly password?: string;
   /** Défaut : `globalThis.fetch`. */
   readonly fetch?: typeof fetch;
-  /** Exclusions du consumer, en plus de celles du contrat (§2.2). */
+  /** Exclusions du consumer, en plus de celles du contrat (§4.2). */
   readonly ignore?: readonly ExclusionRule[];
   /** Requêtes PROPFIND simultanées. Défaut 4. */
   readonly concurrency?: number;
@@ -254,7 +244,9 @@ export class WebDAVProvider implements ContentProvider {
       path,
       kind: classifyPath(path),
       size: resource.size ?? 0,
-      ...(resource.etag !== undefined ? { hashes: { 'x-etag': etagHash(resource.etag) } } : {}),
+      // Empreinte `x-etag` (§4.4) : l'ETag tel que le serveur le rend, guillemets
+      // et marque faible compris — opaque, comparable seulement à lui-même.
+      ...(resource.etag !== undefined ? { hashes: { 'x-etag': resource.etag } } : {}),
       ...(Number.isNaN(modified) ? {} : { modifiedAt: new Date(modified).toISOString() }),
     };
   }

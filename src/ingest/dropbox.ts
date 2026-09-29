@@ -382,7 +382,7 @@ export interface DropboxProviderOptions {
   readonly client: DropboxClient;
   /** Dossier Dropbox racine du corpus (`/MDR Content`) ; `''` = tout le Dropbox. */
   readonly root: string;
-  /** Exclusions du consumer, en plus de celles du contrat (§2.2). */
+  /** Exclusions du consumer, en plus de celles du contrat (§4.2). */
   readonly ignore?: readonly ExclusionRule[];
 }
 

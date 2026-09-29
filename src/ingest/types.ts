@@ -7,14 +7,14 @@
  * contrat et les fixtures de la spec.
  */
 
-/** Classe d'une entrée (§2.3). */
+/** Classe d'une entrée (§4.3). */
 export type EntryKind = 'content' | 'media' | 'derived' | 'other';
 
-/** Toutes les classes, dans l'ordre de la règle de classification (§2.3). */
+/** Toutes les classes, dans l'ordre de la règle de classification (§4.3). */
 export const ENTRY_KINDS = ['derived', 'media', 'content', 'other'] as const satisfies readonly EntryKind[];
 
 /**
- * État de matérialisation d'une entrée (§2.5).
+ * État de matérialisation d'une entrée (§4.5).
  *
  * `placeholder` : le fichier existe côté provider mais ses octets ne sont pas
  * disponibles localement (iCloud Drive non téléchargé). Une telle entrée bloque
@@ -23,16 +23,17 @@ export const ENTRY_KINDS = ['derived', 'media', 'content', 'other'] as const sat
 export type EntryState = 'materialized' | 'placeholder';
 
 /**
- * Empreintes d'une entrée : `{ "<algorithme>": "<hex minuscule>" }` (§2.4).
+ * Empreintes d'une entrée : `{ "<algorithme>": "<valeur>" }` (§4.4).
  *
- * Algorithmes enregistrés : `sha256`, `dropbox`. Tout autre est préfixé `x-`
- * (`x-etag`) et n'est comparable qu'à lui-même.
+ * Algorithmes enregistrés : `sha256` et `dropbox`, en hexadécimal minuscule.
+ * Tout autre est préfixé `x-` (`x-etag`) : valeur opaque, comparable
+ * seulement à elle-même.
  */
 export type HashMap = Readonly<Record<string, string>>;
 
-/** Une entrée de snapshot — un fichier, jamais un dossier (§2.5). */
+/** Une entrée de snapshot — un fichier, jamais un dossier (§4.5). */
 export interface SnapshotEntry {
-  /** Chemin POSIX relatif à la racine du corpus, NFC (§2.1). */
+  /** Chemin POSIX relatif à la racine du corpus, NFC (§4.1). */
   readonly path: string;
   readonly kind: EntryKind;
   /** Taille en octets. */
@@ -49,7 +50,7 @@ export interface SnapshotEntry {
   readonly [extension: `x-${string}`]: unknown;
 }
 
-/** Provenance d'un snapshot — opaque, hors `id` (§2.5). */
+/** Provenance d'un snapshot — opaque, hors `id` (§4.5). */
 export interface SnapshotSource {
   readonly provider?: string;
   readonly revision?: string;
@@ -57,30 +58,30 @@ export interface SnapshotSource {
   readonly [extension: `x-${string}`]: unknown;
 }
 
-/** ContentSnapshot v1 (§2.5). */
+/** ContentSnapshot v1 (§4.5). */
 export interface ContentSnapshot {
   readonly format: 'hyperfocale.snapshot';
   readonly version: 1;
-  /** `sha256:<hex>` calculé (§2.6). */
+  /** `sha256:<hex>` calculé (§4.6). */
   readonly id: string;
   /** ISO 8601 UTC, informatif, hors `id`. */
   readonly createdAt: string;
   /** `true` seulement si le listing a abouti sans erreur ni page manquante. */
   readonly complete: boolean;
   readonly source?: SnapshotSource;
-  /** Triées dans l'ordre canonique (§2.1), chemins uniques. */
+  /** Triées dans l'ordre canonique (§4.1), chemins uniques. */
   readonly entries: readonly SnapshotEntry[];
   readonly [extension: `x-${string}`]: unknown;
 }
 
-/** Entrée présente des deux côtés dont le contenu a changé (§2.7). */
+/** Entrée présente des deux côtés dont le contenu a changé (§4.7). */
 export interface ModifiedEntry {
   readonly path: string;
   readonly before: SnapshotEntry;
   readonly after: SnapshotEntry;
 }
 
-/** Entrée déplacée, par identité ou par contenu (§2.7). */
+/** Entrée déplacée, par identité ou par contenu (§4.7). */
 export interface MovedEntry {
   readonly from: string;
   readonly to: string;
@@ -90,7 +91,7 @@ export interface MovedEntry {
   readonly modified: boolean;
 }
 
-/** ContentChangeSet v1 (§2.7). */
+/** ContentChangeSet v1 (§4.7). */
 export interface ContentChangeSet {
   readonly format: 'hyperfocale.changeset';
   readonly version: 1;
@@ -103,10 +104,10 @@ export interface ContentChangeSet {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-/** Sévérité d'un diagnostic (§2.10). */
+/** Sévérité d'un diagnostic (§4.10). */
 export type Severity = 'error' | 'warning' | 'info';
 
-/** Codes de diagnostic du contrat (§2.10) et de la garde de publication (§2.11). */
+/** Codes de diagnostic du contrat (§4.10) et de la garde de publication (§4.11). */
 export type DiagnosticCode =
   | 'snapshot-version-unsupported'
   | 'snapshot-incomplete'
@@ -140,24 +141,26 @@ export type DiagnosticCode =
   | 'guard-mass-deletion'
   | 'guard-mass-move'
   | 'guard-private-exposed'
-  | 'guard-oversize';
+  | 'guard-oversize'
+  // Contrôle propre à une implémentation ou à un consommateur (§4.10).
+  | `x-${string}`;
 
 /**
- * Diagnostic (§2.10). Les fixtures comparent `code` + `severity` + `path`,
- * jamais `message` : le texte est libre et peut changer sans rompre le contrat.
+ * Diagnostic (§4.10). Deux implémentations sont conformes si elles rendent les
+ * mêmes triplets `code` + `severity` + `path` — jamais `message`, texte libre.
  */
 export interface Diagnostic {
   readonly code: DiagnosticCode;
   readonly severity: Severity;
-  /** Absent pour un diagnostic qui porte sur le snapshot entier. */
-  readonly path?: string;
+  /** `""` pour un diagnostic qui porte sur le snapshot entier. */
+  readonly path: string;
   readonly message: string;
   /** Règle de la spec invoquée (`§1.2`). */
   readonly rule?: string;
 }
 
 /**
- * Capacités déclarées d'un provider (§2.8).
+ * Capacités déclarées d'un provider (§4.8).
  *
  * Le pipeline ne DOIT jamais supposer une capacité absente : pas de webhook →
  * réconciliation périodique ; pas d'incrémental → listing complet.
@@ -206,7 +209,7 @@ export interface ProviderCallOptions {
 }
 
 /**
- * Contrat d'un provider de contenu (§3.2 de la conception).
+ * Contrat d'un provider de contenu — l'interface TypeScript de §4.0 et §4.8.
  *
  * Le provider alimente un snapshot filesystem : il ne remplace jamais le
  * Content Layer d'Astro, et aucune requête visiteur ne le contacte.
@@ -226,7 +229,7 @@ export interface ContentProvider {
   move?(from: string, to: string, opts?: ProviderCallOptions): Promise<void>;
 }
 
-/** Vocabulaire des états de publication (§2.9). */
+/** Vocabulaire des états de publication (§4.9). */
 export const PUBLICATION_STATES = [
   'sourceDirty',
   'sourceSynced',
@@ -238,10 +241,10 @@ export const PUBLICATION_STATES = [
   'conflict',
 ] as const;
 
-/** État de publication (§2.9). */
+/** État de publication (§4.9). */
 export type PublicationState = (typeof PUBLICATION_STATES)[number];
 
-/** Enregistrement d'état de publication (§2.9). */
+/** Enregistrement d'état de publication (§4.9). */
 export interface PublicationRecord {
   readonly format: 'hyperfocale.publication';
   readonly version: 1;

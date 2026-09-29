@@ -24,8 +24,8 @@ export interface CreateSnapshotOptions {
 }
 
 /**
- * Construit un ContentSnapshot v1 (§2.5) : entrées triées dans l'ordre
- * canonique, identifiant calculé (§2.6).
+ * Construit un ContentSnapshot v1 (§4.5) : entrées triées dans l'ordre
+ * canonique, identifiant calculé (§4.6).
  *
  * Ne valide pas — `validateSnapshot` s'en charge et rend des diagnostics. Seul
  * un doublon exact de chemin lève : ce n'est pas un contenu invalide, c'est un
@@ -101,12 +101,12 @@ function checkEntry(raw: unknown, index: number): SnapshotEntry {
   for (const key of ['identity', 'modifiedAt'] as const) {
     if (raw[key] !== undefined && typeof raw[key] !== 'string') fail(`\`${key}\` doit être une chaîne`);
   }
-  // Champs inconnus conservés tels quels (passthrough, §2.5).
+  // Champs inconnus conservés tels quels (passthrough, §4.5).
   return raw as unknown as SnapshotEntry;
 }
 
 /**
- * Lit un ContentSnapshot (§2.5) depuis du JSON ou un objet déjà parsé.
+ * Lit un ContentSnapshot (§4.5) depuis du JSON ou un objet déjà parsé.
  *
  * Refuse une version inconnue (`snapshot-version-unsupported`) — un lecteur
  * n'interprète jamais un format qu'il ne connaît pas. Conserve les champs
@@ -172,7 +172,7 @@ export class CursorResetError extends Error {
  *   même delta subsiste. `DropboxProvider.changes` replie déjà les opérations
  *   dans cet ordre.
  * - Une suppression de `p` retire `p` et tout `p/…`.
- * - Les chemins se rapprochent au repli de casse près (§2.1) : pour un provider
+ * - Les chemins se rapprochent au repli de casse près (§4.1) : pour un provider
  *   insensible à la casse, `Foo/a.jpg` et `foo/a.jpg` sont le même fichier. Un
  *   upsert garde la casse des dossiers déjà connus — Dropbox ne garantit la
  *   casse que du dernier segment d'un chemin.

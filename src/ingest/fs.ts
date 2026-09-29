@@ -23,7 +23,7 @@ import type {
   SnapshotEntry,
 } from './types.js';
 
-/** Algorithmes calculables localement (§2.4). */
+/** Algorithmes calculables localement (§4.4). */
 export type LocalHashAlgorithm = 'sha256' | 'dropbox';
 
 const ALL_ALGORITHMS: readonly LocalHashAlgorithm[] = ['sha256', 'dropbox'];
@@ -100,7 +100,7 @@ export async function hashFile(
 export interface FilesystemProviderOptions {
   /** Dossier racine du corpus. */
   readonly root: string;
-  /** Exclusions du consumer, en plus de celles du contrat (§2.2). */
+  /** Exclusions du consumer, en plus de celles du contrat (§4.2). */
   readonly ignore?: readonly ExclusionRule[];
   /** Défaut : `sha256` et `dropbox`. */
   readonly hashAlgorithms?: readonly LocalHashAlgorithm[];
@@ -111,10 +111,10 @@ export interface FilesystemProviderOptions {
 /**
  * Provider filesystem : parcours récursif d'un dossier local.
  *
- * - Exclusions du contrat (§2.2) et du consumer appliquées dès le dossier : un
+ * - Exclusions du contrat (§4.2) et du consumer appliquées dès le dossier : un
  *   `.git/` n'est jamais parcouru.
  * - Chemins normalisés NFC — APFS rend les noms tels qu'écrits, souvent NFD
- *   depuis le Finder. Un chemin invalide au sens du §2.1 (`\` dans un nom sous
+ *   depuis le Finder. Un chemin invalide au sens du §4.1 (`\` dans un nom sous
  *   Linux) est listé tel quel : c'est à `validateSnapshot` de le signaler.
  * - Un lien symbolique vers un fichier est suivi ; vers un dossier, ignoré
  *   (pas de cycle possible).
@@ -236,7 +236,7 @@ export class FilesystemProvider implements ContentProvider {
 
 /**
  * Chemin absolu d'une entrée sous `root`. Refuse tout chemin invalide au sens
- * du §2.1 : c'est ce qui garantit qu'aucun `..` ni chemin absolu ne sort de la
+ * du §4.1 : c'est ce qui garantit qu'aucun `..` ni chemin absolu ne sort de la
  * racine.
  */
 function resolveInside(root: string, path: string): string {

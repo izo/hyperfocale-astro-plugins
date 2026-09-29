@@ -30,10 +30,12 @@ export interface ChangeSetSummary {
  * Résume un changeset en séries ajoutées, modifiées, supprimées et déplacées.
  *
  * Une série est un dossier porteur d'un fichier index. Elle est **déplacée**
- * quand l'un de ses fichiers index a été déplacé (§2.7) vers un dossier qui
- * n'était pas une série, depuis un dossier qui n'en est plus une : renommer une
- * section de rangement qui contient N séries produit N séries déplacées. Une
+ * quand l'un de ses fichiers index a été déplacé (§4.7) et que son dossier
+ * d'origine n'en porte plus : renommer une section de rangement qui contient
+ * N séries produit N séries déplacées — de quoi écrire N redirections. Une
  * série déplacée n'apparaît ni en ajout, ni en suppression, ni en modification.
+ * Un dossier source d'un déplacement n'est jamais compté supprimé, comme dans
+ * la garde (§4.11).
  *
  * Une série est **modifiée** quand un changement touche un fichier dont elle
  * est le dossier de série le plus proche — un changement dans une sous-série
@@ -47,18 +49,21 @@ export function summarizeChangeSet(
   const baseFolders = indexFolders(base?.entries ?? []);
   const targetFolders = indexFolders(target.entries);
 
+  const moveSources = new Set<string>();
   const moved = new Map<string, string>();
   for (const move of changeSet.moved) {
-    if (!isIndexFile(basename(move.from)) || !isIndexFile(basename(move.to))) continue;
+    if (!isIndexFile(basename(move.from))) continue;
     const from = dirname(move.from);
-    const to = dirname(move.to);
-    if (from === to || targetFolders.has(from) || baseFolders.has(to) || moved.has(from)) continue;
-    moved.set(from, to);
+    moveSources.add(from);
+    if (targetFolders.has(from) || moved.has(from)) continue;
+    moved.set(from, dirname(move.to));
   }
   const movedTargets = new Set(moved.values());
 
+  // Même définition que la garde (§4.11) : un dossier dont un fichier index est
+  // la source d'un `moved` n'est pas supprimé.
   const added = [...targetFolders.keys()].filter((folder) => !baseFolders.has(folder) && !movedTargets.has(folder));
-  const deleted = [...baseFolders.keys()].filter((folder) => !targetFolders.has(folder) && !moved.has(folder));
+  const deleted = [...baseFolders.keys()].filter((folder) => !targetFolders.has(folder) && !moveSources.has(folder));
 
   const modified = new Set<string>();
   const touch = (entry: SnapshotEntry, folders: ReadonlyMap<string, unknown>) => {

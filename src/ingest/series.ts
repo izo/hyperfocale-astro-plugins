@@ -3,7 +3,7 @@ import type { SnapshotEntry } from './types.js';
 
 /**
  * Dossiers porteurs d'un fichier index — une « série » au sens du contrat
- * d'ingestion, sections comprises (§2.10) — avec leurs fichiers index triés.
+ * d'ingestion, sections comprises (§4.10) — avec leurs fichiers index triés.
  */
 export function indexFolders(entries: readonly SnapshotEntry[]): Map<string, string[]> {
   const folders = new Map<string, string[]>();

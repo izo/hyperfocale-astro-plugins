@@ -20,7 +20,7 @@ export interface ImagesManifest {
  * courte) : les images du `media/` de la série — images seulement, pas les
  * documents joints (§1.9) — dans l'ordre alphabétique de leur nom.
  *
- * L'ordre alphabétique est l'ordre canonique du contrat (octets UTF-8, §2.1),
+ * L'ordre alphabétique est l'ordre canonique du contrat (octets UTF-8, §4.1),
  * pas une collation locale : deux implémentations produisent le même fichier.
  */
 export function buildImagesManifest(

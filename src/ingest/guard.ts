@@ -1,12 +1,12 @@
-import { compareDiagnostics } from './diff.js';
-import { decodeText, parseFrontmatter } from './frontmatter.js';
+import { finalizeDiagnostics } from './diff.js';
+import { parseFrontmatter } from './frontmatter.js';
 import { basename, dirname, isIndexFile } from './paths.js';
+import { indexFolders } from './series.js';
 import { countKind } from './snapshot.js';
-import { summarizeChangeSet } from './summary.js';
-import type { ContentChangeSet, ContentSnapshot, Diagnostic, EntryKind, ReadFn, SnapshotEntry } from './types.js';
+import type { ContentChangeSet, ContentSnapshot, Diagnostic, EntryKind, ReadFn } from './types.js';
 
 /**
- * Seuils de la garde de publication (§2.11). Le mécanisme est générique, les
+ * Seuils de la garde de publication (§4.11). Le mécanisme est générique, les
  * seuils appartiennent au consumer ; un seuil absent désactive son contrôle.
  */
 export interface GuardPolicy {
@@ -21,38 +21,43 @@ export interface GuardPolicy {
 }
 
 /**
- * Lecture des fichiers index de part et d'autre du changeset — nécessaire au
- * contrôle `guard-private-exposed`, qui compare le flag `private` de base et
- * de target. Seuls les fichiers index dont le contenu a changé sont lus.
+ * Lecture des fichiers index de part et d'autre du changeset — nécessaire à
+ * `guard-private-exposed`, qui compare le champ `private` de base et de
+ * target. Seuls les fichiers index dont le contenu a changé sont lus.
  */
 export interface GuardReaders {
   readonly readBase: ReadFn;
   readonly readTarget: ReadFn;
 }
 
-function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], message: string, path?: string): Diagnostic {
-  return { code, severity, ...(path !== undefined ? { path } : {}), message, rule: '§2.11' };
+function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path: string, message: string): Diagnostic {
+  return { code, severity, path, message, rule: '§4.11' };
 }
 
 async function isPrivate(read: ReadFn, path: string): Promise<boolean> {
-  const result = parseFrontmatter(decodeText(await read(path)));
+  const result = parseFrontmatter(await read(path));
   return result.status === 'ok' && result.data.private === true;
 }
 
 /**
- * Garde de publication (§2.11) : rend des diagnostics `guard-*`. Une erreur
+ * Garde de publication (§4.11) : rend des diagnostics `guard-*`. Une erreur
  * interdit l'auto-publication — la décision reste au consumer.
  *
- * - `guard-snapshot-incomplete`, `guard-snapshot-empty` : toujours actifs, non
- *   désactivables ;
+ * - `guard-snapshot-incomplete`, `guard-snapshot-empty` : toujours actifs ;
  * - `guard-mass-deletion` : séries supprimées > `maxDeletedSeries`, ou médias
- *   supprimés > `maxDeletedMediaRatio` × médias de base ;
- * - `guard-mass-move` (warning) : séries déplacées > `maxMovedSeries` ;
+ *   supprimés > `maxDeletedMediaRatio` × médias de base. Une série supprimée
+ *   est un dossier porteur dans base qui ne l'est plus dans target, et dont
+ *   aucun fichier index n'est la source d'un `moved` ;
+ * - `guard-mass-move` (warning) : séries déplacées — dossiers distincts parmi
+ *   les `from` des `moved` qui désignent un fichier index — > `maxMovedSeries` ;
  * - `guard-private-exposed` : un fichier index `private: true` dans base ne
- *   l'est plus dans target (flag retiré ou passé à `false`), à chemin constant
- *   ou après déplacement ;
- * - `guard-oversize` : une entrée ajoutée, modifiée ou déplacée dépasse
- *   `maxFileBytes[kind]`.
+ *   l'est plus dans target (champ retiré ou passé à `false`), suivi jusqu'à sa
+ *   destination s'il a été déplacé ;
+ * - `guard-oversize` : une entrée de target dépasse `maxFileBytes[kind]`.
+ *
+ * `private` n'est pas un champ du format mais une extension de site : la garde
+ * s'applique aux corpus qui l'emploient. D'où `readers`, sans lesquels elle ne
+ * saurait rien du contenu des fichiers index.
  */
 export async function guardChangeSet(
   changeSet: ContentChangeSet,
@@ -62,74 +67,68 @@ export async function guardChangeSet(
   readers: GuardReaders,
 ): Promise<Diagnostic[]> {
   const diagnostics: Diagnostic[] = [];
-
-  if (!target.complete) {
-    diagnostics.push(guard('guard-snapshot-incomplete', 'error', 'Snapshot incomplet : publication interdite.'));
-  }
-  if (countKind(target.entries, 'content') === 0) {
-    diagnostics.push(guard('guard-snapshot-empty', 'error', 'Snapshot sans contenu : publication interdite.'));
-  }
-
-  const summary = summarizeChangeSet(changeSet, base, target);
   const { maxDeletedSeries, maxDeletedMediaRatio, maxMovedSeries, maxFileBytes } = policy;
 
-  if (maxDeletedSeries !== undefined && summary.series.deleted.length > maxDeletedSeries) {
-    diagnostics.push(
-      guard(
-        'guard-mass-deletion',
-        'error',
-        `${summary.series.deleted.length} séries supprimées (seuil : ${maxDeletedSeries}).`,
-      ),
+  if (!target.complete) {
+    diagnostics.push(guard('guard-snapshot-incomplete', 'error', '', 'Snapshot incomplet : publication interdite.'));
+  }
+  if (countKind(target.entries, 'content') === 0) {
+    diagnostics.push(guard('guard-snapshot-empty', 'error', '', 'Snapshot sans contenu : publication interdite.'));
+  }
+
+  const movedIndexes = changeSet.moved.filter((move) => isIndexFile(basename(move.from)));
+  const movedSeries = new Set(movedIndexes.map((move) => dirname(move.from)));
+
+  // Un seul `guard-mass-deletion` par changeset (au plus un diagnostic par
+  // couple code/chemin, §4.10) : ses motifs se cumulent dans le message.
+  const massDeletion: string[] = [];
+  if (maxDeletedSeries !== undefined) {
+    const targetFolders = indexFolders(target.entries);
+    const deleted = [...indexFolders(base?.entries ?? []).keys()].filter(
+      (folder) => !targetFolders.has(folder) && !movedSeries.has(folder),
     );
+    if (deleted.length > maxDeletedSeries) {
+      massDeletion.push(`${deleted.length} séries supprimées (seuil : ${maxDeletedSeries})`);
+    }
   }
   if (maxDeletedMediaRatio !== undefined) {
     const baseMedia = countKind(base?.entries ?? [], 'media');
     const deletedMedia = countKind(changeSet.deleted, 'media');
     if (deletedMedia > maxDeletedMediaRatio * baseMedia) {
-      diagnostics.push(
-        guard(
-          'guard-mass-deletion',
-          'error',
-          `${deletedMedia} médias supprimés sur ${baseMedia} (seuil : ${maxDeletedMediaRatio * 100} %).`,
-        ),
-      );
+      massDeletion.push(`${deletedMedia} médias supprimés sur ${baseMedia} (seuil : ${maxDeletedMediaRatio * 100} %)`);
     }
   }
-  if (maxMovedSeries !== undefined && summary.series.moved.length > maxMovedSeries) {
+  if (massDeletion.length > 0) {
+    diagnostics.push(guard('guard-mass-deletion', 'error', '', `${massDeletion.join(' ; ')}.`));
+  }
+  if (maxMovedSeries !== undefined && movedSeries.size > maxMovedSeries) {
     diagnostics.push(
-      guard('guard-mass-move', 'warning', `${summary.series.moved.length} séries déplacées (seuil : ${maxMovedSeries}).`),
+      guard('guard-mass-move', 'warning', '', `${movedSeries.size} séries déplacées (seuil : ${maxMovedSeries}).`),
     );
   }
 
   // Fichiers index dont le contenu a changé, sur place ou en se déplaçant : un
-  // move à contenu identique garde son flag, inutile de le relire.
-  const candidates: Array<{ from: string; to: string }> = [
+  // move à contenu identique garde son champ, inutile de le relire.
+  const candidates = [
     ...changeSet.modified.map(({ path }) => ({ from: path, to: path })),
-    ...changeSet.moved.filter((move) => move.modified).map(({ from, to }) => ({ from, to })),
-  ].filter(({ from, to }) => isIndexFile(basename(from)) && isIndexFile(basename(to)));
+    ...movedIndexes.filter((move) => move.modified).map(({ from, to }) => ({ from, to })),
+  ].filter(({ from }) => isIndexFile(basename(from)));
   for (const { from, to } of candidates) {
     if ((await isPrivate(readers.readBase, from)) && !(await isPrivate(readers.readTarget, to))) {
-      diagnostics.push(
-        guard('guard-private-exposed', 'error', `« ${from} » était privée et ne l'est plus.`, dirname(to)),
-      );
+      diagnostics.push(guard('guard-private-exposed', 'error', to, `« ${from} » était privée et ne l'est plus.`));
     }
   }
 
   if (maxFileBytes !== undefined) {
-    const incoming: SnapshotEntry[] = [
-      ...changeSet.added,
-      ...changeSet.modified.map(({ after }) => after),
-      ...changeSet.moved.map(({ after }) => after),
-    ];
-    for (const entry of incoming) {
+    for (const entry of target.entries) {
       const limit = maxFileBytes[entry.kind];
       if (limit !== undefined && entry.size > limit) {
         diagnostics.push(
-          guard('guard-oversize', 'error', `${entry.size} octets (seuil ${entry.kind} : ${limit}).`, entry.path),
+          guard('guard-oversize', 'error', entry.path, `${entry.size} octets (seuil ${entry.kind} : ${limit}).`),
         );
       }
     }
   }
 
-  return diagnostics.sort(compareDiagnostics);
+  return finalizeDiagnostics(diagnostics);
 }

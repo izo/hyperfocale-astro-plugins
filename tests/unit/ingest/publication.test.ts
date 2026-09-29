@@ -79,7 +79,11 @@ describe('guardChangeSet (§2.11)', () => {
     const target = await snapshot([entry('c/index.md'), entry('c/media/1.jpg')]);
     const cs = diffSnapshots(base, target);
     const hit = await guardChangeSet(cs, base, target, { maxDeletedSeries: 1, maxDeletedMediaRatio: 0.5 }, noRead);
-    expect(hit.map((d) => d.code)).toEqual(['guard-mass-deletion', 'guard-mass-deletion']);
+    // Un seul diagnostic par couple (code, path) : les deux motifs se cumulent.
+    expect(hit.map((d) => [d.code, d.path])).toEqual([['guard-mass-deletion', '']]);
+    expect(hit[0]?.message).toMatch(/2 séries.*3 médias/);
+    const mediaOnly = await guardChangeSet(cs, base, target, { maxDeletedMediaRatio: 0.5 }, noRead);
+    expect(mediaOnly.map((d) => d.code)).toEqual(['guard-mass-deletion']);
     const ok = await guardChangeSet(cs, base, target, { maxDeletedSeries: 2, maxDeletedMediaRatio: 0.75 }, noRead);
     expect(ok).toEqual([]);
   });
@@ -116,18 +120,30 @@ describe('guardChangeSet (§2.11)', () => {
       readTarget: memoryReader(targetFiles),
     });
     expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
-      ['guard-private-exposed', 'a'],
-      ['guard-private-exposed', 'b'],
-      ['guard-private-exposed', 'c2'],
+      ['guard-private-exposed', 'a/index.md'],
+      ['guard-private-exposed', 'b/index.md'],
+      ['guard-private-exposed', 'c2/index.md'],
     ]);
   });
 
-  it('fichier trop lourd : seules les entrées entrantes comptent', async () => {
+  it('fichier trop lourd : toute entrée de target, seuil par classe', async () => {
     const big: SnapshotEntry = { ...entry('a/media/big.jpg'), size: 10_000 };
     const base = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }]);
     const target = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }, big]);
     const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { maxFileBytes: { media: 5_000 } }, noRead);
-    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['guard-oversize', 'a/media/big.jpg']]);
+    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
+      ['guard-oversize', 'a/media/big.jpg'],
+      ['guard-oversize', 'a/media/old.jpg'],
+    ]);
+  });
+
+  it('une série dont l\'index est la source d\'un déplacement n\'est pas supprimée', async () => {
+    // Fusion : a/ déménage dans b/, qui existait déjà.
+    const base = await snapshot([entry('a/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
+    const target = await snapshot([entry('b/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
+    const cs = diffSnapshots(base, target);
+    expect(await guardChangeSet(cs, base, target, { maxDeletedSeries: 0 }, noRead)).toEqual([]);
+    expect(summarizeChangeSet(cs, base, target).series.deleted).toEqual([]);
   });
 });
 

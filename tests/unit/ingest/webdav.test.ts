@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WebDAVError, WebDAVProvider, etagHash } from '../../../src/ingest/webdav.js';
+import { WebDAVError, WebDAVProvider } from '../../../src/ingest/webdav.js';
 
 const BASE = 'https://dav.example.com/remote.php/dav/files/mathieu/MDR%20Content/';
 
@@ -77,14 +77,6 @@ function fakeDav(files: Record<string, FakeFile>, options: { failing?: string[];
   return { fetch: fetchFn, requests };
 }
 
-describe('etagHash', () => {
-  it('hexadécimal des octets de l\'ETag, guillemets et marque faible retirés', () => {
-    expect(etagHash('"abc"')).toBe('616263');
-    expect(etagHash('W/"abc"')).toBe('616263');
-    expect(etagHash('abc')).toBe('616263');
-  });
-});
-
 describe('WebDAVProvider', () => {
   const tree = () => ({
     'archives/été 2024/index.md': { content: '---\ntitle: T\n---\n', etag: '"e1"' },
@@ -94,15 +86,15 @@ describe('WebDAVProvider', () => {
     '_todo/draft.md': { content: 'x', etag: '"e5"' },
   });
 
-  it('parcourt en PROPFIND Depth 1, décode les hrefs, exclut, rend x-etag, taille et date', async () => {
+  it('parcourt en PROPFIND Depth 1, décode les hrefs, exclut, rend x-etag brut, taille et date', async () => {
     const server = fakeDav(tree());
     const provider = new WebDAVProvider({ url: BASE, username: 'mathieu', password: 'pässword', fetch: server.fetch, ignore: ['_todo/'] });
     const listing = await provider.list();
     expect(listing.complete).toBe(true);
     expect(listing.entries).toEqual([
-      { path: 'archives/a&b/index.md', kind: 'content', size: 3, hashes: { 'x-etag': etagHash('"e4"') }, modifiedAt: '2026-09-28T08:00:00.000Z' },
-      { path: 'archives/été 2024/index.md', kind: 'content', size: 17, hashes: { 'x-etag': etagHash('"e1"') }, modifiedAt: '2026-09-28T08:00:00.000Z' },
-      { path: 'archives/été 2024/media/01.jpg', kind: 'media', size: 3, hashes: { 'x-etag': etagHash('"e2"') }, modifiedAt: '2026-09-28T08:00:00.000Z' },
+      { path: 'archives/a&b/index.md', kind: 'content', size: 3, hashes: { 'x-etag': '"e4"' }, modifiedAt: '2026-09-28T08:00:00.000Z' },
+      { path: 'archives/été 2024/index.md', kind: 'content', size: 17, hashes: { 'x-etag': '"e1"' }, modifiedAt: '2026-09-28T08:00:00.000Z' },
+      { path: 'archives/été 2024/media/01.jpg', kind: 'media', size: 3, hashes: { 'x-etag': 'W/"e2"' }, modifiedAt: '2026-09-28T08:00:00.000Z' },
     ]);
     const propfinds = server.requests.filter((r) => r.method === 'PROPFIND');
     expect(propfinds.every((r) => r.headers.Depth === '1')).toBe(true);
@@ -140,7 +132,7 @@ describe('WebDAVProvider', () => {
     const server = fakeDav({ 'a/index.md': { content: 'x', etag: '"1"' } });
     const provider = new WebDAVProvider({ url: BASE, fetch: server.fetch });
     const entry = await provider.write('a/neu/media/01.jpg', new TextEncoder().encode('pix'));
-    expect(entry).toMatchObject({ path: 'a/neu/media/01.jpg', kind: 'media', size: 3, hashes: { 'x-etag': etagHash('"new-etag"') } });
+    expect(entry).toMatchObject({ path: 'a/neu/media/01.jpg', kind: 'media', size: 3, hashes: { 'x-etag': '"new-etag"' } });
     expect(server.requests.map((r) => `${r.method} ${decodeURIComponent(new URL(r.url).pathname.slice(new URL(BASE).pathname.length))}`)).toEqual([
       'MKCOL a/',
       'MKCOL a/neu/',

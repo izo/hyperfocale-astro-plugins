@@ -1,6 +1,6 @@
 import type { EntryKind } from './types.js';
 
-/** Résultat de `normalizePath` : le chemin NFC et son verdict (§2.1). */
+/** Résultat de `normalizePath` : le chemin NFC et son verdict (§4.1). */
 export interface NormalizedPath {
   /** Chemin normalisé NFC — renvoyé même s'il est invalide, pour le diagnostic. */
   readonly path: string;
@@ -9,11 +9,11 @@ export interface NormalizedPath {
   readonly reason?: string;
 }
 
-// U+0000–U+001F et U+007F (§2.1).
+// U+0000–U+001F et U+007F (§4.1).
 const CONTROL_CHAR = /[\u0000-\u001f\u007f]/;
 
 /**
- * Normalise un chemin en NFC et le confronte aux règles du contrat (§2.1).
+ * Normalise un chemin en NFC et le confronte aux règles du contrat (§4.1).
  *
  * Ne répare rien d'autre que la forme Unicode : un `/` initial, un segment `..`
  * ou un `\` rendent le chemin invalide, ils ne sont pas corrigés. Un provider
@@ -36,15 +36,23 @@ export function normalizePath(input: string): NormalizedPath {
 }
 
 /**
- * Clé de collision (§2.1) : deux chemins de même clé désignent le même fichier
- * pour un provider insensible à la casse (Dropbox, APFS et HFS+ par défaut).
+ * Clé de collision (§4.1) : NFC puis minuscule **simple**, point de code par
+ * point de code. Deux chemins de même clé désignent le même fichier pour un
+ * provider insensible à la casse (Dropbox, APFS et HFS+ par défaut).
+ *
+ * `toLowerCase()` applique la correspondance complète et contextuelle ; point
+ * de code par point de code, elle rejoint la correspondance simple — sauf pour
+ * U+0130 `İ`, dont la minuscule complète est `i` + U+0307 et la simple `i`.
+ * Hors contexte, pas de sigma final : `Σ` donne `σ`.
  */
 export function collisionKey(path: string): string {
-  return path.normalize('NFC').toLowerCase();
+  let key = '';
+  for (const char of path.normalize('NFC')) key += char === '\u0130' ? 'i' : char.toLowerCase();
+  return key;
 }
 
 /**
- * Ordre canonique (§2.1) : séquence d'octets UTF-8, sans collation locale.
+ * Ordre canonique (§4.1) : séquence d'octets UTF-8, sans collation locale.
  *
  * L'ordre des octets UTF-8 coïncide avec celui des points de code — et diffère
  * de la comparaison native des chaînes JS, qui porte sur les unités UTF-16 : un
@@ -89,7 +97,7 @@ export function isWithin(path: string, dir: string): boolean {
 }
 
 /**
- * Règle d'exclusion propre au consumer (§2.2) :
+ * Règle d'exclusion propre au consumer (§4.2) :
  * - chaîne : un **segment** du chemin égal à la chaîne. Un `/` final
  *   (`"_todo/"`) restreint aux segments de dossier, jamais au nom du fichier ;
  * - RegExp : testée sur le chemin complet ;
@@ -97,12 +105,12 @@ export function isWithin(path: string, dir: string): boolean {
  */
 export type ExclusionRule = string | RegExp | ((path: string) => boolean);
 
-// Basenames exclus d'office (§2.2). `Icon\r` est l'icône de dossier personnalisée
+// Basenames exclus d'office (§4.2). `Icon\r` est l'icône de dossier personnalisée
 // de macOS : son nom se termine réellement par un retour chariot.
 const EXCLUDED_BASENAMES = new Set(['Thumbs.db', 'desktop.ini', 'Icon\r']);
 
 /**
- * Le chemin est-il exclu de tout snapshot (§2.2) ?
+ * Le chemin est-il exclu de tout snapshot (§4.2) ?
  *
  * Exclu d'office : un segment qui commence par `.` (`.DS_Store`, `.git/`,
  * `._x.jpg`), et les basenames `Thumbs.db`, `desktop.ini`, `Icon\r`. Une
@@ -134,10 +142,8 @@ export function isExcluded(path: string, rules: readonly ExclusionRule[] = []): 
   return false;
 }
 
-const CONTENT_EXTENSION = /\.mdx?$/i;
-
 /**
- * Classe d'un chemin (§2.3), règles appliquées dans l'ordre :
+ * Classe d'un chemin (§4.3), règles appliquées dans l'ordre :
  * 1. basename `images.json` → `derived` (§1.5.1 : donnée dérivée) ;
  * 2. dossier parent immédiat nommé `media` → `media` ;
  * 3. extension `.md` / `.mdx`, insensible à la casse → `content` ;
@@ -146,21 +152,33 @@ const CONTENT_EXTENSION = /\.mdx?$/i;
 export function classifyPath(path: string): EntryKind {
   if (basename(path) === 'images.json') return 'derived';
   if (basename(dirname(path)) === 'media') return 'media';
-  if (CONTENT_EXTENSION.test(path)) return 'content';
+  const extension = extensionOf(path);
+  if (extension === 'md' || extension === 'mdx') return 'content';
   return 'other';
 }
 
-const IMAGE_EXTENSION = /\.(jpe?g|png|webp|avif|tiff?)$/i;
+/**
+ * Extension d'un chemin (§4.1) : ce qui suit le dernier point du nom de base,
+ * en minuscules. Pas d'extension sans point, ni quand le seul point est
+ * initial (`.gitkeep`).
+ */
+export function extensionOf(path: string): string | null {
+  const name = basename(path);
+  const dot = name.lastIndexOf('.');
+  return dot <= 0 ? null : name.slice(dot + 1).toLowerCase();
+}
+
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tif', 'tiff']);
 
 /** Le chemin désigne-t-il une image au sens de §1.2 / §1.9 (par extension) ? */
 export function isImagePath(path: string): boolean {
-  return IMAGE_EXTENSION.test(path);
+  return IMAGE_EXTENSIONS.has(extensionOf(path) ?? '');
 }
 
 const INDEX_FILE =/^index(?:\.[a-z]{2}(?:-[A-Z]{2})?)?\.md$|^index\.mdx$/;
 
 /**
- * Le basename est-il un fichier index (§2.10) : `index.md`, `index.mdx` ou
+ * Le basename est-il un fichier index (§4.10) : `index.md`, `index.mdx` ou
  * `index.<lang>.md` (Annexe F, stratégie 2 ; `<lang>` = `[a-z]{2}(-[A-Z]{2})?`) ?
  */
 export function isIndexFile(name: string): boolean {

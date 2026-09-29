@@ -36,7 +36,7 @@ const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(r
  * Provider incrémental : on suit `changes(cursor)`. Un curseur expiré (`reset`)
  * compte comme un changement et repart d'un curseur frais. Provider sans
  * incrémental : on compare l'empreinte (`computeSnapshotId`) de listings
- * successifs — une capacité absente n'est jamais supposée (§2.8).
+ * successifs — une capacité absente n'est jamais supposée (§4.8).
  */
 export async function waitForQuiescence(
   provider: ContentProvider,
