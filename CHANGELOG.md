@@ -29,6 +29,8 @@ Le principe reste Astro-native : un provider alimente un dossier, le Content Lay
 
 - **`@regrets/hyperfocale/ingest/webdav`** — `WebDAVProvider`, sans dépendance : PROPFIND `Depth: 1` récursif, parseur XML minimal, empreinte `x-etag`.
 
+- **États de publication** — `PUBLICATION_STATES` et `isPublicationTransition(from, to)`, la liste exhaustive des transitions de §4.9, amorçage compris : `sourceDirty` avant toute publication, ou `sourceSynced` pour un pipeline mis en service sur une production déjà publiée.
+
 - **CLI** — `hyperfocale validate`, `snapshot` et `diff`, sortie lisible ou `--json`, codes de sortie 0 / 1 (diagnostic `error`) / 2 (mauvais usage).
 
 - **Conformité** — les fixtures cross-language de la spec sont copiées à une ref épinglée (`tests/fixtures/spec-ingestion/`, `npm run fixtures:sync` / `fixtures:check`) et rejouées en totalité : 116 cas (hash, chemins, identifiants, snapshots, validation, diff, garde), tous verts.

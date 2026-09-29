@@ -825,7 +825,7 @@ source éditoriale ── provider ──► ContentSnapshot N+1 ── diffSnap
 
 | Import | Contenu | Runtime |
 |---|---|---|
-| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence` | agnostique — WebCrypto, aucun `node:*` |
+| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
 | `@regrets/hyperfocale/ingest/fs` | `FilesystemProvider`, `hashFile`, `hashBytes`, `materializeSnapshot` | Node |
 | `@regrets/hyperfocale/ingest/dropbox` | `DropboxClient`, `DropboxProvider`, `verifyDropboxSignature`, `dropboxChallenge` | agnostique — `fetch` + WebCrypto, importable dans un Worker |
 | `@regrets/hyperfocale/ingest/webdav` | `WebDAVProvider` | agnostique — `fetch` |

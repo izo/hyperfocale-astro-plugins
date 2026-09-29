@@ -30,6 +30,7 @@ export type {
   SnapshotSource,
 } from './types.js';
 export { ENTRY_KINDS, PUBLICATION_STATES } from './types.js';
+export { isPublicationTransition } from './publication.js';
 
 export {
   classifyPath,

@@ -109,6 +109,19 @@ describe('validateSnapshot — snapshot et entrées', () => {
     ]);
   });
 
+  it('règle 13 : un index aux octets divergents vaut série, sa section n\'est pas devinée', async () => {
+    const files = { 'a/index.md': SECTION, 'a/b/index.md': SERIES, 'a/b/c/index.md': SERIES };
+    const { snap } = await corpus(files);
+    // a/index.md déclare `type: section`, mais ce qui est lu n'est pas ce qui a été listé.
+    const read = memoryReader({ ...files, 'a/index.md': `${SECTION}réécrit` });
+    expect(triples(await validateSnapshot(snap, { read }))).toEqual([
+      ['nesting-too-deep', 'error', 'a/b/c'],
+      ['entry-hash-mismatch', 'error', 'a/index.md'],
+    ]);
+    // Lisible, la section ne compte pas : plus d'imbrication fautive.
+    expect(triples(await validateSnapshot(snap, { read: memoryReader(files) }))).toEqual([]);
+  });
+
   it('un fichier index en conflit n\'est pas lu ; une entrée mal formée est écartée', async () => {
     const snap = {
       ...(await snapshot([entry('a/media/01.jpg')])),

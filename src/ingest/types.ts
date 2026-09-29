@@ -249,7 +249,11 @@ export const PUBLICATION_STATES = [
   'conflict',
 ] as const;
 
-/** État de publication (§4.9). */
+/**
+ * État de publication (§4.9). Transitions permises : `isPublicationTransition`
+ * — amorçage vers `sourceDirty`, ou vers `sourceSynced` pour un pipeline mis en
+ * service sur une production déjà publiée.
+ */
 export type PublicationState = (typeof PUBLICATION_STATES)[number];
 
 /** Enregistrement d'état de publication (§4.9). */
