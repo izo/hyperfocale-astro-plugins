@@ -845,9 +845,9 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 
 | Provider | Capacités | Particularités |
 |---|---|---|
-| `FilesystemProvider` | lecture/écriture locales, `sha256` + `dropbox` calculés | hachage en flux, dossiers exclus jamais parcourus, erreur de lecture → `complete: false` |
-| `DropboxProvider` | lecture/écriture distantes, incrémental, identité stable, webhook, `dropbox` | OAuth avec ou sans secret (PKCE), retry 429/5xx, upload par session au-delà de 150 Mio, casse des dossiers reconstruite |
-| `WebDAVProvider` | lecture/écriture distantes, `x-etag` | PROPFIND `Depth: 1` récursif, ETag conservé tel que rendu par le serveur |
+| `FilesystemProvider` | lecture/écriture locales, `sha256` + `dropbox` calculés | hachage en flux, dossiers exclus jamais parcourus ; lien symbolique écarté par défaut (`followSymlinks` pour suivre ceux qui restent sous `root`), erreur de lecture → `complete: false` avec le motif dans `problems` |
+| `DropboxProvider` | lecture/écriture distantes, incrémental, identité stable, webhook, `dropbox` | OAuth avec ou sans secret (PKCE), retry 429/5xx avec `Retry-After` plafonné (`maxRetryWait`, 60 s), upload par session au-delà de 150 Mio, casse des dossiers reconstruite ; les erreurs ne recopient jamais le corps de la réponse |
+| `WebDAVProvider` | lecture/écriture distantes, `x-etag` | PROPFIND `Depth: 1` récursif, ETag conservé tel que rendu par le serveur ; fichier sans taille → `complete: false` ; identifiants jamais dans une erreur |
 
 Un pipeline ne suppose jamais une capacité absente : sans webhook, il réconcilie périodiquement ; sans incrémental, il relit le listing complet (`waitForQuiescence` compare alors des listings successifs).
 
@@ -893,11 +893,19 @@ await materializeSnapshot(changeSet, { targetDir: 'content', read: (path) => sou
 await writeFile('.hyperfocale/snapshot.json', `${JSON.stringify(target, null, 2)}\n`);
 ```
 
-`materializeSnapshot` vérifie chaque fichier lu contre l'empreinte du snapshot — il a pu changer chez le provider depuis le listing — et ne supprime jamais rien hors du changeset. La réplication des médias vers un stockage objet, le déploiement et les redirections des séries déplacées (`summarizeChangeSet`) appartiennent au site.
+#### Ce que garantit `materializeSnapshot`, et ce qu'il ne garantit pas
+
+- **Confinement** : aucune écriture, suppression ni renommage hors de `targetDir`. Un chemin non conforme au §4.1 (`..`, `/` initial…) ou dont un composant sous `targetDir` est un lien symbolique — le fichier compris — lève `UnsafePathError` avant toute opération ; le contrôle est refait juste avant d'appliquer. `targetDir` lui-même peut être un lien : c'est le choix de l'appelant.
+- **Tout ou rien à la lecture** : tout ce qui doit être écrit est lu et vérifié contre son empreinte (`sha256`, puis `dropbox`) *avant* la moindre modification. Une empreinte divergente (`ContentMismatchError`) ou une lecture en échec laisse le dossier intact.
+- **Pas de perte** : une erreur d'entrée-sortie *pendant* l'application laisse le dossier à moitié à jour, mais conserve le dossier de transit (`.hyperfocale-materialize-…`), qui porte les fichiers lus et les sources des déplacements.
+- **Rien hors du changeset** n'est supprimé ; les dossiers vidés sont retirés, jusqu'au premier qui ne l'est pas.
+- **Non garanti** : l'exclusion d'un autre processus qui modifierait `targetDir` pendant l'opération. Le contrôle des liens réduit la fenêtre, il ne la ferme pas.
+
+La réplication des médias vers un stockage objet, le déploiement et les redirections des séries déplacées (`summarizeChangeSet`) appartiennent au site.
 
 ### Conformité
 
-Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift. Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
+Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift : les **109 fixtures** de `izo/hyperfocale-spec main@18f48de` — 6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 26 snapshots de corpus, 44 validations, 15 diffs, 6 gardes —, rejouées par 119 tests (les 10 autres vérifient la présence et l'épinglage de la copie). Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
 
 ```bash
 npm run fixtures:sync -- --ref <ref>   # recopie les fixtures d'une ref de izo/hyperfocale-spec et l'épingle dans SOURCE
