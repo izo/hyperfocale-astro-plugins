@@ -1,7 +1,7 @@
 {
   "format": "hyperfocale.snapshot",
   "version": 1,
-  "id": "sha256:489de0e6c9127fceee88b71a5802d38e9bc8da5477300b2c67e7194568531bfb",
+  "id": "sha256:a1bd21a7aa832713373264b668b3adad3fd57a1a7e25c7af090f381d66c31012",
   "createdAt": "1970-01-01T00:00:00.000Z",
   "complete": true,
   "entries": [
@@ -21,6 +21,42 @@
       "hashes": {
         "dropbox": "3264895753e7729482386b537099020f94ac5fd20cc43f45f67212f0970ab275",
         "sha256": "19eebcd5ebdfb7fbcbaa87b5b7a0029f66c71c9e60d7105b79ad15ed758c011c"
+      }
+    },
+    {
+      "path": "series/entree-chaine-2024/index.md",
+      "kind": "content",
+      "size": 164,
+      "hashes": {
+        "dropbox": "dfaa7e767e7037f27a6632eae835d3ad795c365b0e284ccbe7e071d151d0fe2c",
+        "sha256": "10c97d97db71d2fc4750bdf82f1d07c2c142d4a42ef431e07336474651e071d4"
+      }
+    },
+    {
+      "path": "series/entree-chaine-2024/media/dossier.pdf",
+      "kind": "media",
+      "size": 44,
+      "hashes": {
+        "dropbox": "e0cdac891ebd95c7905d9e469afe9a0cbd721268b6569e14eb0fe27ff614c181",
+        "sha256": "2429fb00a80427bf342b9cb8f9e5646bdb10268ce5e4dad63f670a1171c4170c"
+      }
+    },
+    {
+      "path": "series/entree-nombre-2024/index.md",
+      "kind": "content",
+      "size": 99,
+      "hashes": {
+        "dropbox": "3d41ffdd1e2e96a7ff81cfa074821e36345ea039155dcff558818047c9b13744",
+        "sha256": "6990bd33bdd7ac64834e04c28e49ee27f6ef2c4829a2bcb4c6e84761a8676abc"
+      }
+    },
+    {
+      "path": "series/entree-sans-fichier-2024/index.md",
+      "kind": "content",
+      "size": 127,
+      "hashes": {
+        "dropbox": "5de68956b2e7e798d785f9fff0de39e1e8e1a6c7da46ef830dc0e6deb265342b",
+        "sha256": "abde4344acdc6dc73481dcb0be7c2c7e3386a64b3bb4aae7b8a11e2f5133ea7b"
       }
     }
   ]

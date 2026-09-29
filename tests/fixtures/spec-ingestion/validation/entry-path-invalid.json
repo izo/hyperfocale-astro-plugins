@@ -1,5 +1,5 @@
 {
-  "description": "Chemins invalides dans un snapshot : / initial, segment .., chemin exclu (\u00a72.2), chemin non NFC, antislash. Ces entr\u00e9es sont \u00e9cart\u00e9es du reste de la validation.",
+  "description": "Chemins invalides dans un snapshot : / initial, segment .., chemin exclu (\u00a74.2), chemin non NFC, antislash. Ces entr\u00e9es sont \u00e9cart\u00e9es du reste de la validation.",
   "snapshot": {
     "format": "hyperfocale.snapshot",
     "version": 1,

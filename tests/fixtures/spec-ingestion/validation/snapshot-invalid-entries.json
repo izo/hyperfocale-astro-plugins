@@ -1,0 +1,24 @@
+{
+  "description": "Champ requis absent (entries) : seul snapshot-invalid est produit.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:36d7d30cefe76c1b008f4f040cad8c5cc56d9f26f67e43e0470f6eebe86a63a1",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true
+  },
+  "files": {},
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "snapshot-invalid",
+      "severity": "error",
+      "path": ""
+    }
+  ]
+}

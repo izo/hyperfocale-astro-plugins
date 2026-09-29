@@ -1,10 +1,19 @@
 {
   "format": "hyperfocale.snapshot",
   "version": 1,
-  "id": "sha256:c69f3f5026809f9aa0c5c6cd82e811e6aa47787554d48898c7106f20e17585a7",
+  "id": "sha256:f494efb451d496101d785274c9f494b9aaace56820d0a32745e88d113d877690",
   "createdAt": "1970-01-01T00:00:00.000Z",
   "complete": true,
   "entries": [
+    {
+      "path": "series/annee-2024/index.md",
+      "kind": "content",
+      "size": 124,
+      "hashes": {
+        "dropbox": "ecc271a521618d7b415312edd2d5b09354f1f8653e3ff28ef7432f83aebd2f07",
+        "sha256": "768c6f1f1b7194b39d94b5addc64a05435e430d3f0ba726a36cc60b9b7248eca"
+      }
+    },
     {
       "path": "series/fevrier-2024/index.md",
       "kind": "content",

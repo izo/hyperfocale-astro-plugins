@@ -1,5 +1,5 @@
 {
-  "description": "Classification \u00a72.3, dans l'ordre : images.json \u2192 derived ; parent imm\u00e9diat `media` \u2192 media ; .md/.mdx (casse ignor\u00e9e) \u2192 content ; sinon other.",
+  "description": "Classification \u00a74.3, dans l'ordre : images.json \u2192 derived ; parent imm\u00e9diat `media` \u2192 media ; .md/.mdx (casse ignor\u00e9e) \u2192 content ; sinon other.",
   "input": [
     "series/bretagne-2024/index.md",
     "series/bretagne-2024/index.en.md",

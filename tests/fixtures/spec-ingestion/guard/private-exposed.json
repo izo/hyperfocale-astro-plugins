@@ -1,0 +1,318 @@
+{
+  "description": "Série privée si AU MOINS un fichier index déclare private: true (booléen YAML). prive-2024 : index.md passe à false, index.en.md ne déclarait rien → exposée. renomme-2024 → renommee-2024 (déplacée par identité) sans private → exposée, au chemin de destination. chaine-2024 : private: \"true\" est une chaîne, la série n'a jamais été privée. supprime-2024 : supprimée, pas exposée. garde-2024 : reste privée.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:682cd09ab26832c228f258924fc3486ab304e7a0777c0fe4fcf80c80308eec5e",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/chaine-2024/index.md",
+        "kind": "content",
+        "size": 103,
+        "hashes": {
+          "dropbox": "89ce9ab183d91728aa4fd5ab4cd0cb4ddb123bf8bb6787cc26372f4d3030b049",
+          "sha256": "02d5cebe2600e312221eae05a8865b4f6cc46e2b9249b944d1626611aa8596be"
+        }
+      },
+      {
+        "path": "series/garde-2024/index.md",
+        "kind": "content",
+        "size": 101,
+        "hashes": {
+          "dropbox": "b5cc4408e1094b21ffc4e6b096f33ac44ae3495209e2cc91635870d1d55655dd",
+          "sha256": "f06235ec4cf5213f844a4c7f06b3b16515f1db26865723dd43f4766cb94787ae"
+        }
+      },
+      {
+        "path": "series/prive-2024/index.en.md",
+        "kind": "content",
+        "size": 96,
+        "hashes": {
+          "dropbox": "1dd79cc7c911e62f58a3439f73a38c729f71a24f1eddadd1fc6e9b28662a19dd",
+          "sha256": "3cc79cbd402b3cde7c1a76847808b2dc750f730062c56d8247bc1f6f19dc6af0"
+        }
+      },
+      {
+        "path": "series/prive-2024/index.md",
+        "kind": "content",
+        "size": 101,
+        "hashes": {
+          "dropbox": "4d228886779377dfc29742b4cc101ca36b0c2468c29e73c155d4d52b18e39bb3",
+          "sha256": "ade6baa1e44510d8c5ab71b03df7d603c748a5c7d80376e883ff07f3ec04998f"
+        }
+      },
+      {
+        "path": "series/prive-2024/media/01.jpg",
+        "kind": "media",
+        "size": 9,
+        "hashes": {
+          "dropbox": "7a942e93baf629912913506be2beedd73a5cea316609cdc4505cd59e9c6e86d2",
+          "sha256": "58ba6cb117382f6824b53098f56670b8f465ff9719310907b80bf9ad24326b0a"
+        }
+      },
+      {
+        "path": "series/renomme-2024/index.md",
+        "kind": "content",
+        "size": 103,
+        "hashes": {
+          "dropbox": "229a01ad6d4735aeb2db0efe28c3b539a6ff17354b774abce0ba5b4518fb7dd9",
+          "sha256": "f2c06ef7369104c20173b51d8a256ad2d6a86e13f0ea26bc16373f7270deccbd"
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAAUg"
+      },
+      {
+        "path": "series/renomme-2024/media/01.jpg",
+        "kind": "media",
+        "size": 11,
+        "hashes": {
+          "dropbox": "b15f0b24a3833580fbb0b4696fa12e9375c35f0def6fe34555d837ca4b9f3718",
+          "sha256": "33ec08ebff5b80c78ef679797d3b092f27c602070718a096b34908fab60816b4"
+        }
+      },
+      {
+        "path": "series/supprime-2024/index.md",
+        "kind": "content",
+        "size": 104,
+        "hashes": {
+          "dropbox": "8a65592802a408b6bdcbe2f30db37a9f30bb4f5926b3f0c4fb4f1b6758de7edd",
+          "sha256": "f22971ff22fad248424e30d40b79de14c0ad8bb0d11e958634fc1fc7e9373e4a"
+        }
+      },
+      {
+        "path": "series/supprime-2024/media/01.jpg",
+        "kind": "media",
+        "size": 12,
+        "hashes": {
+          "dropbox": "21588e9bc7ef7865fd94a369a20e9b66b81f7d9ea4c434de44f8fc767f9fdb06",
+          "sha256": "7580bc503b2b6110fdc9630878ffa98d8452fcce323f06d2fa1736b19ee27399"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:1575a655e647d8722f47e2e1442ba78dd8fcd7d2e64415c741ff3630b4b69a39",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/chaine-2024/index.md",
+        "kind": "content",
+        "size": 87,
+        "hashes": {
+          "dropbox": "365511e77218f1cd27afcba66835ed7037942d769dc80bc031652c1901e905e0",
+          "sha256": "1ae01e23086b795a9a3a95e409b57163192cdaecf140a50f5ff8e973910e276a"
+        }
+      },
+      {
+        "path": "series/garde-2024/index.md",
+        "kind": "content",
+        "size": 101,
+        "hashes": {
+          "dropbox": "b5cc4408e1094b21ffc4e6b096f33ac44ae3495209e2cc91635870d1d55655dd",
+          "sha256": "f06235ec4cf5213f844a4c7f06b3b16515f1db26865723dd43f4766cb94787ae"
+        }
+      },
+      {
+        "path": "series/prive-2024/index.en.md",
+        "kind": "content",
+        "size": 96,
+        "hashes": {
+          "dropbox": "1dd79cc7c911e62f58a3439f73a38c729f71a24f1eddadd1fc6e9b28662a19dd",
+          "sha256": "3cc79cbd402b3cde7c1a76847808b2dc750f730062c56d8247bc1f6f19dc6af0"
+        }
+      },
+      {
+        "path": "series/prive-2024/index.md",
+        "kind": "content",
+        "size": 102,
+        "hashes": {
+          "dropbox": "31a0a86ac7f1ba24f3fcb237bf6617af5a6183cc0305a059d510cdce1b29ae92",
+          "sha256": "372909f95eb80f346fa533ba7bd8309dd004d35a3192e12a7016bf4bcc38fb21"
+        }
+      },
+      {
+        "path": "series/prive-2024/media/01.jpg",
+        "kind": "media",
+        "size": 9,
+        "hashes": {
+          "dropbox": "7a942e93baf629912913506be2beedd73a5cea316609cdc4505cd59e9c6e86d2",
+          "sha256": "58ba6cb117382f6824b53098f56670b8f465ff9719310907b80bf9ad24326b0a"
+        }
+      },
+      {
+        "path": "series/renommee-2024/index.md",
+        "kind": "content",
+        "size": 89,
+        "hashes": {
+          "dropbox": "4de1ad21b29fc275e95ed798baab76a22525b0d2cf6454f85414fe0014fb563a",
+          "sha256": "8a6ff9d14836545d1971dfecfe90ef8ea75890b5594dea6e0a8b4b86d031716b"
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAAUg"
+      },
+      {
+        "path": "series/renommee-2024/media/01.jpg",
+        "kind": "media",
+        "size": 11,
+        "hashes": {
+          "dropbox": "b15f0b24a3833580fbb0b4696fa12e9375c35f0def6fe34555d837ca4b9f3718",
+          "sha256": "33ec08ebff5b80c78ef679797d3b092f27c602070718a096b34908fab60816b4"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:682cd09ab26832c228f258924fc3486ab304e7a0777c0fe4fcf80c80308eec5e",
+    "target": "sha256:1575a655e647d8722f47e2e1442ba78dd8fcd7d2e64415c741ff3630b4b69a39",
+    "added": [],
+    "modified": [
+      {
+        "path": "series/chaine-2024/index.md",
+        "before": {
+          "path": "series/chaine-2024/index.md",
+          "kind": "content",
+          "size": 103,
+          "hashes": {
+            "dropbox": "89ce9ab183d91728aa4fd5ab4cd0cb4ddb123bf8bb6787cc26372f4d3030b049",
+            "sha256": "02d5cebe2600e312221eae05a8865b4f6cc46e2b9249b944d1626611aa8596be"
+          }
+        },
+        "after": {
+          "path": "series/chaine-2024/index.md",
+          "kind": "content",
+          "size": 87,
+          "hashes": {
+            "dropbox": "365511e77218f1cd27afcba66835ed7037942d769dc80bc031652c1901e905e0",
+            "sha256": "1ae01e23086b795a9a3a95e409b57163192cdaecf140a50f5ff8e973910e276a"
+          }
+        }
+      },
+      {
+        "path": "series/prive-2024/index.md",
+        "before": {
+          "path": "series/prive-2024/index.md",
+          "kind": "content",
+          "size": 101,
+          "hashes": {
+            "dropbox": "4d228886779377dfc29742b4cc101ca36b0c2468c29e73c155d4d52b18e39bb3",
+            "sha256": "ade6baa1e44510d8c5ab71b03df7d603c748a5c7d80376e883ff07f3ec04998f"
+          }
+        },
+        "after": {
+          "path": "series/prive-2024/index.md",
+          "kind": "content",
+          "size": 102,
+          "hashes": {
+            "dropbox": "31a0a86ac7f1ba24f3fcb237bf6617af5a6183cc0305a059d510cdce1b29ae92",
+            "sha256": "372909f95eb80f346fa533ba7bd8309dd004d35a3192e12a7016bf4bcc38fb21"
+          }
+        }
+      }
+    ],
+    "deleted": [
+      {
+        "path": "series/supprime-2024/index.md",
+        "kind": "content",
+        "size": 104,
+        "hashes": {
+          "dropbox": "8a65592802a408b6bdcbe2f30db37a9f30bb4f5926b3f0c4fb4f1b6758de7edd",
+          "sha256": "f22971ff22fad248424e30d40b79de14c0ad8bb0d11e958634fc1fc7e9373e4a"
+        }
+      },
+      {
+        "path": "series/supprime-2024/media/01.jpg",
+        "kind": "media",
+        "size": 12,
+        "hashes": {
+          "dropbox": "21588e9bc7ef7865fd94a369a20e9b66b81f7d9ea4c434de44f8fc767f9fdb06",
+          "sha256": "7580bc503b2b6110fdc9630878ffa98d8452fcce323f06d2fa1736b19ee27399"
+        }
+      }
+    ],
+    "moved": [
+      {
+        "from": "series/renomme-2024/index.md",
+        "to": "series/renommee-2024/index.md",
+        "before": {
+          "path": "series/renomme-2024/index.md",
+          "kind": "content",
+          "size": 103,
+          "hashes": {
+            "dropbox": "229a01ad6d4735aeb2db0efe28c3b539a6ff17354b774abce0ba5b4518fb7dd9",
+            "sha256": "f2c06ef7369104c20173b51d8a256ad2d6a86e13f0ea26bc16373f7270deccbd"
+          },
+          "identity": "id:AAAAAAAAAAAAAAAAAAAAUg"
+        },
+        "after": {
+          "path": "series/renommee-2024/index.md",
+          "kind": "content",
+          "size": 89,
+          "hashes": {
+            "dropbox": "4de1ad21b29fc275e95ed798baab76a22525b0d2cf6454f85414fe0014fb563a",
+            "sha256": "8a6ff9d14836545d1971dfecfe90ef8ea75890b5594dea6e0a8b4b86d031716b"
+          },
+          "identity": "id:AAAAAAAAAAAAAAAAAAAAUg"
+        },
+        "modified": true
+      },
+      {
+        "from": "series/renomme-2024/media/01.jpg",
+        "to": "series/renommee-2024/media/01.jpg",
+        "before": {
+          "path": "series/renomme-2024/media/01.jpg",
+          "kind": "media",
+          "size": 11,
+          "hashes": {
+            "dropbox": "b15f0b24a3833580fbb0b4696fa12e9375c35f0def6fe34555d837ca4b9f3718",
+            "sha256": "33ec08ebff5b80c78ef679797d3b092f27c602070718a096b34908fab60816b4"
+          }
+        },
+        "after": {
+          "path": "series/renommee-2024/media/01.jpg",
+          "kind": "media",
+          "size": 11,
+          "hashes": {
+            "dropbox": "b15f0b24a3833580fbb0b4696fa12e9375c35f0def6fe34555d837ca4b9f3718",
+            "sha256": "33ec08ebff5b80c78ef679797d3b092f27c602070718a096b34908fab60816b4"
+          }
+        },
+        "modified": false
+      }
+    ],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {
+      "series/prive-2024/index.md": "---\ntitle: \"Privée 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/prive-2024/index.en.md": "---\ntitle: \"Private 2024\"\ndate: 2024-06-15\nlang: en\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/renomme-2024/index.md": "---\ntitle: \"Renommée 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/chaine-2024/index.md": "---\ntitle: \"Chaîne 2024\"\ndate: 2024-06-15\nprivate: \"true\"\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/supprime-2024/index.md": "---\ntitle: \"Supprimée 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/garde-2024/index.md": "---\ntitle: \"Gardée 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n"
+    },
+    "target": {
+      "series/prive-2024/index.md": "---\ntitle: \"Privée 2024\"\ndate: 2024-06-15\nprivate: false\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/prive-2024/index.en.md": "---\ntitle: \"Private 2024\"\ndate: 2024-06-15\nlang: en\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/renommee-2024/index.md": "---\ntitle: \"Renommée 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/garde-2024/index.md": "---\ntitle: \"Gardée 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n"
+    }
+  },
+  "policy": {},
+  "expected": [
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/prive-2024"
+    },
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/renommee-2024"
+    }
+  ]
+}

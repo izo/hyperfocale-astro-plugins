@@ -1,0 +1,159 @@
+{
+  "description": "Deux séries supprimées sur trois, seuil maxDeletedSeries: 1 → guard-mass-deletion.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:60a0570d7e292fde859797939e5212937d183697a65c275f3b1af9fe2b0c95bd",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/a-2024/index.md",
+        "kind": "content",
+        "size": 83,
+        "hashes": {
+          "dropbox": "88d51a9fec66f06544d3440766264172959d21b4b223c49be90022b32621ffc9",
+          "sha256": "19dd6da6d04c8974bc40634d36249dc35fa7000140ecbf3ddb0f9fb684dcb295"
+        }
+      },
+      {
+        "path": "series/a-2024/media/01.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "4737315e617e27afecd90130f2d8cd46db8a7045f3af08b163a3549ff0937826",
+          "sha256": "635097f251782ca06208d027af0537db5aee59da4b3b879fc14199a40211d033"
+        }
+      },
+      {
+        "path": "series/b-2024/index.md",
+        "kind": "content",
+        "size": 83,
+        "hashes": {
+          "dropbox": "4ec6eb92431742945b80e3082b2fd44547d6e3f402a4bd70bc6be39ddf6c148b",
+          "sha256": "ddd10a7bf6eded67ac0b62dd508432ff2b8f467209ff6a1a6e6d5b8230063a86"
+        }
+      },
+      {
+        "path": "series/b-2024/media/01.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "73dbce177fd1ce188bca11483a61dc7556ed7071c2a049d427de4a1abd78c1c8",
+          "sha256": "92633e087ea1c6fd51d3ce8e121523c3991b997afb78a0e6402466b78ad7e54e"
+        }
+      },
+      {
+        "path": "series/c-2024/index.md",
+        "kind": "content",
+        "size": 83,
+        "hashes": {
+          "dropbox": "66cee7360d36c71df5fca62579648f3e8088734e0d33cc03393a9c76467e80b1",
+          "sha256": "128f5b842c461872a82c2000a495561187f32052ac4b49836065ebb82758331e"
+        }
+      },
+      {
+        "path": "series/c-2024/media/01.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "fbcf6352679596e0cf19f915247fa4c5f6fd11b9b8154365b92144ecec2db81a",
+          "sha256": "b1ccdbb677af4b1b4fd2a6c2df7a565faa8915fc090d35698acbb4f2a9ef5b7a"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:8611b87abc5d917abd3940fbd3259dc45e39855e4f5cbb54e33421ff2d38f177",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/a-2024/index.md",
+        "kind": "content",
+        "size": 83,
+        "hashes": {
+          "dropbox": "88d51a9fec66f06544d3440766264172959d21b4b223c49be90022b32621ffc9",
+          "sha256": "19dd6da6d04c8974bc40634d36249dc35fa7000140ecbf3ddb0f9fb684dcb295"
+        }
+      },
+      {
+        "path": "series/a-2024/media/01.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "4737315e617e27afecd90130f2d8cd46db8a7045f3af08b163a3549ff0937826",
+          "sha256": "635097f251782ca06208d027af0537db5aee59da4b3b879fc14199a40211d033"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:60a0570d7e292fde859797939e5212937d183697a65c275f3b1af9fe2b0c95bd",
+    "target": "sha256:8611b87abc5d917abd3940fbd3259dc45e39855e4f5cbb54e33421ff2d38f177",
+    "added": [],
+    "modified": [],
+    "deleted": [
+      {
+        "path": "series/b-2024/index.md",
+        "kind": "content",
+        "size": 83,
+        "hashes": {
+          "dropbox": "4ec6eb92431742945b80e3082b2fd44547d6e3f402a4bd70bc6be39ddf6c148b",
+          "sha256": "ddd10a7bf6eded67ac0b62dd508432ff2b8f467209ff6a1a6e6d5b8230063a86"
+        }
+      },
+      {
+        "path": "series/b-2024/media/01.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "73dbce177fd1ce188bca11483a61dc7556ed7071c2a049d427de4a1abd78c1c8",
+          "sha256": "92633e087ea1c6fd51d3ce8e121523c3991b997afb78a0e6402466b78ad7e54e"
+        }
+      },
+      {
+        "path": "series/c-2024/index.md",
+        "kind": "content",
+        "size": 83,
+        "hashes": {
+          "dropbox": "66cee7360d36c71df5fca62579648f3e8088734e0d33cc03393a9c76467e80b1",
+          "sha256": "128f5b842c461872a82c2000a495561187f32052ac4b49836065ebb82758331e"
+        }
+      },
+      {
+        "path": "series/c-2024/media/01.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "fbcf6352679596e0cf19f915247fa4c5f6fd11b9b8154365b92144ecec2db81a",
+          "sha256": "b1ccdbb677af4b1b4fd2a6c2df7a565faa8915fc090d35698acbb4f2a9ef5b7a"
+        }
+      }
+    ],
+    "moved": [],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {
+      "series/a-2024/index.md": "---\ntitle: \"Série A\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/b-2024/index.md": "---\ntitle: \"Série B\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/c-2024/index.md": "---\ntitle: \"Série C\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+    },
+    "target": {}
+  },
+  "policy": {
+    "maxDeletedSeries": 1
+  },
+  "expected": [
+    {
+      "code": "guard-mass-deletion",
+      "severity": "error",
+      "path": ""
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "description": "Entrée attachments: dont le fichier est absent de media/.",
+  "description": "Entrée attachments: dont le fichier est absent de media/, et entrées de type inattendu : chaîne (même vers un fichier existant), nombre, objet sans file.",
   "corpus": "invalid-attachment-not-found",
   "roots": [
     {
@@ -12,6 +12,21 @@
       "code": "attachment-not-found",
       "severity": "warning",
       "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "attachment-not-found",
+      "severity": "warning",
+      "path": "series/entree-chaine-2024/index.md"
+    },
+    {
+      "code": "attachment-not-found",
+      "severity": "warning",
+      "path": "series/entree-nombre-2024/index.md"
+    },
+    {
+      "code": "attachment-not-found",
+      "severity": "warning",
+      "path": "series/entree-sans-fichier-2024/index.md"
     }
   ]
 }

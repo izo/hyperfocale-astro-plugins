@@ -1,5 +1,5 @@
 {
-  "description": "Exclusions \u00a72.2 : tout segment commen\u00e7ant par un point, et les noms de base Thumbs.db, desktop.ini, Icon\\r (comparaison exacte, sensible \u00e0 la casse). Jamais une erreur.",
+  "description": "Exclusions \u00a74.2 : tout segment commen\u00e7ant par un point, et les noms de base Thumbs.db, desktop.ini, Icon\\r (comparaison exacte, sensible \u00e0 la casse). Jamais une erreur.",
   "input": [
     ".DS_Store",
     "series/bretagne-2024/.DS_Store",

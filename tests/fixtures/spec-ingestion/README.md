@@ -13,6 +13,7 @@ fixtures/ingestion/
 ├── snapshots/<nom>.json       snapshot attendu de corpora/<nom>
 ├── validation/<cas>.json      diagnostics attendus de la validation
 ├── diff/<cas>.json            ContentChangeSet attendu entre deux snapshots
+├── guard/<cas>.json           diagnostics attendus de la garde de publication
 ├── snapshot-id/<cas>.json     identifiant attendu d'une liste d'entrées
 ├── paths/<cas>.json           normalisation, validité, exclusion, classification, collisions
 └── hashes/vectors.json        vecteurs de hash sha256 et dropbox
@@ -42,6 +43,7 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `embeds` | contenus embarqués §1.11, plateforme inconnue, poster en couverture | aucun |
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
+| `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
 
 ### `snapshots/<nom>.json`
 
@@ -56,7 +58,7 @@ Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `pat
 ```
 
 - Avec `corpus` : le snapshot validé est `snapshots/<corpus>.json`, et `read(path)` rend les octets de `corpora/<corpus>/<path>`.
-- Avec `snapshot` + `files` (au lieu de `corpus`) : le snapshot est donné inline, et `read(path)` rend les octets UTF-8 de `files[path]`. `files` contient tout ce que la validation a le droit de lire ; une lecture hors de `files` est un défaut d'implémentation (par exemple lire un fichier `placeholder`). Cette forme couvre les diagnostics qui ne dépendent que du snapshot (`snapshot-*`, `entry-*`) et le cas de collision de casse.
+- Avec `snapshot` + `files` (au lieu de `corpus`) : le snapshot est donné inline, et `read(path)` rend les octets UTF-8 de `files[path]`. Ces octets correspondent au hash de l'entrée, sauf dans `validation/entry-hash-mismatch.json`, qui teste précisément l'écart. `files` contient tout ce que la validation a le droit de lire ; une lecture hors de `files` est un défaut d'implémentation (par exemple lire un fichier `placeholder`). Cette forme couvre les diagnostics qui ne dépendent que du snapshot (`snapshot-*`, `entry-*`) et le cas de collision de casse.
 - `roots` est toujours explicite, même quand c'est la racine par défaut.
 
 ### `diff/<cas>.json`
@@ -66,6 +68,15 @@ Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `pat
 ```
 
 Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `modified`, `deleted`, `moved` égaux en profondeur, dans l'ordre (§4.7, règle 6), les entrées étant comparées comme objets JSON complets (`identity` et `modifiedAt` compris) ; `diagnostics` par `code` + `severity` + `path`.
+
+### `guard/<cas>.json`
+
+```json
+{ "description": "…", "base": <snapshot | null>, "target": <snapshot>, "changeSet": <ContentChangeSet>,
+  "files": { "base": { "<chemin>": "<texte>" }, "target": { … } }, "policy": { … }, "expected": [ { "code", "severity", "path" } ] }
+```
+
+`changeSet` est le diff de `base` vers `target`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
 
 ### `snapshot-id/<cas>.json`
 
@@ -94,18 +105,13 @@ Pour chaque chaîne de `input`, dans le même ordre :
 
 ### `hashes/vectors.json`
 
-Vecteurs `sha256` et `dropbox` (§4.4). `input.utf8` désigne les octets UTF-8 d'une chaîne ; `input.repeat` désigne `count` fois l'octet `byte`. **Aucun fichier de plus de 4 Mio n'est versionné** : les vecteurs multi-blocs se génèrent.
-
-| Entrée | Taille | `sha256` | `dropbox` |
-|---|---|---|---|
-| vide | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
-| `abc` | 3 | `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad` | `4f8b42c22dd3729b519ba6f68d2da7cc5b2d606d05daed5ad5128cc03e6c6358` |
-| 4 194 304 × `0x00` (un bloc plein) | 4 194 304 | `bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8` | `c7e946d101855255d919ef0c70718633adf77d3dfb3adeeecf5d0cb4e951be58` |
-| 4 194 305 × `0x00` (bloc plein + 1 octet) | 4 194 305 | `95e441ca65cd41fa01b2a71799e79fd60db59ed34f13af32a91e85f90378676c` | `14a4d47f23a30177885d9820122f17d2d3a55fe63f7f5c27b95f689e0b2accd6` |
-| **5 000 000 × `0x00`** | 5 000 000 | `b39781589c4403fb82174c9647a010464cff38bad976547d339899b00053a545` | `2bf4530eab0a0c6da78fe764ce67a6a97163afd2148b379a14c22ff8c45173ce` |
-| 8 388 608 × `0x00` (deux blocs pleins) | 8 388 608 | `2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74` | `03ae066c707c588592d9e27aa2444ca98423e0999024f1ceaa11a153790b37de` |
+**`hashes/vectors.json` fait foi** pour les vecteurs `sha256` et `dropbox` (§4.4) ; ce README n'en recopie aucune valeur. `input.utf8` désigne les octets UTF-8 d'une chaîne ; `input.repeat` désigne `count` fois l'octet `byte`. Les vecteurs couvrent le fichier vide, `abc`, un bloc Dropbox plein (4 194 304 octets nuls), un bloc plein plus un octet, **5 000 000 octets nuls** et deux blocs pleins. **Aucun fichier de plus de 4 Mio n'est versionné** : les vecteurs multi-blocs se génèrent.
 
 Le hash `dropbox` d'un fichier vide est le SHA-256 de la chaîne vide (aucun bloc) : il est égal à son `sha256`. Pour un fichier non vide d'au plus un bloc, `dropbox` = SHA-256 du digest **binaire** SHA-256 du contenu — jamais du digest hexadécimal.
+
+## Prérequis d'une implémentation conforme
+
+Toute implémentation conforme DOIT savoir calculer `sha256` **et** `dropbox` : les snapshots des fixtures portent les deux, et leurs `id` en dépendent. Elle compare et trie les chemins sur leurs octets UTF-8 (ou leurs points de code) — en Swift, sur `unicodeScalars` ou `utf8`, jamais sur `String`, dont `==` identifie les formes NFC et NFD (§4.1).
 
 ## Pourquoi il n'y a pas de corpus `collision` sur disque
 
@@ -120,24 +126,35 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 
 | Code | Fixture |
 |---|---|
+| `snapshot-invalid` | `validation/snapshot-invalid-format.json`, `validation/snapshot-invalid-complete.json`, `validation/snapshot-invalid-entries.json` |
 | `snapshot-version-unsupported` | `validation/snapshot-version-unsupported.json` |
 | `snapshot-id-mismatch` | `validation/snapshot-id-mismatch.json` |
 | `snapshot-incomplete` | `validation/snapshot-incomplete.json` |
 | `snapshot-empty` | `validation/snapshot-empty.json`, `validation/snapshot-empty-no-content.json` |
+| `entry-invalid` | `validation/entry-invalid.json` |
 | `entry-path-invalid` | `validation/entry-path-invalid.json` |
 | `entry-path-collision` | `validation/entry-path-collision.json` |
 | `entry-kind-mismatch` | `validation/entry-kind-mismatch.json` |
 | `entry-hash-missing` | `validation/entry-hash-missing.json` |
 | `entry-not-materialized` | `validation/entry-not-materialized.json` |
+| `entry-conflict` | `validation/entry-conflict.json` |
+| `entry-hash-mismatch` | `validation/entry-hash-mismatch.json` |
 | `slug-invalid` … `embed-url-missing` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |
 
-Les diagnostics de la garde de publication (`guard-*`, §4.11) n'ont pas de fixture : leurs seuils appartiennent au consommateur.
+| Garde (§4.11) | Fixture |
+|---|---|
+| `guard-mass-deletion` | `guard/mass-deletion-series.json` (séries), `guard/mass-deletion-media.json` (ratio de médias) |
+| `guard-mass-move` | `guard/mass-move.json` |
+| `guard-private-exposed` | `guard/private-exposed.json` |
+| `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` | `guard/always-active.json` |
+
+Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au consommateur.
 
 ## Diffs couverts
 
-`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `ambiguous`, `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
+`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `moved-identity-resized` (move par identité sans algorithme commun, taille ou `kind` changé : pas de `hash-incomparable`), `ambiguous`, `ambiguous-one-to-two` (1 supprimé : 2 ajoutés), `identity-duplicated` (identité portée par deux entrées : pas de move par identité), `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
 
 ## Provenance des valeurs attendues
 

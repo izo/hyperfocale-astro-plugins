@@ -1,0 +1,137 @@
+{
+  "description": "Déplacements par identité sans algorithme commun : hash-incomparable exige kind ET size égaux. Taille changée (04 recadrée) → modified: true sans diagnostic ; kind changé (05 sorti de media/, même taille) → modified: true sans diagnostic.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:f46d82174f718517e1f959da759a6c62ada4e77345de9c70795ca1e8570f3621",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/04.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "7318aed7f9dd64d163c537b53b8f4cfc9cbcf426f39af6cddf8ea0408ff5cfa5",
+          "sha256": "74e568bcdd1ba6989c5d01bd95df31ac2297fda462cd652b789399ae5df57a84"
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAABA"
+      },
+      {
+        "path": "series/bretagne-2024/media/05.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "8e05f2864ea59958a0c9c2d1faf02f306efdcee0e20d1fee8c5fc2810b366e9b",
+          "sha256": "5fd9ce838bc331a5458425a743d87aa3bc4812e95e02f32db7175de242e0c0ff"
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAABQ"
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:d189b02405edbb682a1d9a9d84871ab19387121add85cc5976ec1e2c2936476c",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/05.jpg",
+        "kind": "other",
+        "size": 6,
+        "hashes": {
+          "x-etag": "\"05-1\""
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAABQ"
+      },
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/04-recadre.jpg",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "x-etag": "\"04-2\""
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAABA"
+      }
+    ]
+  },
+  "expected": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:f46d82174f718517e1f959da759a6c62ada4e77345de9c70795ca1e8570f3621",
+    "target": "sha256:d189b02405edbb682a1d9a9d84871ab19387121add85cc5976ec1e2c2936476c",
+    "added": [],
+    "modified": [],
+    "deleted": [],
+    "moved": [
+      {
+        "from": "series/bretagne-2024/media/05.jpg",
+        "to": "series/bretagne-2024/05.jpg",
+        "before": {
+          "path": "series/bretagne-2024/media/05.jpg",
+          "kind": "media",
+          "size": 6,
+          "hashes": {
+            "dropbox": "8e05f2864ea59958a0c9c2d1faf02f306efdcee0e20d1fee8c5fc2810b366e9b",
+            "sha256": "5fd9ce838bc331a5458425a743d87aa3bc4812e95e02f32db7175de242e0c0ff"
+          },
+          "identity": "id:AAAAAAAAAAAAAAAAAAAABQ"
+        },
+        "after": {
+          "path": "series/bretagne-2024/05.jpg",
+          "kind": "other",
+          "size": 6,
+          "hashes": {
+            "x-etag": "\"05-1\""
+          },
+          "identity": "id:AAAAAAAAAAAAAAAAAAAABQ"
+        },
+        "modified": true
+      },
+      {
+        "from": "series/bretagne-2024/media/04.jpg",
+        "to": "series/bretagne-2024/media/04-recadre.jpg",
+        "before": {
+          "path": "series/bretagne-2024/media/04.jpg",
+          "kind": "media",
+          "size": 6,
+          "hashes": {
+            "dropbox": "7318aed7f9dd64d163c537b53b8f4cfc9cbcf426f39af6cddf8ea0408ff5cfa5",
+            "sha256": "74e568bcdd1ba6989c5d01bd95df31ac2297fda462cd652b789399ae5df57a84"
+          },
+          "identity": "id:AAAAAAAAAAAAAAAAAAAABA"
+        },
+        "after": {
+          "path": "series/bretagne-2024/media/04-recadre.jpg",
+          "kind": "media",
+          "size": 14,
+          "hashes": {
+            "x-etag": "\"04-2\""
+          },
+          "identity": "id:AAAAAAAAAAAAAAAAAAAABA"
+        },
+        "modified": true
+      }
+    ],
+    "diagnostics": []
+  }
+}

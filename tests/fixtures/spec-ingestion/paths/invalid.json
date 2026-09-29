@@ -1,5 +1,5 @@
 {
-  "description": "Chemins invalides \u00a72.1 ; les indicateurs valid et excluded sont ind\u00e9pendants (un segment . ou .. est aussi exclu). U+0085 (NEL) n'est pas dans la plage interdite.",
+  "description": "Chemins invalides \u00a74.1 ; les indicateurs valid et excluded sont ind\u00e9pendants (un segment . ou .. est aussi exclu). U+0085 (NEL) n'est pas dans la plage interdite.",
   "input": [
     "",
     "/series/bretagne-2024/index.md",
