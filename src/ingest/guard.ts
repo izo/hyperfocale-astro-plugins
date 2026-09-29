@@ -52,17 +52,20 @@ function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path:
  * - `guard-mass-move` (warning) : séries déplacées — dossiers distincts parmi
  *   les `from` des `moved` qui désignent un fichier index — > `maxMovedSeries` ;
  * - `guard-private-exposed` : une série privée dans base (au moins un fichier
- *   index matérialisé déclare `private: true`, booléen YAML), présente dans
- *   target — au même chemin, ou à la destination de ses fichiers index
- *   déplacés — et qui n'y est plus privée. Diagnostic sur son dossier dans
- *   target ; supprimer une série privée n'est pas l'exposer ;
+ *   index déclare `private: true`, booléen YAML), présente dans target — au
+ *   même chemin, ou à la destination de ses fichiers index déplacés — et qui
+ *   n'y est plus privée. Diagnostic sur son dossier dans target ; supprimer une
+ *   série privée n'est pas l'exposer ;
  * - `guard-oversize` : une entrée de target dépasse `maxFileBytes[kind]`.
  *
- * Comme le veut la spec, tous les fichiers index des séries de base sont lus,
- * puis ceux de la série homologue dans target quand la série de base est
- * privée. Les octets lus sont vérifiés contre l'empreinte (§4.4) : un fichier
- * qui diverge produit `entry-hash-mismatch` et ne déclare rien — y compris
- * dans une série que le changeset ne touche pas.
+ * Tous les fichiers index des séries de base sont lus, puis ceux de la série
+ * homologue dans target quand la série de base est privée. Un fichier index
+ * est **illisible** s'il n'est pas matérialisé (`placeholder`, `conflict`), si
+ * ses octets divergent de son empreinte (§4.4) ou si son frontmatter ne se lit
+ * pas. La garde est **fail-closed côté base** : un index illisible y rend la
+ * série privée par prudence. Côté target, il ne déclare rien — une série
+ * privée dont l'homologue est illisible est donc exposée. La garde n'émet pas
+ * `entry-hash-mismatch` : ce diagnostic appartient à la validation.
  */
 export async function guardChangeSet(
   changeSet: ContentChangeSet,
@@ -113,25 +116,25 @@ export async function guardChangeSet(
 
   if (base !== null) {
     const entries = { base: new Map(base.entries.map((e) => [e.path, e])), target: new Map(target.entries.map((e) => [e.path, e])) };
-    // Une série est privée si l'un de ses fichiers index matérialisés, aux
-    // octets conformes, déclare `private: true` (booléen, pas la chaîne).
+    // Une série est privée si l'un de ses fichiers index déclare
+    // `private: true` (booléen, pas la chaîne). Un index illisible — non
+    // matérialisé, octets divergents, frontmatter qui ne se lit pas — rend la
+    // série privée côté base (fail-closed) et ne déclare rien côté target.
     const isPrivate = async (side: GuardSide, indexPaths: readonly string[]): Promise<boolean> => {
+      const unreadable = side === 'base';
       for (const path of indexPaths) {
         const entry = entries[side].get(path) as SnapshotEntry;
-        if ((entry.state ?? 'materialized') !== 'materialized') continue;
-        const content = await read(side, path);
-        if (!(await verifyEntryBytes(entry, content))) {
-          diagnostics.push({
-            code: 'entry-hash-mismatch',
-            severity: 'error',
-            path,
-            message: `Octets lus (${side}) différents de l'empreinte : le fichier a changé depuis le listing.`,
-            rule: '§4.4',
-          });
+        if ((entry.state ?? 'materialized') !== 'materialized') {
+          if (unreadable) return true;
           continue;
         }
-        const result = parseFrontmatter(content);
-        if (result.status === 'ok' && result.data.private === true) return true;
+        const content = await read(side, path);
+        const result = (await verifyEntryBytes(entry, content)) ? parseFrontmatter(content) : null;
+        if (result === null || result.status !== 'ok') {
+          if (unreadable) return true;
+          continue;
+        }
+        if (result.data.private === true) return true;
       }
       return false;
     };

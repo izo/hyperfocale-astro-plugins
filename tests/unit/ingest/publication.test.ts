@@ -56,11 +56,15 @@ describe('summarizeChangeSet', () => {
 });
 
 describe('guardChangeSet (§4.11)', () => {
-  /** Lecteur par côté ; sans table, un fichier contient son propre chemin (cf. `entry`). */
+  /** Frontmatter lisible, non privé, propre à un titre. */
+  const fm = (title: string) => `---\ntitle: ${title}\ndate: 2024-01-01\n---\n`;
+  /** Fichier index au frontmatter lisible (le titre est le chemin, sauf contenu donné). */
+  const idx = (path: string, content = fm(path), extra: Partial<SnapshotEntry> = {}) => entry(path, content, extra);
+  /** Lecteur par côté : les contenus donnés, sinon le frontmatter par défaut d'`idx`. */
   const reader =
     (files: { base?: Record<string, string>; target?: Record<string, string> } = {}) =>
     async (side: 'base' | 'target', path: string) =>
-      files[side]?.[path] ?? path;
+      files[side]?.[path] ?? fm(path);
 
   it('incomplet et vide : toujours actifs, sans seuil, rien n\'est lu', async () => {
     const target = await snapshot([entry('a/media/01.jpg')], false);
@@ -76,15 +80,15 @@ describe('guardChangeSet (§4.11)', () => {
 
   it('suppressions massives : séries et ratio de médias', async () => {
     const base = await snapshot([
-      entry('a/index.md'),
-      entry('b/index.md'),
-      entry('c/index.md'),
+      idx('a/index.md'),
+      idx('b/index.md'),
+      idx('c/index.md'),
       entry('c/media/1.jpg'),
       entry('c/media/2.jpg'),
       entry('c/media/3.jpg'),
       entry('c/media/4.jpg'),
     ]);
-    const target = await snapshot([entry('c/index.md'), entry('c/media/1.jpg')]);
+    const target = await snapshot([idx('c/index.md'), entry('c/media/1.jpg')]);
     const cs = diffSnapshots(base, target);
     const read = reader();
     const hit = await guardChangeSet(cs, base, target, { read, policy: { maxDeletedSeries: 1, maxDeletedMediaRatio: 0.5 } });
@@ -98,9 +102,9 @@ describe('guardChangeSet (§4.11)', () => {
   });
 
   it('déplacements massifs : warning', async () => {
-    const base = await snapshot([entry('x/a/index.md', 'a'), entry('x/b/index.md', 'b')]);
-    const target = await snapshot([entry('y/a/index.md', 'a'), entry('y/b/index.md', 'b')]);
-    const read = reader({ base: { 'x/a/index.md': 'a', 'x/b/index.md': 'b' } });
+    const base = await snapshot([idx('x/a/index.md', fm('a')), idx('x/b/index.md', fm('b'))]);
+    const target = await snapshot([idx('y/a/index.md', fm('a')), idx('y/b/index.md', fm('b'))]);
+    const read = reader({ base: { 'x/a/index.md': fm('a'), 'x/b/index.md': fm('b') } });
     const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: { maxMovedSeries: 1 } });
     expect(diagnostics.map((d) => [d.code, d.severity])).toEqual([['guard-mass-move', 'warning']]);
   });
@@ -139,29 +143,61 @@ describe('guardChangeSet (§4.11)', () => {
     ]);
   });
 
-  it('lit tous les fichiers index de base, même ceux d\'une série que le changeset ne touche pas', async () => {
-    const base = await snapshot([entry('stable/index.md', SERIES), entry('a/index.md', SERIES)]);
-    const target = await snapshot([entry('stable/index.md', SERIES), entry('a/index.md', PRIVATE)]);
-    const read = reader({ base: { 'stable/index.md': 'miroir local altéré', 'a/index.md': SERIES } });
-    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: {} });
-    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['entry-hash-mismatch', 'stable/index.md']]);
+  it('une série privée inchangée n\'est jamais exposée', async () => {
+    const base = await snapshot([idx('secret/index.md', PRIVATE), idx('secret/media/01.jpg'), idx('autre/index.md')]);
+    const target = await snapshot([idx('secret/index.md', PRIVATE), idx('secret/media/01.jpg'), idx('autre/index.md', fm('révisé'))]);
+    const files = { base: { 'secret/index.md': PRIVATE }, target: { 'secret/index.md': PRIVATE } };
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read: reader(files), policy: {} });
+    expect(diagnostics).toEqual([]);
   });
 
-  it('octets lus divergents : entry-hash-mismatch, et le fichier ne déclare rien', async () => {
-    const base = await snapshot([entry('a/index.md', PRIVATE)]);
-    const target = await snapshot([entry('a/index.md', SERIES)]);
-    const read = reader({ base: { 'a/index.md': `${PRIVATE}modifié depuis le listing` }, target: { 'a/index.md': SERIES } });
+  it('fail-closed côté base : un index illisible rend la série privée par prudence', async () => {
+    const base = await snapshot([
+      idx('divergent/index.md'),
+      idx('sans-bloc/index.md', 'pas de frontmatter'),
+      { path: 'lointain/index.md', kind: 'content', size: 10, state: 'placeholder' },
+      { path: 'conflit/index.md', kind: 'content', size: 10, state: 'conflict' },
+      idx('lisible/index.md'),
+    ]);
+    const target = await snapshot([
+      idx('divergent/index.md', fm('v2')),
+      idx('sans-bloc/index.md'),
+      idx('lointain/index.md'),
+      idx('conflit/index.md'),
+      idx('lisible/index.md', fm('v2')),
+    ]);
+    const read = async (side: 'base' | 'target', path: string) => {
+      if (side === 'base' && (path.startsWith('lointain/') || path.startsWith('conflit/'))) {
+        throw new Error(`lecture interdite d'une entrée non matérialisée : ${path}`);
+      }
+      if (side === 'base' && path === 'divergent/index.md') return `${fm(path)}modifié depuis le listing`;
+      if (side === 'base' && path === 'sans-bloc/index.md') return 'pas de frontmatter';
+      return side === 'target' && ['divergent/index.md', 'lisible/index.md'].includes(path) ? fm('v2') : fm(path);
+    };
     const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: {} });
-    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['entry-hash-mismatch', 'a/index.md']]);
+    // La garde n'émet pas entry-hash-mismatch : c'est le rôle de la validation.
+    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
+      ['guard-private-exposed', 'conflit'],
+      ['guard-private-exposed', 'divergent'],
+      ['guard-private-exposed', 'lointain'],
+      ['guard-private-exposed', 'sans-bloc'],
+    ]);
+  });
+
+  it('côté target, un index illisible ne déclare rien : la série privée est exposée', async () => {
+    const base = await snapshot([idx('s/index.md', PRIVATE)]);
+    const target = await snapshot([{ path: 's/index.md', kind: 'content', size: 10, state: 'placeholder' }]);
+    const read = reader({ base: { 's/index.md': PRIVATE } });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: {} });
+    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['guard-private-exposed', 's']]);
   });
 
   it('fichier trop lourd : toute entrée de target, seuil par classe', async () => {
     const big: SnapshotEntry = { ...entry('a/media/big.jpg'), size: 10_000 };
-    const base = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }]);
-    const target = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }, big]);
+    const base = await snapshot([idx('a/index.md'), { ...entry('a/media/old.jpg'), size: 99_999 }]);
+    const target = await snapshot([idx('a/index.md'), { ...entry('a/media/old.jpg'), size: 99_999 }, big]);
     const policy = { maxFileBytes: { media: 5_000 } };
-    const read = reader({ base: { 'a/index.md': SERIES } });
-    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read: reader(), policy });
     expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
       ['guard-oversize', 'a/media/big.jpg'],
       ['guard-oversize', 'a/media/old.jpg'],
@@ -170,10 +206,10 @@ describe('guardChangeSet (§4.11)', () => {
 
   it('une série dont l\'index est la source d\'un déplacement n\'est pas supprimée', async () => {
     // Fusion : a/ déménage dans b/, qui existait déjà.
-    const base = await snapshot([entry('a/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
-    const target = await snapshot([entry('b/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
+    const base = await snapshot([idx('a/index.md', fm('A'), { identity: 'a' }), idx('b/index.en.md', fm('B'))]);
+    const target = await snapshot([idx('b/index.md', fm('A'), { identity: 'a' }), idx('b/index.en.md', fm('B'))]);
     const cs = diffSnapshots(base, target);
-    const read = reader({ base: { 'a/index.md': 'A', 'b/index.en.md': 'B' } });
+    const read = reader({ base: { 'a/index.md': fm('A'), 'b/index.en.md': fm('B') } });
     expect(await guardChangeSet(cs, base, target, { read, policy: { maxDeletedSeries: 0 } })).toEqual([]);
     expect(summarizeChangeSet(cs, base, target).series.deleted).toEqual([]);
   });
