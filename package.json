@@ -41,6 +41,22 @@
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"
+    },
+    "./ingest": {
+      "types": "./dist/ingest/index.d.ts",
+      "import": "./dist/ingest/index.js"
+    },
+    "./ingest/fs": {
+      "types": "./dist/ingest/fs.d.ts",
+      "import": "./dist/ingest/fs.js"
+    },
+    "./ingest/dropbox": {
+      "types": "./dist/ingest/dropbox.d.ts",
+      "import": "./dist/ingest/dropbox.js"
+    },
+    "./ingest/webdav": {
+      "types": "./dist/ingest/webdav.d.ts",
+      "import": "./dist/ingest/webdav.js"
     }
   },
   "main": "./dist/index.js",
