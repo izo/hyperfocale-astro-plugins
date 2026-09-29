@@ -76,7 +76,7 @@ Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `m
   "files": { "base": { "<chemin>": "<texte>" }, "target": { … } }, "policy": { … }, "expected": [ { "code", "severity", "path" } ] }
 ```
 
-`changeSet` est le diff de `base` vers `target`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
+`changeSet` est le diff de `base` vers `target`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
 
 ### `snapshot-id/<cas>.json`
 
@@ -147,7 +147,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 |---|---|
 | `guard-mass-deletion` | `guard/mass-deletion-series.json` (séries), `guard/mass-deletion-media.json` (ratio de médias) |
 | `guard-mass-move` | `guard/mass-move.json` |
-| `guard-private-exposed` | `guard/private-exposed.json` |
+| `guard-private-exposed` | `guard/private-exposed.json`, `guard/private-fail-closed.json` (fail-closed côté `base` : octets divergents, `placeholder`, frontmatter illisible) |
 | `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` | `guard/always-active.json` |
 
 Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au consommateur.

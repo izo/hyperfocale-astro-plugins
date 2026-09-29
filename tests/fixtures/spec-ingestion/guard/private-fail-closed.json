@@ -1,0 +1,189 @@
+{
+  "description": "Garde fail-closed côté base : un fichier index de base aux octets divergents (divergente-2024 : files.base ne correspond pas au hash), non matérialisé (lointaine-2024, placeholder, non lu) ou illisible (sans-frontmatter-2024) rend la série privée par prudence ; présentes dans target sans private, elles sont exposées. lisible-2024, lisible et non privée, ne déclenche rien. La garde n'émet pas entry-hash-mismatch (rôle de la validation).",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:cde167c27c9da79016363908370852081210b96697d7b975b27b6579a602fd85",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/divergente-2024/index.md",
+        "kind": "content",
+        "size": 90,
+        "hashes": {
+          "dropbox": "45a00c888c2e5794045129782307c98c9e540f1129a6357d0dcfdfb2b10821ff",
+          "sha256": "f832bea973589cf6ebc6716788a0e5dc8c4536b3e549de6d4571c9d1a39502fe"
+        }
+      },
+      {
+        "path": "series/divergente-2024/media/01.jpg",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "e32d386c74ce49d38268147906bb880946c41147dd462ab0db7131b16785c245",
+          "sha256": "d03be038ab6e949a4e99e7bb56b138f0c2c902197fe8f19c4194ea1ad008b70c"
+        }
+      },
+      {
+        "path": "series/lisible-2024/index.md",
+        "kind": "content",
+        "size": 87,
+        "hashes": {
+          "dropbox": "6e6cdafd249dc887b6b054f7e346e517738d107b3791cd720ceff496485c5b34",
+          "sha256": "c60b3edd6afb733fa5f5ff6aa031fffee13e069d0ad4a34374983e699de17f20"
+        }
+      },
+      {
+        "path": "series/lointaine-2024/index.md",
+        "kind": "content",
+        "size": 120,
+        "state": "placeholder"
+      },
+      {
+        "path": "series/sans-frontmatter-2024/index.md",
+        "kind": "content",
+        "size": 50,
+        "hashes": {
+          "dropbox": "63db9666181e2989f9c102a42d4420d370ddc5d6744d44f69d574966180dd598",
+          "sha256": "2cc73056021d59771856ed65d277adc57719260aa56e9643d739720128990eb7"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:7331107d211a832a46c6817510a91889ee2ecb90d110d0fe3df63f1fa1d735ce",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/divergente-2024/index.md",
+        "kind": "content",
+        "size": 90,
+        "hashes": {
+          "dropbox": "45a00c888c2e5794045129782307c98c9e540f1129a6357d0dcfdfb2b10821ff",
+          "sha256": "f832bea973589cf6ebc6716788a0e5dc8c4536b3e549de6d4571c9d1a39502fe"
+        }
+      },
+      {
+        "path": "series/divergente-2024/media/01.jpg",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "e32d386c74ce49d38268147906bb880946c41147dd462ab0db7131b16785c245",
+          "sha256": "d03be038ab6e949a4e99e7bb56b138f0c2c902197fe8f19c4194ea1ad008b70c"
+        }
+      },
+      {
+        "path": "series/lisible-2024/index.md",
+        "kind": "content",
+        "size": 87,
+        "hashes": {
+          "dropbox": "6e6cdafd249dc887b6b054f7e346e517738d107b3791cd720ceff496485c5b34",
+          "sha256": "c60b3edd6afb733fa5f5ff6aa031fffee13e069d0ad4a34374983e699de17f20"
+        }
+      },
+      {
+        "path": "series/lointaine-2024/index.md",
+        "kind": "content",
+        "size": 89,
+        "hashes": {
+          "dropbox": "900ef723361af509063f7254e67aa1d37e5d523acd8eabdd716dbf4a5ab6236f",
+          "sha256": "d0ad76ce8997b238381ae5c58dfb8b1ea101ce025b81d1720a133d2fff7b210f"
+        }
+      },
+      {
+        "path": "series/sans-frontmatter-2024/index.md",
+        "kind": "content",
+        "size": 96,
+        "hashes": {
+          "dropbox": "e45f81650ecc7925bedce1049ae07a2f8e70dfa3818877adf224bc4ca0cd2212",
+          "sha256": "c719bf1e6a2d51d230fd460332c68669637c335fba32fd9ad3ffb5b11db709df"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:cde167c27c9da79016363908370852081210b96697d7b975b27b6579a602fd85",
+    "target": "sha256:7331107d211a832a46c6817510a91889ee2ecb90d110d0fe3df63f1fa1d735ce",
+    "added": [],
+    "modified": [
+      {
+        "path": "series/lointaine-2024/index.md",
+        "before": {
+          "path": "series/lointaine-2024/index.md",
+          "kind": "content",
+          "size": 120,
+          "state": "placeholder"
+        },
+        "after": {
+          "path": "series/lointaine-2024/index.md",
+          "kind": "content",
+          "size": 89,
+          "hashes": {
+            "dropbox": "900ef723361af509063f7254e67aa1d37e5d523acd8eabdd716dbf4a5ab6236f",
+            "sha256": "d0ad76ce8997b238381ae5c58dfb8b1ea101ce025b81d1720a133d2fff7b210f"
+          }
+        }
+      },
+      {
+        "path": "series/sans-frontmatter-2024/index.md",
+        "before": {
+          "path": "series/sans-frontmatter-2024/index.md",
+          "kind": "content",
+          "size": 50,
+          "hashes": {
+            "dropbox": "63db9666181e2989f9c102a42d4420d370ddc5d6744d44f69d574966180dd598",
+            "sha256": "2cc73056021d59771856ed65d277adc57719260aa56e9643d739720128990eb7"
+          }
+        },
+        "after": {
+          "path": "series/sans-frontmatter-2024/index.md",
+          "kind": "content",
+          "size": 96,
+          "hashes": {
+            "dropbox": "e45f81650ecc7925bedce1049ae07a2f8e70dfa3818877adf224bc4ca0cd2212",
+            "sha256": "c719bf1e6a2d51d230fd460332c68669637c335fba32fd9ad3ffb5b11db709df"
+          }
+        }
+      }
+    ],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {
+      "series/divergente-2024/index.md": "---\ntitle: \"Divergente 2024\"\ndate: 2024-06-15\nprivate: false\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/sans-frontmatter-2024/index.md": "Pas de frontmatter : illisible au sens de §4.10.\n",
+      "series/lisible-2024/index.md": "---\ntitle: \"Lisible 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+    },
+    "target": {
+      "series/divergente-2024/index.md": "---\ntitle: \"Divergente 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/lointaine-2024/index.md": "---\ntitle: \"Lointaine 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/sans-frontmatter-2024/index.md": "---\ntitle: \"Sans frontmatter 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+    }
+  },
+  "policy": {},
+  "expected": [
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/divergente-2024"
+    },
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/lointaine-2024"
+    },
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/sans-frontmatter-2024"
+    }
+  ]
+}
