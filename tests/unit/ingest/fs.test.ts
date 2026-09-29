@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createSnapshot, diffSnapshots } from '../../../src/ingest/index.js';
 import {
   ContentMismatchError,
   FilesystemProvider,
+  UnsafePathError,
   hashBytes,
   hashFile,
   materializeSnapshot,
@@ -176,6 +177,71 @@ describe('materializeSnapshot', () => {
     expect(readFileSync(join(baseDir, 'b/index.md'), 'utf-8')).toBe('x');
   });
 
+  it('un déplacement relu compte dans written', async () => {
+    const baseDir = join(work, 'base');
+    const sourceDir = join(work, 'source');
+    tree(baseDir, { 'a/index.md': 'x' });
+    tree(sourceDir, { 'b/index.md': 'x' });
+    const base = await snapshotOf(baseDir);
+    const target = await snapshotOf(sourceDir);
+    rmSync(join(baseDir, 'a/index.md'));
+    const source = new FilesystemProvider({ root: sourceDir });
+    const result = await materializeSnapshot(diffSnapshots(base, target), { targetDir: baseDir, read: (p) => source.read(p) });
+    expect(result).toEqual({ written: 1, moved: 1, deleted: 0 });
+  });
+
+  describe('confinement : aucun lien symbolique entre targetDir et la cible', () => {
+    // target/evil → ../outside : écrire target/evil/x écrirait outside/x.
+    function trap() {
+      const targetDir = join(work, 'target');
+      const outside = join(work, 'outside');
+      mkdirSync(targetDir, { recursive: true });
+      tree(outside, { 'secret.txt': 'à protéger' });
+      symlinkSync('../outside', join(targetDir, 'evil'));
+      symlinkSync('../outside/secret.txt', join(targetDir, 'link.txt'));
+      return { targetDir, outside };
+    }
+    const bytes = (text: string) => new TextEncoder().encode(text);
+    const entryOf = async (path: string, content: string) =>
+      (await createSnapshot([{ path, kind: 'other', size: bytes(content).length, hashes: hashBytes(bytes(content)) }], { complete: true })).entries[0]!;
+
+    it('added : refusé, rien n\'est écrit dehors', async () => {
+      const { targetDir, outside } = trap();
+      const added = await entryOf('evil/x.txt', 'charge');
+      const changeSet = { ...diffSnapshots(null, await createSnapshot([added], { complete: true })) };
+      await expect(materializeSnapshot(changeSet, { targetDir, read: async () => bytes('charge') })).rejects.toBeInstanceOf(UnsafePathError);
+      expect(existsSync(join(outside, 'x.txt'))).toBe(false);
+      expect(readdirSync(targetDir).filter((n) => n.startsWith('.hyperfocale'))).toEqual([]);
+    });
+
+    it('deleted : refusé, rien n\'est supprimé dehors — ni à travers un dossier, ni par le lien final', async () => {
+      const { targetDir, outside } = trap();
+      for (const path of ['evil/secret.txt', 'link.txt']) {
+        const gone = await entryOf(path, 'à protéger');
+        const base = await createSnapshot([gone], { complete: true });
+        const target = await createSnapshot([], { complete: true });
+        await expect(materializeSnapshot(diffSnapshots(base, target), { targetDir, read: async () => new Uint8Array() })).rejects.toBeInstanceOf(
+          UnsafePathError,
+        );
+        expect(readFileSync(join(outside, 'secret.txt'), 'utf-8')).toBe('à protéger');
+      }
+    });
+
+    it('moved : refusé à la source comme à la destination', async () => {
+      const { targetDir, outside } = trap();
+      tree(targetDir, { 'ok.txt': 'à protéger' });
+      const inside = await entryOf('ok.txt', 'à protéger');
+      const escaped = await entryOf('evil/secret.txt', 'à protéger');
+      const into = diffSnapshots(await createSnapshot([inside], { complete: true }), await createSnapshot([escaped], { complete: true }));
+      expect(into.moved).toHaveLength(1);
+      await expect(materializeSnapshot(into, { targetDir, read: async () => bytes('à protéger') })).rejects.toBeInstanceOf(UnsafePathError);
+      const outOf = diffSnapshots(await createSnapshot([escaped], { complete: true }), await createSnapshot([inside], { complete: true }));
+      await expect(materializeSnapshot(outOf, { targetDir, read: async () => bytes('à protéger') })).rejects.toBeInstanceOf(UnsafePathError);
+      expect(readFileSync(join(outside, 'secret.txt'), 'utf-8')).toBe('à protéger');
+      expect(readFileSync(join(targetDir, 'ok.txt'), 'utf-8')).toBe('à protéger');
+    });
+  });
+
   it('refuse un contenu qui ne correspond plus à l\'empreinte du snapshot', async () => {
     const sourceDir = join(work, 'source');
     tree(sourceDir, { 'a/index.md': 'listé' });
@@ -189,5 +255,23 @@ describe('materializeSnapshot', () => {
       }),
     ).rejects.toBeInstanceOf(ContentMismatchError);
     expect(existsSync(join(targetDir, 'a/index.md'))).toBe(false);
+  });
+
+  it('tout est lu et vérifié avant d\'appliquer : une divergence laisse le dossier intact', async () => {
+    const baseDir = join(work, 'base');
+    const sourceDir = join(work, 'source');
+    tree(baseDir, { 'gone/index.md': 'à supprimer', 'old/index.md': 'déplacé' });
+    tree(sourceDir, { 'a/index.md': 'bon', 'b/index.md': 'divergent', 'new/index.md': 'déplacé' });
+    const base = await snapshotOf(baseDir);
+    const target = await snapshotOf(sourceDir);
+    const source = new FilesystemProvider({ root: sourceDir });
+    const read = async (path: string) => (path === 'b/index.md' ? new TextEncoder().encode('changé depuis le listing') : source.read(path));
+    await expect(materializeSnapshot(diffSnapshots(base, target), { targetDir: baseDir, read })).rejects.toBeInstanceOf(
+      ContentMismatchError,
+    );
+    // Ni suppression, ni déplacement, ni écriture partielle, ni transit oublié.
+    expect(readdirSync(baseDir).sort()).toEqual(['gone', 'old']);
+    expect(readFileSync(join(baseDir, 'gone/index.md'), 'utf-8')).toBe('à supprimer');
+    expect(readFileSync(join(baseDir, 'old/index.md'), 'utf-8')).toBe('déplacé');
   });
 });

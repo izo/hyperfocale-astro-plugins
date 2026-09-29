@@ -17,6 +17,7 @@ import type {
   ContentChangeSet,
   ContentProvider,
   HashMap,
+  MovedEntry,
   ProviderCallOptions,
   ProviderCapabilities,
   ProviderListing,
@@ -281,6 +282,38 @@ export class ContentMismatchError extends Error {
   }
 }
 
+/** Un chemin traverserait un lien symbolique : l'écriture pourrait sortir du dossier cible. */
+export class UnsafePathError extends Error {
+  readonly code = 'unsafe-path';
+  readonly path: string;
+
+  constructor(path: string, link: string) {
+    super(`[hyperfocale] « ${path} » traverse le lien symbolique « ${link} » : opération refusée.`);
+    this.name = 'UnsafePathError';
+    this.path = path;
+  }
+}
+
+/**
+ * Vérifie qu'aucun composant de `path` sous `root` — le fichier compris — n'est
+ * un lien symbolique. `root` lui-même peut en être un : c'est le choix de
+ * l'appelant. Un composant absent arrête l'examen : ce qui n'existe pas encore
+ * sera créé comme dossier ordinaire.
+ */
+async function assertNoSymlink(root: string, path: string): Promise<void> {
+  const segments = path.split('/');
+  for (let i = 1; i <= segments.length; i++) {
+    const prefix = segments.slice(0, i).join('/');
+    let info;
+    try {
+      info = await lstat(join(root, ...segments.slice(0, i)));
+    } catch {
+      return;
+    }
+    if (info.isSymbolicLink()) throw new UnsafePathError(path, prefix);
+  }
+}
+
 /** Options de `materializeSnapshot`. */
 export interface MaterializeOptions {
   /** Dossier à mettre dans l'état de target. */
@@ -299,25 +332,32 @@ export interface MaterializeOptions {
 
 /** Bilan d'une matérialisation. */
 export interface MaterializeResult {
+  /** Fichiers écrits depuis `read` : ajouts, modifications, déplacements relus. */
   readonly written: number;
+  /** Déplacements appliqués, par renommage local ou relus. */
   readonly moved: number;
+  /** Fichiers effectivement supprimés. */
   readonly deleted: number;
 }
 
 /**
  * Applique un changeset à un dossier qui reflète l'état `base` pour le mettre
- * dans l'état `target`.
+ * dans l'état `target`, en trois temps :
  *
- * 1. suppressions ;
- * 2. déplacements, en deux temps via un dossier temporaire (`.hyperfocale-…`,
- *    exclu de tout snapshot) : un fichier peut en remplacer un autre, ou un
- *    fichier devenir dossier ;
- * 3. ajouts et modifications, écrits de façon atomique.
+ * 1. **contrôle** — chaque chemin est valide au sens du §4.1 et aucun de ses
+ *    composants sous `targetDir` n'est un lien symbolique (`UnsafePathError`) :
+ *    rien ne s'écrit, ne se supprime ni ne se renomme hors de `targetDir` ;
+ * 2. **lecture** — tout ce qui doit être écrit est lu et vérifié contre son
+ *    empreinte *avant* la moindre modification, dans un dossier de transit
+ *    (`.hyperfocale-…`, exclu de tout snapshot). Un contenu divergent
+ *    (`ContentMismatchError`) ou une lecture en échec laisse le dossier intact ;
+ * 3. **application** — suppressions, déplacements (en deux temps via le
+ *    transit : un fichier peut en remplacer un autre, ou devenir dossier), puis
+ *    mise en place des fichiers lus, chacun par un `rename`.
  *
  * Un déplacement dont la source manque localement, ou dont le contenu a
- * changé, est relu depuis `read`. Ne supprime jamais un chemin absent du
- * changeset ; les dossiers laissés vides par une suppression ou un
- * déplacement sont retirés, en remontant tant qu'ils sont vides — un
+ * changé, est relu. Ne supprime jamais un chemin absent du changeset ; les
+ * dossiers laissés vides sont retirés en remontant tant qu'ils sont vides — un
  * `.DS_Store` suffit à arrêter la remontée.
  */
 export async function materializeSnapshot(
@@ -327,33 +367,61 @@ export async function materializeSnapshot(
   const { targetDir } = options;
   const verify = options.verify ?? true;
   const concurrency = options.concurrency ?? 4;
-  const vacated = new Set<string>();
 
-  const fetchVerified = async (entry: SnapshotEntry): Promise<Uint8Array> => {
-    const bytes = await options.read(entry.path);
-    if (verify) {
-      const expected = entry.hashes ?? {};
-      const algorithms = ALL_ALGORITHMS.filter((alg) => expected[alg] !== undefined);
-      if (algorithms.length > 0) {
+  // 1. Contrôle, avant toute écriture.
+  const abs = (path: string) => resolveInside(targetDir, path);
+  const touched = [
+    ...changeSet.deleted.map((e) => e.path),
+    ...changeSet.added.map((e) => e.path),
+    ...changeSet.modified.map((m) => m.path),
+    ...changeSet.moved.flatMap((m) => [m.from, m.to]),
+  ];
+  for (const path of touched) {
+    abs(path);
+    await assertNoSymlink(targetDir, path);
+  }
+
+  const localMoves = new Set<number>();
+  for (const [i, move] of changeSet.moved.entries()) {
+    if (!move.modified && (await exists(abs(move.from)))) localMoves.add(i);
+  }
+  const toFetch: SnapshotEntry[] = [
+    ...changeSet.added,
+    ...changeSet.modified.map((m) => m.after),
+    ...changeSet.moved.filter((_, i) => !localMoves.has(i)).map((m) => m.after),
+  ];
+
+  // 2. Lecture et vérification de tout ce qui sera écrit.
+  const staging = join(targetDir, `.hyperfocale-materialize-${randomBytes(6).toString('hex')}`);
+  await mkdir(staging, { recursive: true });
+  try {
+    await mapConcurrent(toFetch, concurrency, async (entry, i) => {
+      const bytes = await options.read(entry.path);
+      if (verify) {
+        const expected = entry.hashes ?? {};
+        const algorithms = ALL_ALGORITHMS.filter((alg) => expected[alg] !== undefined);
         const actual = hashBytes(bytes, algorithms);
         for (const alg of algorithms) {
           if (actual[alg] !== expected[alg]) throw new ContentMismatchError(entry.path, alg);
         }
       }
-    }
-    return bytes;
-  };
-
-  // Chemins validés d'entrée de jeu : aucune écriture si l'un d'eux est refusé.
-  const abs = (path: string) => resolveInside(targetDir, path);
-  for (const e of changeSet.deleted) abs(e.path);
-  for (const e of changeSet.added) abs(e.path);
-  for (const m of changeSet.modified) abs(m.path);
-  for (const m of changeSet.moved) {
-    abs(m.from);
-    abs(m.to);
+      await writeFile(join(staging, `in-${i}`), bytes);
+    });
+  } catch (err) {
+    await rm(staging, { recursive: true, force: true });
+    throw err;
   }
 
+  // 3. Application. Les chemins sont recontrôlés : la lecture a pu être longue.
+  // Sur une erreur d'entrée-sortie ici, le transit est conservé — il porte les
+  // fichiers lus et les sources des déplacements — pour qu'aucun octet ne se perde.
+  try {
+    for (const path of touched) await assertNoSymlink(targetDir, path);
+  } catch (err) {
+    await rm(staging, { recursive: true, force: true });
+    throw err;
+  }
+  const vacated = new Set<string>();
   let deleted = 0;
   for (const entry of changeSet.deleted) {
     const file = abs(entry.path);
@@ -363,44 +431,24 @@ export async function materializeSnapshot(
     }
     vacated.add(dirname(file));
   }
-
-  const staging = join(targetDir, `.hyperfocale-materialize-${randomBytes(6).toString('hex')}`);
-  const staged = new Map<number, string>();
   for (const [i, move] of changeSet.moved.entries()) {
     const from = abs(move.from);
-    if (move.modified || !(await exists(from))) {
-      if (await exists(from)) await rm(from, { force: true });
-    } else {
-      await mkdir(staging, { recursive: true });
-      const parked = join(staging, String(i));
-      await rename(from, parked);
-      staged.set(i, parked);
-    }
+    if (localMoves.has(i)) await rename(from, join(staging, `mv-${i}`));
+    else if (await exists(from)) await rm(from, { force: true });
     vacated.add(dirname(from));
   }
-
   await pruneEmptyDirs(vacated, targetDir);
 
-  const toFetch: SnapshotEntry[] = [...changeSet.added, ...changeSet.modified.map((m) => m.after)];
-  for (const [i, move] of changeSet.moved.entries()) {
-    const parked = staged.get(i);
-    if (parked === undefined) {
-      toFetch.push(move.after);
-      continue;
-    }
-    const to = abs(move.to);
+  const place = async (parked: string, path: string) => {
+    const to = abs(path);
     await mkdir(dirname(to), { recursive: true });
     await rename(parked, to);
-  }
-  if (staged.size > 0) await rm(staging, { recursive: true, force: true });
-
-  await mapConcurrent(toFetch, concurrency, async (entry) => writeAtomic(abs(entry.path), await fetchVerified(entry)));
-
-  return {
-    written: changeSet.added.length + changeSet.modified.length,
-    moved: changeSet.moved.length,
-    deleted,
   };
+  for (const i of localMoves) await place(join(staging, `mv-${i}`), (changeSet.moved[i] as MovedEntry).to);
+  for (const [i, entry] of toFetch.entries()) await place(join(staging, `in-${i}`), entry.path);
+
+  await rm(staging, { recursive: true, force: true });
+  return { written: toFetch.length, moved: changeSet.moved.length, deleted };
 }
 
 /** Retire les dossiers vides, en remontant jusqu'à `root` exclu. */
