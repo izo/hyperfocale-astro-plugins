@@ -6,6 +6,7 @@
  * Dropbox pour servir un visiteur — il déclenche l'ingestion, rien de plus.
  */
 
+import { abortableSleep } from './concurrency.js';
 import { toHex, utf8 } from './hash.js';
 import { classifyPath, collisionKey, compareCanonical, isExcluded } from './paths.js';
 import type { ExclusionRule } from './paths.js';
@@ -82,6 +83,23 @@ export class DropboxApiError extends Error {
   }
 }
 
+/**
+ * Dropbox demande d'attendre plus longtemps que `maxRetryWait` : on rend la main
+ * plutôt que de bloquer un pipeline des heures durant.
+ */
+export class DropboxRateLimitError extends Error {
+  readonly status: number;
+  /** Attente demandée par `Retry-After`, en millisecondes. */
+  readonly retryAfterMs: number;
+
+  constructor(status: number, retryAfterMs: number, maxWaitMs: number) {
+    super(`[hyperfocale] Dropbox : ${status}, Retry-After de ${Math.ceil(retryAfterMs / 1000)} s au-delà du plafond de ${Math.ceil(maxWaitMs / 1000)} s.`);
+    this.name = 'DropboxRateLimitError';
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
 /** Options du `DropboxClient`. */
 export interface DropboxClientOptions {
   /** Jeton d'accès courant ; facultatif si un refresh token est fourni. */
@@ -95,7 +113,13 @@ export interface DropboxClientOptions {
   readonly fetch?: typeof fetch;
   /** Tentatives supplémentaires sur 429 / 5xx. Défaut 5. */
   readonly maxRetries?: number;
-  readonly sleep?: (ms: number) => Promise<void>;
+  /**
+   * Attente maximale avant une nouvelle tentative, en millisecondes. Un
+   * `Retry-After` plus long lève `DropboxRateLimitError`. Défaut 60 000.
+   */
+  readonly maxRetryWait?: number;
+  /** Attente entre deux tentatives ; doit s'interrompre sur `signal`. */
+  readonly sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   readonly now?: () => number;
   /** Seuil de bascule vers l'upload par session. Défaut 150 Mio. */
   readonly uploadSessionThreshold?: number;
@@ -130,8 +154,6 @@ function retryAfterMs(response: Response, now: number): number | null {
   return Number.isNaN(date) ? null : Math.max(0, date - now);
 }
 
-const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
-
 /**
  * Client minimal de l'API Dropbox v2 : ce dont l'ingestion a besoin, rien de
  * plus.
@@ -139,8 +161,10 @@ const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(r
  * - Rafraîchissement OAuth avant expiration, avec ou sans secret (PKCE), et une
  *   fois sur un 401 ; un échec de rafraîchissement lève — jamais d'appel
  *   silencieux avec un jeton périmé.
- * - Nouvelle tentative sur 429 et 5xx, en respectant `Retry-After`, sinon
- *   backoff exponentiel plafonné à une minute.
+ * - Nouvelle tentative sur 429 et 5xx, en respectant `Retry-After` jusqu'à
+ *   `maxRetryWait` (une minute par défaut, au-delà `DropboxRateLimitError`),
+ *   sinon backoff exponentiel plafonné au même seuil. L'attente s'interrompt
+ *   dès que le `signal` de l'appel est levé.
  * - Curseur expiré sur `list_folder/continue` : `CursorResetError`.
  */
 export class DropboxClient {
@@ -151,7 +175,8 @@ export class DropboxClient {
   private readonly appSecret: string | undefined;
   private readonly fetchFn: typeof fetch;
   private readonly maxRetries: number;
-  private readonly sleep: (ms: number) => Promise<void>;
+  private readonly maxRetryWait: number;
+  private readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
   private readonly now: () => number;
   private readonly sessionThreshold: number;
   private readonly chunkSize: number;
@@ -163,7 +188,8 @@ export class DropboxClient {
     this.appSecret = options.appSecret;
     this.fetchFn = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.maxRetries = options.maxRetries ?? 5;
-    this.sleep = options.sleep ?? defaultSleep;
+    this.maxRetryWait = options.maxRetryWait ?? 60_000;
+    this.sleep = options.sleep ?? abortableSleep;
     this.now = options.now ?? Date.now;
     this.sessionThreshold = options.uploadSessionThreshold ?? DROPBOX_SIMPLE_UPLOAD_LIMIT;
     this.chunkSize = options.uploadChunkSize ?? 8 * 1024 * 1024;
@@ -211,10 +237,13 @@ export class DropboxClient {
     for (let attempt = 0; ; attempt++) {
       const response = await send();
       if ((response.status !== 429 && response.status < 500) || attempt >= this.maxRetries) return response;
-      const wait = retryAfterMs(response, this.now()) ?? Math.min(1000 * 2 ** attempt, 60_000);
+      const requested = retryAfterMs(response, this.now());
       await response.body?.cancel();
+      if (requested !== null && requested > this.maxRetryWait) {
+        throw new DropboxRateLimitError(response.status, requested, this.maxRetryWait);
+      }
       signal?.throwIfAborted();
-      await this.sleep(wait);
+      await this.sleep(requested ?? Math.min(1000 * 2 ** attempt, this.maxRetryWait), signal);
     }
   }
 

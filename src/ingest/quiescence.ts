@@ -1,3 +1,4 @@
+import { abortableSleep } from './concurrency.js';
 import { computeSnapshotId } from './hash.js';
 import type { ContentProvider } from './types.js';
 
@@ -11,8 +12,8 @@ export interface QuiescenceOptions {
   readonly maxMs: number;
   /** Intervalle entre deux observations. Défaut : `min(quietMs, 5000)`. */
   readonly intervalMs?: number;
-  /** Injectables pour les tests. */
-  readonly sleep?: (ms: number) => Promise<void>;
+  /** Injectables pour les tests. `sleep` doit s'interrompre sur `signal`. */
+  readonly sleep?: (ms: number, signal?: AbortSignal) => Promise<void>;
   readonly now?: () => number;
   readonly signal?: AbortSignal;
 }
@@ -25,8 +26,6 @@ export interface QuiescenceResult {
   readonly cursor?: string;
   readonly waitedMs: number;
 }
-
-const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 /**
  * Attend que la source se taise : aucun changement pendant `quietMs`, dans la
@@ -42,7 +41,7 @@ export async function waitForQuiescence(
   provider: ContentProvider,
   options: QuiescenceOptions,
 ): Promise<QuiescenceResult> {
-  const sleep = options.sleep ?? defaultSleep;
+  const sleep = options.sleep ?? abortableSleep;
   const now = options.now ?? Date.now;
   const interval = options.intervalMs ?? Math.min(options.quietMs, 5000);
   const call = options.signal !== undefined ? { signal: options.signal } : {};
@@ -61,7 +60,7 @@ export async function waitForQuiescence(
 
   for (;;) {
     options.signal?.throwIfAborted();
-    await sleep(interval);
+    await sleep(interval, options.signal);
 
     let changed: boolean;
     if (incremental) {

@@ -5,6 +5,7 @@ import {
   DropboxApiError,
   DropboxClient,
   DropboxProvider,
+  DropboxRateLimitError,
   dropboxChallenge,
   verifyDropboxSignature,
 } from '../../../src/ingest/dropbox.js';
@@ -162,6 +163,51 @@ describe('DropboxClient — résilience', () => {
     const client = new DropboxClient({ accessToken: 't', fetch: server.fetch, sleep: async (ms) => void waits.push(ms) });
     expect(await client.getLatestCursor('')).toBe('ok');
     expect(waits).toEqual([2000, 2000, 4000]);
+  });
+
+  it('Retry-After au-delà du plafond : DropboxRateLimitError, sans attendre', async () => {
+    const waits: number[] = [];
+    const busy = () => new Response('slow down', { status: 429, headers: { 'Retry-After': '120' } });
+    const server = fakeDropbox({ '/2/files/list_folder/get_latest_cursor': busy });
+    const client = new DropboxClient({ accessToken: 't', fetch: server.fetch, sleep: async (ms) => void waits.push(ms) });
+    await expect(client.getLatestCursor('')).rejects.toMatchObject({ name: 'DropboxRateLimitError', status: 429, retryAfterMs: 120_000 });
+    await expect(client.getLatestCursor('')).rejects.toBeInstanceOf(DropboxRateLimitError);
+    expect(waits).toEqual([]);
+  });
+
+  it('plafond configurable ; le backoff exponentiel s\'y arrête aussi', async () => {
+    const waits: number[] = [];
+    const server = fakeDropbox({
+      '/2/files/list_folder/get_latest_cursor': [
+        () => new Response('slow down', { status: 429, headers: { 'Retry-After': '120' } }),
+        () => new Response('', { status: 500 }),
+        () => new Response('', { status: 500 }),
+        () => new Response('', { status: 500 }),
+        () => json({ cursor: 'ok' }),
+      ],
+    });
+    const sleep = async (ms: number) => void waits.push(ms);
+    const client = new DropboxClient({ accessToken: 't', fetch: server.fetch, sleep, maxRetryWait: 150_000 });
+    expect(await client.getLatestCursor('')).toBe('ok');
+    expect(waits).toEqual([120_000, 2000, 4000, 8000]);
+    const capped = fakeDropbox({
+      '/2/files/list_folder/get_latest_cursor': [...Array(4)].map(() => () => new Response('', { status: 503 })).concat([() => json({ cursor: 'ok' })]),
+    });
+    waits.length = 0;
+    await new DropboxClient({ accessToken: 't', fetch: capped.fetch, sleep, maxRetryWait: 3000 }).getLatestCursor('');
+    expect(waits).toEqual([1000, 2000, 3000, 3000]);
+  });
+
+  it('l\'attente entre deux tentatives s\'interrompt sur le signal', async () => {
+    const server = fakeDropbox({
+      '/2/files/list_folder/get_latest_cursor': () => new Response('', { status: 503, headers: { 'Retry-After': '30' } }),
+    });
+    const client = new DropboxClient({ accessToken: 't', fetch: server.fetch });
+    const controller = new AbortController();
+    const started = Date.now();
+    setTimeout(() => controller.abort(new Error('annulé')), 20);
+    await expect(client.getLatestCursor('', { signal: controller.signal })).rejects.toThrow('annulé');
+    expect(Date.now() - started).toBeLessThan(5000);
   });
 
   it('abandonne après maxRetries avec l\'erreur de Dropbox', async () => {
