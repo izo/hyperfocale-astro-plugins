@@ -1,0 +1,11 @@
+{
+  "description": "Documents joints §1.9 dont un fichier vide ; bloc attachments: cohérent.",
+  "corpus": "attachments",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

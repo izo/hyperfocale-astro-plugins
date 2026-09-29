@@ -1,0 +1,22 @@
+{
+  "description": "Entr\u00e9e placeholder sans hash : liste de hashes vide dans la ligne canonique.",
+  "entries": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+        "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "kind": "media",
+      "size": 6,
+      "state": "placeholder"
+    }
+  ],
+  "expectedCanonical": "series/bretagne-2024/index.md\tcontent\t88\tdropbox=d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd,sha256=90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0\nseries/bretagne-2024/media/01.jpg\tmedia\t6\t\n",
+  "expectedId": "sha256:6a5e13d34d49c5d4ecb6249abdaef6cbc696ddf8992fcdeba86078ae9203aa8d"
+}

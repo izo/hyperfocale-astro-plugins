@@ -1,0 +1,127 @@
+{
+  "description": "Collisions : \u00e9galit\u00e9 apr\u00e8s NFC puis minuscule simple d'Unicode, point de code par point de code (\u0130 \u2192 i ; \u03a3 \u2192 \u03c3 sans r\u00e8gle du sigma final ; \u00df inchang\u00e9). `collisions` liste, sans doublon, chaque chemin qui suit le premier de son groupe dans l'ordre canonique.",
+  "input": [
+    "series/bretagne-2024/media/01.jpg",
+    "series/bretagne-2024/media/01.JPG",
+    "series/Bretagne-2024/index.md",
+    "series/bretagne-2024/index.md",
+    "series/caf\u00e9/index.md",
+    "series/cafe\u0301/index.md",
+    "series/CAF\u00c9/index.md",
+    "series/\u0130stanbul/index.md",
+    "series/istanbul/index.md",
+    "series/\u0391\u03a3/index.md",
+    "series/\u03b1\u03c3/index.md",
+    "series/\u03b1\u03c2/index.md",
+    "series/stra\u00dfe/index.md",
+    "series/strasse/index.md",
+    "series/\u212a/index.md",
+    "series/k/index.md"
+  ],
+  "expected": [
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01.JPG",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/Bretagne-2024/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/caf\u00e9/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/caf\u00e9/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/CAF\u00c9/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/\u0130stanbul/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/istanbul/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/\u0391\u03a3/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/\u03b1\u03c3/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/\u03b1\u03c2/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/stra\u00dfe/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/strasse/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/K/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/k/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    }
+  ],
+  "collisions": [
+    "series/bretagne-2024/index.md",
+    "series/bretagne-2024/media/01.jpg",
+    "series/caf\u00e9/index.md",
+    "series/k/index.md",
+    "series/\u0130stanbul/index.md",
+    "series/\u03b1\u03c3/index.md"
+  ]
+}

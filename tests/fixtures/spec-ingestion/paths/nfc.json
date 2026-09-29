@@ -1,0 +1,50 @@
+{
+  "description": "Normalisation NFC (d\u00e9compositions, singletons, jamo hangul) ; la casse est pr\u00e9serv\u00e9e.",
+  "input": [
+    "series/e\u0301te\u0301-2024/index.md",
+    "series/cafe\u0301/media/cre\u0300me.jpg",
+    "series/A\u030a/index.md",
+    "series/\u1100\u1161/index.md",
+    "Series/\u00c9T\u00c9/Index.MD",
+    "series/plain/index.md"
+  ],
+  "expected": [
+    {
+      "path": "series/\u00e9t\u00e9-2024/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/caf\u00e9/media/cr\u00e8me.jpg",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/\u00c5/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/\uac00/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "Series/\u00c9T\u00c9/Index.MD",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/plain/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    }
+  ],
+  "collisions": []
+}

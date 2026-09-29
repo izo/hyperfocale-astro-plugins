@@ -1,0 +1,27 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:27cf3f43fcdd96b877a3ebb9d67e0e5c9efe86a493821795008e9b53c463f8a1",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 40,
+      "hashes": {
+        "dropbox": "821c54fe22500a888dc8c9a896b0e2c633bf075ff50d3d2241ddfa2482a27d3d",
+        "sha256": "a0fe0308d94bd65808e1f93904ef8c9b605d7d7bf9d6ec790f04f54acf7fd22f"
+      }
+    },
+    {
+      "path": "series/titre-vide-2024/index.md",
+      "kind": "content",
+      "size": 48,
+      "hashes": {
+        "dropbox": "a861170bc3571ad609d57d53eed2868bd7ec041b82342f350fc929a346c7c5a9",
+        "sha256": "57d06daf0c142c86b416dfd18f947821a868ab728cb9ecba958540f89af2323b"
+      }
+    }
+  ]
+}

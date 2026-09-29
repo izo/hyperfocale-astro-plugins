@@ -1,0 +1,22 @@
+{
+  "description": "title absent, et title chaîne vide.",
+  "corpus": "invalid-title-missing",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "title-missing",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "title-missing",
+      "severity": "error",
+      "path": "series/titre-vide-2024/index.md"
+    }
+  ]
+}

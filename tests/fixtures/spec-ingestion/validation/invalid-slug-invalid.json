@@ -1,0 +1,17 @@
+{
+  "description": "Dossier porteur d'un fichier index dont le nom ne suit pas la regex de slug.",
+  "corpus": "invalid-slug-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "slug-invalid",
+      "severity": "error",
+      "path": "series/Bretagne_2024"
+    }
+  ]
+}

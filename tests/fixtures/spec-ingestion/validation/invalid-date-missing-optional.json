@@ -1,0 +1,11 @@
+{
+  "description": "Même corpus sous une racine dateRequired: false : aucun diagnostic.",
+  "corpus": "invalid-date-missing",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": false
+    }
+  ],
+  "expected": []
+}

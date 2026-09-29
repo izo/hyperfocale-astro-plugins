@@ -1,0 +1,18 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:433eb8d1ff4070a6900483c96caf72b56b48b6efd3318969ef0cd7d7902d3f22",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 50,
+      "hashes": {
+        "dropbox": "a7c325c010a9a0e6af72655d55a10aece5a9a7e04899eea4544784f43cf29791",
+        "sha256": "862fbbb6aa436ea8f8afb440fdd6fcfc64996c8c244e667e510e50a55c79205b"
+      }
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:f8317da5f441dcbb778de872f851bedd71968053d4b3b98fe39e2259f10ead0a",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/festival-2023/index.md",
+      "kind": "content",
+      "size": 287,
+      "hashes": {
+        "dropbox": "30914a543ad97672b83e86b88a83e008c7efc3765924b6fd47f66d2f673ae6ce",
+        "sha256": "a4173a37b9efbdbe2e9bab962a273d5a6c0a3f42c5c60c525540b7eb30365535"
+      }
+    },
+    {
+      "path": "series/festival-2023/media/01.jpg",
+      "kind": "media",
+      "size": 34,
+      "hashes": {
+        "dropbox": "00b7c149107a92ae24c3c800d417915932d4521a27330be149184475890e44cb",
+        "sha256": "5c110b182c2df0bf75c507dd4a77803a7f10e8bd56294ac1fe8ae9eb2d858c82"
+      }
+    },
+    {
+      "path": "series/festival-2023/media/dossier-de-presse.pdf",
+      "kind": "media",
+      "size": 49,
+      "hashes": {
+        "dropbox": "93a9ef60d4e8adaf79546259fe9fe79254f9f8374032ed156ebe7c6a8fe77bf0",
+        "sha256": "70122ecb046a08348133d21d1cd21774fed29031fd1bbdf571d1633a9d894b89"
+      }
+    },
+    {
+      "path": "series/festival-2023/media/interview.mp3",
+      "kind": "media",
+      "size": 41,
+      "hashes": {
+        "dropbox": "847b4f4546de21d63c425355b67d5f5f0e2be554799847483081aa13e9f4b37f",
+        "sha256": "8af4d47dedb3a20fe67ca52c3d4814939cf34f4131721c4d24481c60db753dc3"
+      }
+    },
+    {
+      "path": "series/festival-2023/media/notes.txt",
+      "kind": "media",
+      "size": 0,
+      "hashes": {
+        "dropbox": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "series/festival-2023/media/trace.gpx",
+      "kind": "media",
+      "size": 37,
+      "hashes": {
+        "dropbox": "599c234857e995bd7e8ccdd399a0a0ac45e544167535b16a53c981f1be30ecb1",
+        "sha256": "46eca9b5f9580fd409b0c3a9aabde46eaef06f747d828b3fa5e60a832dcd8894"
+      }
+    }
+  ]
+}

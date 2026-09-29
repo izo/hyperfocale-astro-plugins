@@ -1,0 +1,11 @@
+{
+  "description": "index.md + index.en.md + index.pt-BR.md (Annexe F, stratégie 2) ; index.english.md n'est pas un fichier index et n'est pas validé.",
+  "corpus": "i18n",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

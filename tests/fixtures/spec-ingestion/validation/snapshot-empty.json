@@ -1,0 +1,25 @@
+{
+  "description": "Aucune entrée (listing vide).",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": []
+  },
+  "files": {},
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "snapshot-empty",
+      "severity": "error",
+      "path": ""
+    }
+  ]
+}

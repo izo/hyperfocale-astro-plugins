@@ -1,0 +1,17 @@
+{
+  "description": "Série sous une sous-série.",
+  "corpus": "invalid-nesting-too-deep",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "nesting-too-deep",
+      "severity": "error",
+      "path": "series/festival-2008/jour-1/scene-a"
+    }
+  ]
+}

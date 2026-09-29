@@ -1,0 +1,36 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:1dd23e30a1c0181e677f35b98fae7b4ef572ed224b7fb9eb04cb4d4cfc6a6f33",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/festival-2008/index.md",
+      "kind": "content",
+      "size": 60,
+      "hashes": {
+        "dropbox": "567d976996f17439ad43e52f757755dcbaf9e00d019c9cd694fc35c968c5d582",
+        "sha256": "9b395a4d81402225e1eabe129fead346046d41bc5d09e3ec4f313d3073ae81b2"
+      }
+    },
+    {
+      "path": "series/festival-2008/jour-1/index.md",
+      "kind": "content",
+      "size": 94,
+      "hashes": {
+        "dropbox": "e25648a331dc1df00f94ad1d3f4cc2112aae5b7c93417a73e79d0b66e9b3495d",
+        "sha256": "1a2f6f597fec1117dc35b1ee975eff0936a2dea88999d6dddc41fa18c660bf6c"
+      }
+    },
+    {
+      "path": "series/festival-2008/jour-1/scene-a/index.md",
+      "kind": "content",
+      "size": 117,
+      "hashes": {
+        "dropbox": "4071e74d87706dbc39a5de575e3d675f3fa37767cf259f38ee3fc67e10ba73a3",
+        "sha256": "ebf937fea96999199cd0a4a7be26347411018be0ba0bb73a7759f59451ffa2db"
+      }
+    }
+  ]
+}

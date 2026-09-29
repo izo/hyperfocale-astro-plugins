@@ -1,0 +1,17 @@
+{
+  "description": "Cl\u00e9s de hashes dans le d\u00e9sordre, dont un x-etag : tri\u00e9es par nom d'algorithme dans la ligne canonique.",
+  "entries": [
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "kind": "media",
+      "size": 6,
+      "hashes": {
+        "x-etag": "\"5f3c-4a2b\"",
+        "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55",
+        "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e"
+      }
+    }
+  ],
+  "expectedCanonical": "series/bretagne-2024/media/01.jpg\tmedia\t6\tdropbox=138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e,sha256=b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55,x-etag=\"5f3c-4a2b\"\n",
+  "expectedId": "sha256:8f90788db7b4d8f7c87176673833594362a03900facab5e6f30e654b9bd1179c"
+}

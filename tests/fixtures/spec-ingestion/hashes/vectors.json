@@ -1,0 +1,71 @@
+{
+  "description": "Vecteurs de hash sha256 et dropbox. `input.utf8` : octets UTF-8 de la chaîne ; `input.repeat` : `count` fois l'octet `byte`. Aucun fichier > 4 Mio n'est versionné : les grands vecteurs se génèrent.",
+  "vectors": [
+    {
+      "name": "empty",
+      "input": {
+        "utf8": ""
+      },
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "dropbox": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "abc",
+      "input": {
+        "utf8": "abc"
+      },
+      "size": 3,
+      "sha256": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "dropbox": "4f8b42c22dd3729b519ba6f68d2da7cc5b2d606d05daed5ad5128cc03e6c6358"
+    },
+    {
+      "name": "zeros-4194304",
+      "input": {
+        "repeat": {
+          "byte": 0,
+          "count": 4194304
+        }
+      },
+      "size": 4194304,
+      "sha256": "bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8",
+      "dropbox": "c7e946d101855255d919ef0c70718633adf77d3dfb3adeeecf5d0cb4e951be58"
+    },
+    {
+      "name": "zeros-4194305",
+      "input": {
+        "repeat": {
+          "byte": 0,
+          "count": 4194305
+        }
+      },
+      "size": 4194305,
+      "sha256": "95e441ca65cd41fa01b2a71799e79fd60db59ed34f13af32a91e85f90378676c",
+      "dropbox": "14a4d47f23a30177885d9820122f17d2d3a55fe63f7f5c27b95f689e0b2accd6"
+    },
+    {
+      "name": "zeros-5000000",
+      "input": {
+        "repeat": {
+          "byte": 0,
+          "count": 5000000
+        }
+      },
+      "size": 5000000,
+      "sha256": "b39781589c4403fb82174c9647a010464cff38bad976547d339899b00053a545",
+      "dropbox": "2bf4530eab0a0c6da78fe764ce67a6a97163afd2148b379a14c22ff8c45173ce"
+    },
+    {
+      "name": "zeros-8388608",
+      "input": {
+        "repeat": {
+          "byte": 0,
+          "count": 8388608
+        }
+      },
+      "size": 8388608,
+      "sha256": "2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74",
+      "dropbox": "03ae066c707c588592d9e27aa2444ca98423e0999024f1ceaa11a153790b37de"
+    }
+  ]
+}

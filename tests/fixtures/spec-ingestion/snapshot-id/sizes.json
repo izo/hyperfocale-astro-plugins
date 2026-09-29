@@ -1,0 +1,25 @@
+{
+  "description": "Fichier vide (size 0) et fichier de 5 000 000 octets 0x00 (deux blocs Dropbox).",
+  "entries": [
+    {
+      "path": "series/bretagne-2024/media/notes.txt",
+      "kind": "media",
+      "size": 0,
+      "hashes": {
+        "dropbox": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/zeros.bin",
+      "kind": "media",
+      "size": 5000000,
+      "hashes": {
+        "dropbox": "2bf4530eab0a0c6da78fe764ce67a6a97163afd2148b379a14c22ff8c45173ce",
+        "sha256": "b39781589c4403fb82174c9647a010464cff38bad976547d339899b00053a545"
+      }
+    }
+  ],
+  "expectedCanonical": "series/bretagne-2024/media/notes.txt\tmedia\t0\tdropbox=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855,sha256=e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855\nseries/bretagne-2024/media/zeros.bin\tmedia\t5000000\tdropbox=2bf4530eab0a0c6da78fe764ce67a6a97163afd2148b379a14c22ff8c45173ce,sha256=b39781589c4403fb82174c9647a010464cff38bad976547d339899b00053a545\n",
+  "expectedId": "sha256:81545123d2ad4218e7b742a29299337093de8b4f673291eb674437310b522663"
+}

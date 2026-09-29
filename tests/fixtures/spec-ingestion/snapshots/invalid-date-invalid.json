@@ -1,0 +1,27 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:c69f3f5026809f9aa0c5c6cd82e811e6aa47787554d48898c7106f20e17585a7",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/fevrier-2024/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "337a9890ac7f825b5a1096b73b73dfb75e4005611bc70df830d3e9cb852b34ad",
+        "sha256": "2f994435d4deb633a8e2f92e99fa9a0fe23fe8f67274b80f99104ae4fcdc470d"
+      }
+    },
+    {
+      "path": "series/hier/index.md",
+      "kind": "content",
+      "size": 53,
+      "hashes": {
+        "dropbox": "0c343d1fd62ef20a267f0cb3bb830310480dc6ad0aa497096409e515563de642",
+        "sha256": "3f3cab4cd33a3af1cebeeefef9cf65a2d0c21ea8103e20e096c1df752fc751b0"
+      }
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "description": "media/ dont le dossier parent ne porte aucun fichier index.",
+  "corpus": "invalid-media-orphan",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "media-orphan",
+      "severity": "warning",
+      "path": "series/sans-index/media"
+    }
+  ]
+}

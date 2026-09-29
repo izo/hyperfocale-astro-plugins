@@ -1,0 +1,27 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:791ee6536d9224602fc980089c3b271264d85aec25ddace6698bc5d17a947168",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "archives/music/index.md",
+      "kind": "content",
+      "size": 86,
+      "hashes": {
+        "dropbox": "5548b993d3bad15b2e2e833de6b5b5857a39c3a04b817acc52cc8bc065be1e18",
+        "sha256": "bed2ccf707d53beee7fd7ccd6cdd9340cd91e01d9c2ac6441ba5758c93c7d11e"
+      }
+    },
+    {
+      "path": "archives/music/media/bandeau.jpg",
+      "kind": "media",
+      "size": 33,
+      "hashes": {
+        "dropbox": "4376379a7e4d4c2be3d0c03576c568a7ddfcee22c4df9c6c4c66af6a42d44e55",
+        "sha256": "494f109308f602248fca7357fd28fb961e025dea23234e99c202a03abd9c2dd5"
+      }
+    }
+  ]
+}

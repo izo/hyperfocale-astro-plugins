@@ -1,0 +1,6 @@
+{
+  "description": "Snapshot sans entr\u00e9e : SHA-256 de la cha\u00eene vide.",
+  "entries": [],
+  "expectedCanonical": "",
+  "expectedId": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

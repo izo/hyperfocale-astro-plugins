@@ -1,0 +1,22 @@
+{
+  "description": "Date non ISO 8601 (« hier »), et forme ISO d'une date calendaire impossible (2024-02-30, lue comme chaîne sous le schéma YAML 1.2 core).",
+  "corpus": "invalid-date-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "date-invalid",
+      "severity": "error",
+      "path": "series/fevrier-2024/index.md"
+    },
+    {
+      "code": "date-invalid",
+      "severity": "error",
+      "path": "series/hier/index.md"
+    }
+  ]
+}

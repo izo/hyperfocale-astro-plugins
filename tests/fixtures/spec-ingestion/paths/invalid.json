@@ -1,0 +1,120 @@
+{
+  "description": "Chemins invalides \u00a72.1 ; les indicateurs valid et excluded sont ind\u00e9pendants (un segment . ou .. est aussi exclu). U+0085 (NEL) n'est pas dans la plage interdite.",
+  "input": [
+    "",
+    "/series/bretagne-2024/index.md",
+    "series/bretagne-2024/",
+    "series//bretagne-2024/index.md",
+    "./series/bretagne-2024/index.md",
+    "series/./bretagne-2024/index.md",
+    "series/../bretagne-2024/index.md",
+    "series\\bretagne-2024\\index.md",
+    "series/bretagne-2024/media/0\u00001.jpg",
+    "series/bretagne-2024/media/01\t.jpg",
+    "series/bretagne-2024/media/01.jpg\n",
+    "series/bretagne-2024/media/01\u001f.jpg",
+    "series/bretagne-2024/media/01\u007f.jpg",
+    "series/bretagne-2024/media/01\u0085.jpg",
+    "series/bretagne 2024/index.md",
+    "series/\ud83d\ude00/index.md"
+  ],
+  "expected": [
+    {
+      "path": "",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "/series/bretagne-2024/index.md",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series//bretagne-2024/index.md",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "./series/bretagne-2024/index.md",
+      "valid": false,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/./bretagne-2024/index.md",
+      "valid": false,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/../bretagne-2024/index.md",
+      "valid": false,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series\\bretagne-2024\\index.md",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/0\u00001.jpg",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01\t.jpg",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg\n",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01\u001f.jpg",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01\u007f.jpg",
+      "valid": false,
+      "kind": null,
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01\u0085.jpg",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne 2024/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/\ud83d\ude00/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    }
+  ],
+  "collisions": []
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Sous-dossier dans media/ : un diagnostic par dossier imbriqué.",
+  "corpus": "invalid-media-nested",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "media-nested",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/raw"
+    }
+  ]
+}

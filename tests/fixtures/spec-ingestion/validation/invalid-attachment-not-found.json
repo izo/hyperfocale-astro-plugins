@@ -1,0 +1,17 @@
+{
+  "description": "Entrée attachments: dont le fichier est absent de media/.",
+  "corpus": "invalid-attachment-not-found",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "attachment-not-found",
+      "severity": "warning",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

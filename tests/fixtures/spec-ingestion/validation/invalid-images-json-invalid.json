@@ -1,0 +1,22 @@
+{
+  "description": "images.json dont la clé images n'est pas un tableau, et images.json illisible.",
+  "corpus": "invalid-images-json-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "images-json-invalid",
+      "severity": "warning",
+      "path": "series/bretagne-2024/images.json"
+    },
+    {
+      "code": "images-json-invalid",
+      "severity": "warning",
+      "path": "series/illisible-2024/images.json"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "description": "type hors de {series, section}.",
+  "corpus": "invalid-type-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "type-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

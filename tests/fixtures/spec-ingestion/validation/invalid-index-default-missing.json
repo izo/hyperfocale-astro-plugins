@@ -1,0 +1,17 @@
+{
+  "description": "index.en.md sans index.md.",
+  "corpus": "invalid-index-default-missing",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "index-default-missing",
+      "severity": "warning",
+      "path": "series/bretagne-2024"
+    }
+  ]
+}

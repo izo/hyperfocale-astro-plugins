@@ -1,0 +1,15 @@
+{
+  "description": "Deux racines configurées : pages sans date admises sous `pages`, dossier `brouillons` hors racines non validé.",
+  "corpus": "roots",
+  "roots": [
+    {
+      "path": "archives",
+      "dateRequired": true
+    },
+    {
+      "path": "pages",
+      "dateRequired": false
+    }
+  ],
+  "expected": []
+}

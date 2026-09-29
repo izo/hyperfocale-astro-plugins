@@ -1,0 +1,82 @@
+{
+  "description": "diff(S, S) est vide et sans diagnostic, y compris pour une entrée placeholder sans hash et une entrée x-etag seule.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:98839b31754903975e022621db49fa44a666804fe2f85e64d89b16897f6cb70d",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAAAQ",
+        "modifiedAt": "2026-09-28T08:00:00Z"
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "state": "placeholder"
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "x-etag": "\"02-v1\""
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:98839b31754903975e022621db49fa44a666804fe2f85e64d89b16897f6cb70d",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        },
+        "identity": "id:AAAAAAAAAAAAAAAAAAAAAQ",
+        "modifiedAt": "2026-09-28T08:00:00Z"
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "state": "placeholder"
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "x-etag": "\"02-v1\""
+        }
+      }
+    ]
+  },
+  "expected": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:98839b31754903975e022621db49fa44a666804fe2f85e64d89b16897f6cb70d",
+    "target": "sha256:98839b31754903975e022621db49fa44a666804fe2f85e64d89b16897f6cb70d",
+    "added": [],
+    "modified": [],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  }
+}
