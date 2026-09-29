@@ -217,6 +217,29 @@ describe('DropboxClient — résilience', () => {
     expect(server.calls).toHaveLength(3);
   });
 
+  it('une erreur ne recopie jamais le corps brut : ni jeton, ni champ annexe', async () => {
+    const secret = 'sl.refresh_token=rt-SECRET-123';
+    const server = fakeDropbox({
+      '/2/files/list_folder/get_latest_cursor': [
+        () => new Response(`<html>proxy dump ${secret}</html>`, { status: 400 }),
+        () => json({ error_summary: 'path/malformed/', error: { '.tag': 'path' }, debug: secret }, 409),
+        () => json({ error_summary: `${'x'.repeat(600)}${secret}`, error: { '.tag': 'other' } }, 409),
+      ],
+      '/oauth2/token': json({ error: 'invalid_grant', error_description: secret }, 400),
+    });
+    const client = new DropboxClient({ accessToken: 't', fetch: server.fetch, maxRetries: 0 });
+    const errors: DropboxApiError[] = [];
+    for (let i = 0; i < 3; i++) errors.push(await client.getLatestCursor('').catch((e: DropboxApiError) => e));
+    errors.push(
+      await new DropboxClient({ refreshToken: 'rt', appKey: 'k', fetch: server.fetch }).refreshAccessToken().catch((e: DropboxApiError) => e),
+    );
+    expect(errors.map((e) => e.summary.length <= 500 && e.summary)).toEqual(['HTTP 400', 'path/malformed/', 'x'.repeat(500), 'invalid_grant']);
+    for (const error of errors) {
+      expect(error).toBeInstanceOf(DropboxApiError);
+      expect(`${error.message} ${error.summary} ${JSON.stringify(error)}`).not.toContain('SECRET');
+    }
+  });
+
   it('409 structuré → DropboxApiError avec tag ; reset du curseur → CursorResetError', async () => {
     const server = fakeDropbox({
       '/2/files/list_folder': json({ error_summary: 'path/not_found/..', error: { '.tag': 'path', path: { '.tag': 'not_found' } } }, 409),

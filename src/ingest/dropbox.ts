@@ -66,10 +66,17 @@ export interface DropboxListResult {
   readonly cursor: string;
 }
 
-/** Erreur renvoyée par l'API Dropbox. */
+/**
+ * Erreur renvoyée par l'API Dropbox. Ne porte jamais le corps brut de la
+ * réponse — il peut contenir un jeton renvoyé par un intermédiaire, et une
+ * erreur finit dans des journaux de CI.
+ */
 export class DropboxApiError extends Error {
   readonly status: number;
-  /** `error_summary` de Dropbox (`path/not_found/..`), ou le corps brut. */
+  /**
+   * `error_summary` de Dropbox (`path/not_found/..`), ou `error` d'une erreur
+   * OAuth (`invalid_grant`), tronqué à 500 caractères ; `HTTP <status>` à défaut.
+   */
   readonly summary: string;
   /** `error['.tag']`, quand l'erreur est structurée. */
   readonly tag?: string;
@@ -269,13 +276,25 @@ export class DropboxClient {
   }
 
   private async apiError(endpoint: string, response: Response): Promise<DropboxApiError> {
-    const text = await response.text();
+    let body: unknown;
     try {
-      const body = JSON.parse(text) as { error_summary?: string; error?: { '.tag'?: string } };
-      return new DropboxApiError(endpoint, response.status, body.error_summary ?? text, body.error?.['.tag']);
+      body = JSON.parse(await response.text());
     } catch {
-      return new DropboxApiError(endpoint, response.status, text);
+      body = null;
     }
+    const record = (value: unknown): Record<string, unknown> | null =>
+      typeof value === 'object' && value !== null && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+    const fields = record(body);
+    const error = fields?.error;
+    const summary =
+      typeof fields?.error_summary === 'string' ? fields.error_summary : typeof error === 'string' ? error : null;
+    const tag = record(error)?.['.tag'];
+    return new DropboxApiError(
+      endpoint,
+      response.status,
+      summary === null ? `HTTP ${response.status}` : summary.slice(0, 500),
+      typeof tag === 'string' ? tag.slice(0, 100) : undefined,
+    );
   }
 
   /** Appel RPC JSON sur `api.dropboxapi.com/2/<endpoint>`. */
