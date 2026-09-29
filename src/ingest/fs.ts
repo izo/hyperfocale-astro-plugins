@@ -209,7 +209,7 @@ export class FilesystemProvider implements ContentProvider {
             problems.push({ path, reason: `lien symbolique cassé (${(err as Error).message})` });
             continue;
           }
-          if (real !== realRoot && !real.startsWith(`${realRoot}${sep}`)) {
+          if (!isUnder(real, realRoot)) {
             problems.push({ path, reason: 'lien symbolique hors de la racine' });
           } else if (info.isDirectory()) {
             if (visited.has(real)) problems.push({ path, reason: 'lien symbolique en cycle' });
@@ -267,7 +267,9 @@ export class FilesystemProvider implements ContentProvider {
     for (let probe = abs; ; ) {
       try {
         const real = await realpath(probe);
-        if (real !== realRoot && !real.startsWith(`${realRoot}${sep}`)) throw new UnsafePathError(path, relative(this.root, probe));
+        if (!isUnder(real, realRoot)) {
+          throw new UnsafePathError(path, `sort de la racine par le lien « ${relative(this.root, probe)} »`);
+        }
         return abs;
       } catch (err) {
         const parent = dirname(probe);
@@ -303,9 +305,14 @@ export class FilesystemProvider implements ContentProvider {
 function resolveInside(root: string, path: string): string {
   const normalized = normalizePath(path);
   if (!normalized.valid || normalized.path !== path) {
-    throw new Error(`[hyperfocale] chemin refusé « ${path} » : ${normalized.reason ?? 'non NFC'}.`);
+    throw new UnsafePathError(path, `chemin invalide, ${normalized.reason ?? 'non NFC'}`);
   }
   return join(root, ...path.split('/'));
+}
+
+/** Le chemin réel `real` est-il la racine réelle `realRoot` ou l'un de ses descendants ? */
+function isUnder(real: string, realRoot: string): boolean {
+  return real === realRoot || real.startsWith(`${realRoot}${sep}`);
 }
 
 /** Écrit via un fichier temporaire voisin puis `rename` : jamais de fichier à moitié écrit. */
@@ -342,13 +349,16 @@ export class ContentMismatchError extends Error {
   }
 }
 
-/** Un chemin traverserait un lien symbolique : l'écriture pourrait sortir du dossier cible. */
+/**
+ * Un chemin pourrait mener hors de la racine — segment `..`, chemin absolu,
+ * chemin non conforme au §4.1, ou lien symbolique : opération refusée.
+ */
 export class UnsafePathError extends Error {
   readonly code = 'unsafe-path';
   readonly path: string;
 
-  constructor(path: string, link: string) {
-    super(`[hyperfocale] « ${path} » traverse le lien symbolique « ${link} » : opération refusée.`);
+  constructor(path: string, reason: string) {
+    super(`[hyperfocale] « ${path} » : ${reason} — opération refusée.`);
     this.name = 'UnsafePathError';
     this.path = path;
   }
@@ -370,7 +380,7 @@ async function assertNoSymlink(root: string, path: string): Promise<void> {
     } catch {
       return;
     }
-    if (info.isSymbolicLink()) throw new UnsafePathError(path, prefix);
+    if (info.isSymbolicLink()) throw new UnsafePathError(path, `traverse le lien symbolique « ${prefix} »`);
   }
 }
 

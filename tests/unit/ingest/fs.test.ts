@@ -163,8 +163,10 @@ describe('FilesystemProvider', () => {
     const entry = await provider.write('s/media/01.jpg', new TextEncoder().encode('pix'));
     expect(entry).toMatchObject({ path: 's/media/01.jpg', kind: 'media', size: 3, hashes: { sha256: sha256('pix') } });
     expect(readFileSync(join(work, 's/media/01.jpg'), 'utf-8')).toBe('pix');
-    await expect(provider.read('../etc/passwd')).rejects.toThrow(/refusé/);
-    await expect(provider.write('/abs', new Uint8Array())).rejects.toThrow(/refusé/);
+    for (const path of ['../etc/passwd', '/abs', 'a/../../x']) {
+      await expect(provider.read(path)).rejects.toMatchObject({ name: 'UnsafePathError', code: 'unsafe-path', path });
+      await expect(provider.write(path, new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
+    }
   });
 });
 
@@ -260,6 +262,21 @@ describe('materializeSnapshot', () => {
     const bytes = (text: string) => new TextEncoder().encode(text);
     const entryOf = async (path: string, content: string) =>
       (await createSnapshot([{ path, kind: 'other', size: bytes(content).length, hashes: hashBytes(bytes(content)) }], { complete: true })).entries[0]!;
+
+    it('chemin invalide (`..`, absolu) : UnsafePathError avant toute opération', async () => {
+      const targetDir = join(work, 'target');
+      mkdirSync(targetDir);
+      for (const path of ['../x.txt', '/abs.txt', 'a/../../x.txt']) {
+        const changeSet = { ...diffSnapshots(null, await createSnapshot([], { complete: true })), added: [await entryOf(path, 'charge')] };
+        await expect(materializeSnapshot(changeSet, { targetDir, read: async () => bytes('charge') })).rejects.toMatchObject({
+          name: 'UnsafePathError',
+          code: 'unsafe-path',
+          path,
+        });
+      }
+      expect(existsSync(join(work, 'x.txt'))).toBe(false);
+      expect(readdirSync(targetDir)).toEqual([]);
+    });
 
     it('added : refusé, rien n\'est écrit dehors', async () => {
       const { targetDir, outside } = trap();
