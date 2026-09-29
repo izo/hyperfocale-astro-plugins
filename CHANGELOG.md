@@ -7,6 +7,42 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.19.0] — 2026-09-29
+
+Le contrat d'ingestion de la spec (couche 4, 2.10-draft) entre dans le paquet : snapshot, diff, validation, garde de publication, et trois providers génériques. Quatre sous-chemins **additifs** — l'intégration Astro n'en charge rien, et rien ne change pour un site qui ne les importe pas.
+
+Le principe reste Astro-native : un provider alimente un dossier, le Content Layer lit ce dossier. Aucun loader Dropbox ou WebDAV n'apparaît dans le build, aucune requête de visiteur ne contacte une source éditoriale.
+
+### Ajouté
+
+- **`@regrets/hyperfocale/ingest`** — le contrat, agnostique du runtime (WebCrypto, aucun module `node:*`) : types (`ContentSnapshot`, `ContentChangeSet`, `ProviderCapabilities`, `ContentProvider`, `PublicationRecord`, `Diagnostic`…), `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical` (ordre des octets UTF-8), `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`.
+
+  Deux garde-fous tiennent l'invariant « incomplet ≠ suppression » : `createSnapshot` exige `complete` **sans valeur par défaut**, et `applyDelta` lève `CursorResetError` sur un curseur expiré au lieu d'y lire « tout a été supprimé ».
+
+  `validateSnapshot` produit les diagnostics de la spec (§4.10), triplet `code` + `severity` + `path`, un seul par couple. Il va un pas plus loin : les champs sont confrontés à `baseSeriesSchema`, et une violation sans code propre au contrat (`tags: solo`) remonte en `x-schema-invalid` — un frontmatter que le build refuserait ne passe pas en silence.
+
+- **`@regrets/hyperfocale/ingest/fs`** (Node) — `FilesystemProvider` (parcours récursif, hachage `sha256` + `dropbox` en flux, erreur de lecture → listing incomplet), `hashFile`, `hashBytes`, et `materializeSnapshot`, qui applique un changeset à un dossier : écritures atomiques, contenu vérifié contre l'empreinte du snapshot, rien de supprimé hors du changeset.
+
+- **`@regrets/hyperfocale/ingest/dropbox`** — `DropboxClient` (rafraîchissement OAuth avec ou sans secret, pagination, curseurs, upload par session au-delà de 150 Mio, retry 429/5xx avec `Retry-After`) et `DropboxProvider` (casse des dossiers reconstruite, `identity` = `id`, delta replié dans l'ordre de Dropbox). `verifyDropboxSignature` et `dropboxChallenge` servent le webhook ; le module s'importe dans un Worker.
+
+- **`@regrets/hyperfocale/ingest/webdav`** — `WebDAVProvider`, sans dépendance : PROPFIND `Depth: 1` récursif, parseur XML minimal, empreinte `x-etag`.
+
+- **CLI** — `hyperfocale validate`, `snapshot` et `diff`, sortie lisible ou `--json`, codes de sortie 0 / 1 (diagnostic `error`) / 2 (mauvais usage).
+
+- **Conformité** — les fixtures cross-language de la spec sont copiées à une ref épinglée (`tests/fixtures/spec-ingestion/`, `npm run fixtures:sync` / `fixtures:check`) et rejouées en totalité : 101 cas, tous verts.
+
+- **Dépendance** — `js-yaml` passe en `dependencies` (la 4.3 qu'Astro 7 tire déjà, dédupliquée). Le frontmatter y est lu en schéma YAML 1.2 *core* : une date reste le texte écrit, là où le schéma par défaut convertit `2024-02-30` en 1er mars.
+
+### Modifié
+
+- **Commande inconnue du CLI** : `hyperfocale <inconnu>` rend désormais 2 avec l'usage. Elle lançait `init` et écrivait `src/content.config.ts` sans qu'on l'ait demandé. `hyperfocale` seul et `hyperfocale init` n'ont pas changé.
+
+### Rétro-compatibilité
+
+Aucun changement cassant pour un site Astro : l'entrée racine, les composants, les helpers et les routes sont intacts, et un test vérifie que `.` n'atteint aucun code d'ingestion, sur les sources comme dans `dist/`.
+
+---
+
 ## [0.18.2] — 2026-08-24
 
 Second correctif de sécurité issu de l'audit du jour, après la 0.18.1. Aucun changement d'API.
