@@ -139,6 +139,14 @@ describe('guardChangeSet (§4.11)', () => {
     ]);
   });
 
+  it('lit tous les fichiers index de base, même ceux d\'une série que le changeset ne touche pas', async () => {
+    const base = await snapshot([entry('stable/index.md', SERIES), entry('a/index.md', SERIES)]);
+    const target = await snapshot([entry('stable/index.md', SERIES), entry('a/index.md', PRIVATE)]);
+    const read = reader({ base: { 'stable/index.md': 'miroir local altéré', 'a/index.md': SERIES } });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy: {} });
+    expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['entry-hash-mismatch', 'stable/index.md']]);
+  });
+
   it('octets lus divergents : entry-hash-mismatch, et le fichier ne déclare rien', async () => {
     const base = await snapshot([entry('a/index.md', PRIVATE)]);
     const target = await snapshot([entry('a/index.md', SERIES)]);
@@ -152,7 +160,8 @@ describe('guardChangeSet (§4.11)', () => {
     const base = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }]);
     const target = await snapshot([entry('a/index.md', SERIES), { ...entry('a/media/old.jpg'), size: 99_999 }, big]);
     const policy = { maxFileBytes: { media: 5_000 } };
-    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read: reader(), policy });
+    const read = reader({ base: { 'a/index.md': SERIES } });
+    const diagnostics = await guardChangeSet(diffSnapshots(base, target), base, target, { read, policy });
     expect(diagnostics.map((d) => [d.code, d.path])).toEqual([
       ['guard-oversize', 'a/media/big.jpg'],
       ['guard-oversize', 'a/media/old.jpg'],
@@ -164,7 +173,7 @@ describe('guardChangeSet (§4.11)', () => {
     const base = await snapshot([entry('a/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
     const target = await snapshot([entry('b/index.md', 'A', { identity: 'a' }), entry('b/index.en.md', 'B')]);
     const cs = diffSnapshots(base, target);
-    const read = reader({ base: { 'a/index.md': 'A' } });
+    const read = reader({ base: { 'a/index.md': 'A', 'b/index.en.md': 'B' } });
     expect(await guardChangeSet(cs, base, target, { read, policy: { maxDeletedSeries: 0 } })).toEqual([]);
     expect(summarizeChangeSet(cs, base, target).series.deleted).toEqual([]);
   });

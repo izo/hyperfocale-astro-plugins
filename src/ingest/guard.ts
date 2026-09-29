@@ -58,11 +58,11 @@ function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path:
  *   target ; supprimer une série privée n'est pas l'exposer ;
  * - `guard-oversize` : une entrée de target dépasse `maxFileBytes[kind]`.
  *
- * Les octets lus sont vérifiés contre l'empreinte (§4.4) : un fichier qui
- * diverge produit `entry-hash-mismatch` et ne déclare rien.
- *
- * Seules sont lues les séries de base dont un fichier index a changé — les
- * autres gardent, à l'octet près, la confidentialité qu'elles avaient.
+ * Comme le veut la spec, tous les fichiers index des séries de base sont lus,
+ * puis ceux de la série homologue dans target quand la série de base est
+ * privée. Les octets lus sont vérifiés contre l'empreinte (§4.4) : un fichier
+ * qui diverge produit `entry-hash-mismatch` et ne déclare rien — y compris
+ * dans une série que le changeset ne touche pas.
  */
 export async function guardChangeSet(
   changeSet: ContentChangeSet,
@@ -136,13 +136,7 @@ export async function guardChangeSet(
       return false;
     };
 
-    const changedIndexes = new Set([
-      ...changeSet.modified.map((m) => m.path),
-      ...changeSet.deleted.map((e) => e.path),
-      ...changeSet.moved.map((m) => m.from),
-    ]);
     for (const [folder, indexPaths] of baseFolders) {
-      if (!indexPaths.some((path) => changedIndexes.has(path))) continue;
       if (!(await isPrivate('base', indexPaths))) continue;
       // Homologue dans target : même dossier s'il porte encore un fichier
       // index, sinon la destination du premier fichier index déplacé.
