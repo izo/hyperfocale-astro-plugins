@@ -1,6 +1,6 @@
 {
   "name": "@regrets/hyperfocale",
-  "version": "0.18.2",
+  "version": "0.19.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
   "license": "MIT",
@@ -41,6 +41,22 @@
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"
+    },
+    "./ingest": {
+      "types": "./dist/ingest/index.d.ts",
+      "import": "./dist/ingest/index.js"
+    },
+    "./ingest/fs": {
+      "types": "./dist/ingest/fs.d.ts",
+      "import": "./dist/ingest/fs.js"
+    },
+    "./ingest/dropbox": {
+      "types": "./dist/ingest/dropbox.d.ts",
+      "import": "./dist/ingest/dropbox.js"
+    },
+    "./ingest/webdav": {
+      "types": "./dist/ingest/webdav.d.ts",
+      "import": "./dist/ingest/webdav.js"
     }
   },
   "main": "./dist/index.js",
@@ -60,10 +76,12 @@
     "dev": "tsup --watch",
     "build": "tsup && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "npm run test:unit && npm run test:e2e",
     "test:unit": "vitest run tests/unit",
     "test:e2e": "vitest run tests/e2e",
     "test:watch": "vitest",
+    "fixtures:sync": "node scripts/sync-spec-fixtures.mjs",
+    "fixtures:check": "node scripts/sync-spec-fixtures.mjs --check",
     "prepare": "npm run build",
     "prepublishOnly": "npm run typecheck && npm run test:unit",
     "pack:dry": "npm pack --dry-run"
@@ -76,11 +94,15 @@
     "esbuild": ">=0.25.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "astro": "^7.0.0",
     "tsup": "^8.0.0",
     "typescript": "^7.0.0",
     "vitest": "^5.0.0",
     "zod": "^4.3.6"
+  },
+  "dependencies": {
+    "js-yaml": "^4.3.2"
   }
 }

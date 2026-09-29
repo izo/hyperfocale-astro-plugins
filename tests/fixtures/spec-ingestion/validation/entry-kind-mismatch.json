@@ -1,0 +1,51 @@
+{
+  "description": "kind déclaré ≠ classification du chemin (§4.3) ; l'id est calculé sur les entrées déclarées, il concorde. Les entrées restent dans la validation avec la classification recalculée : index.md, déclaré other, est lu et validé comme fichier index, et snapshot-empty n'est pas produit.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:5415c8c2c638a778c90819ea2767734ea060c32d48d0d636304e1153bc1eecfd",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "other",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "content",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/bretagne-2024/index.md": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-kind-mismatch",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "entry-kind-mismatch",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/01.jpg"
+    }
+  ]
+}

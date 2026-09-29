@@ -1,0 +1,17 @@
+{
+  "description": "cover relatif qui désigne un document joint.",
+  "corpus": "invalid-cover-not-image",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "cover-not-image",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

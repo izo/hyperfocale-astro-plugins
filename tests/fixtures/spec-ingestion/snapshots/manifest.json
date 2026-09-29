@@ -1,0 +1,81 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:a020ac9d29cfa7fc686c217a095715bb190680a6f6ced516b97db0c5ec589d85",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/concert-2019/images.json",
+      "kind": "derived",
+      "size": 101,
+      "hashes": {
+        "dropbox": "4cc9510dced1f957d1bb20e6d57de932803c39bfa426bc94fae32da080859277",
+        "sha256": "caf66f6a94c2c1297f09818c4d60657eb3d778eb8f03e9e02fb942c560f57bce"
+      }
+    },
+    {
+      "path": "series/concert-2019/index.md",
+      "kind": "content",
+      "size": 175,
+      "hashes": {
+        "dropbox": "ce64710f9fcfe78dffa64f9db62408ebcaf495ceda8ea78b6fd98963bf37dca1",
+        "sha256": "61e2570080301317c7e6ce5f98888238620d90d733dfc3d7785c2f9806342177"
+      }
+    },
+    {
+      "path": "series/expo-2021/images.json",
+      "kind": "derived",
+      "size": 148,
+      "hashes": {
+        "dropbox": "652bd9d9141660ccb9e4c48d2b6436f83d765c157e2f9e8c925e74837918c30d",
+        "sha256": "2da35831940e407794edddeb7ed4e6864a34db118e6faa50303d7ec120b980a1"
+      }
+    },
+    {
+      "path": "series/expo-2021/index.md",
+      "kind": "content",
+      "size": 165,
+      "hashes": {
+        "dropbox": "a6cfd46e842d8631324ad0bd43b16445ec4c68a2a61e319652579063b527c4e2",
+        "sha256": "63e8cc448c6a5c1ec5180406cbb560ba469e3db4e07890080513a57aea2de851"
+      }
+    },
+    {
+      "path": "series/salon-2022/images.json",
+      "kind": "derived",
+      "size": 47,
+      "hashes": {
+        "dropbox": "f0654346efdb4d43c5ed5ba06a4a3d9b5f744085966e51679e6c7dfee03915ff",
+        "sha256": "6eda9718744375601cf5d598e767ba1e856a370e21336265b6b2de9d522f860e"
+      }
+    },
+    {
+      "path": "series/salon-2022/index.md",
+      "kind": "content",
+      "size": 132,
+      "hashes": {
+        "dropbox": "2465dbda9501c321b17ce5efe984282b82855b5a4598d27fe981106f47230c20",
+        "sha256": "cb5030df5b1c2037934d9b1dea856e13be0d89bb9b9eb0a5ecc8d9e3c427d334"
+      }
+    },
+    {
+      "path": "series/salon-2022/media/01.jpg",
+      "kind": "media",
+      "size": 31,
+      "hashes": {
+        "dropbox": "51fe7271844642e014935f1059053048105f821f54464e29a4928130cb3e2955",
+        "sha256": "a2a09d0ee348805a02fd6eaab7a1ce400c11f345b5c42441f27044a9657362e9"
+      }
+    },
+    {
+      "path": "series/salon-2022/media/02.jpg",
+      "kind": "media",
+      "size": 31,
+      "hashes": {
+        "dropbox": "8956e851825517a4079697c98ac39d0f5f725a155fa4c74e922b3c1b1958205a",
+        "sha256": "c963617bd3198447968850e5090f321b2093ecd29d84c4b6953f33cad59cbff5"
+      }
+    }
+  ]
+}

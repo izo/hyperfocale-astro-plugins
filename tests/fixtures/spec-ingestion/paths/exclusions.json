@@ -1,0 +1,120 @@
+{
+  "description": "Exclusions \u00a74.2 : tout segment commen\u00e7ant par un point, et les noms de base Thumbs.db, desktop.ini, Icon\\r (comparaison exacte, sensible \u00e0 la casse). Jamais une erreur.",
+  "input": [
+    ".DS_Store",
+    "series/bretagne-2024/.DS_Store",
+    "series/bretagne-2024/media/._01.jpg",
+    ".git/config",
+    ".dropbox",
+    ".dropbox.cache/tmp/01.jpg",
+    "series/bretagne-2024/media/.gitkeep",
+    "series/.brouillon/index.md",
+    "series/..brouillon/index.md",
+    "series/bretagne-2024/Thumbs.db",
+    "desktop.ini",
+    "series/bretagne-2024/Icon\r",
+    "series/bretagne-2024/thumbs.db",
+    "series/bretagne-2024/Desktop.ini",
+    "series/bretagne-2024/Icon",
+    "series/bretagne-2024/v1.0/index.md"
+  ],
+  "expected": [
+    {
+      "path": ".DS_Store",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/bretagne-2024/.DS_Store",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/bretagne-2024/media/._01.jpg",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": ".git/config",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": ".dropbox",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": ".dropbox.cache/tmp/01.jpg",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/bretagne-2024/media/.gitkeep",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/.brouillon/index.md",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/..brouillon/index.md",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/bretagne-2024/Thumbs.db",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "desktop.ini",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/bretagne-2024/Icon\r",
+      "valid": false,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "series/bretagne-2024/thumbs.db",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/Desktop.ini",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/Icon",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/v1.0/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    }
+  ],
+  "collisions": []
+}

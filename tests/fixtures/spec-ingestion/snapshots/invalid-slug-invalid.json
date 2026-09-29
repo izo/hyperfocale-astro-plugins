@@ -1,0 +1,27 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:1611836666c9f9c01eb72812d015bb5272f023eedec71683850ebb8cbaa9194e",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/Bretagne_2024/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+        "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+      }
+    },
+    {
+      "path": "series/Bretagne_2024/media/01.jpg",
+      "kind": "media",
+      "size": 34,
+      "hashes": {
+        "dropbox": "e38c495000623d629fdef927a3766a889784e985b359977b7321903c051233a4",
+        "sha256": "4e1369757c4757585bac2b0b8be6c142da5b2af51847c235344a26f9e6983f8f"
+      }
+    }
+  ]
+}

@@ -15,6 +15,7 @@ Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une lign
 
 - **Zéro config requise** — une ligne dans `astro.config.mjs` suffit
 - **CLI `init`** — crée ou met à jour `src/content.config.ts` automatiquement
+- **Ingestion** — snapshot, diff, validation et providers filesystem, Dropbox et WebDAV (`/ingest`, spec couche 4) : le provider alimente un dossier, le Content Layer lit ce dossier
 - **Routes injectées** — `/series/`, `/series/[slug]/`, pagination native
 - **9 composants prêts** — `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesLightbox`, `SeriesAttachments`, `SeriesEmbeds`, `SeriesFilter`, `SeriesMap`, `SeriesMasonry`
 - **Contenus embarqués** — Vimeo, YouTube, SoundCloud… chargés en façade, l'iframe n'arrive qu'au clic
@@ -791,14 +792,125 @@ Importez-les depuis la **racine**, jamais depuis `@regrets/hyperfocale/helpers` 
 ## CLI
 
 ```bash
+npx hyperfocale              # = npx hyperfocale init
 npx hyperfocale init
+npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--astro-schema] [--json]
+npx hyperfocale snapshot <dossier> [-o snapshot.json] [--ignore <règle>]… [--json]
+npx hyperfocale diff <base.json> <target.json> [--json]
 ```
 
-Crée ou met à jour `src/content.config.ts` dans le projet consommateur. Trois comportements :
+`init` reste la commande par défaut. Il crée ou met à jour `src/content.config.ts` dans le projet consommateur. Trois comportements :
 
 1. **Fichier absent** → crée le fichier avec le template minimal
 2. **Fichier existant sans `series`** → injecte l'import et l'entrée dans l'objet `collections`
 3. **Collection déjà présente** → no-op (idempotent)
+
+`validate`, `snapshot` et `diff` sont les commandes d'ingestion — voir [Ingestion](#ingestion). Codes de sortie : **0** ok, **1** au moins un diagnostic de sévérité `error`, **2** mauvais usage (commande, option ou argument invalide).
+
+---
+
+## Ingestion
+
+Implémentation TypeScript de référence de la **couche 4 de la spec** (§4.1–4.13, 2.10-draft) : comment un corpus édité ailleurs — Dropbox, WebDAV, un disque — devient un **snapshot** complet et reproductible, se compare au dernier snapshot publié, se valide, puis se matérialise dans le dossier que lit Astro.
+
+> **Astro-native, sans exception.** Le provider alimente un dossier ; le Content Layer lit ce dossier. Rien de ce module n'est chargé par l'intégration Astro, aucune requête de visiteur ne contacte un provider, et un site construit depuis la révision N fonctionne sans accès à la source. Changer de provider ne touche ni une page, ni un composant, ni une route.
+
+```
+source éditoriale ── provider ──► ContentSnapshot N+1 ── diffSnapshots ──► ContentChangeSet (contre N publié)
+                                        validateSnapshot + guardChangeSet  (une erreur : rien n'est publié)
+                                        materializeSnapshot ──► dossier du corpus ──► Content Layer ──► astro build
+```
+
+### Sous-chemins
+
+| Import | Contenu | Runtime |
+|---|---|---|
+| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
+| `@regrets/hyperfocale/ingest/fs` | `FilesystemProvider`, `hashFile`, `hashBytes`, `materializeSnapshot` | Node |
+| `@regrets/hyperfocale/ingest/dropbox` | `DropboxClient`, `DropboxProvider`, `verifyDropboxSignature`, `dropboxChallenge` | agnostique — `fetch` + WebCrypto, importable dans un Worker |
+| `@regrets/hyperfocale/ingest/webdav` | `WebDAVProvider` | agnostique — `fetch` |
+
+L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur les sources et sur `dist/`.
+
+### Le contrat en bref
+
+- **Snapshot** (§4.5) — liste complète des fichiers : chemins POSIX relatifs, NFC, triés par octets UTF-8 ; `kind` (`content`, `media`, `derived`, `other`) déduit du chemin ; empreintes `sha256`, `dropbox` ou `x-*`. Son `id` est le SHA-256 d'une ligne canonique par entrée : même état, mêmes algorithmes → même `id`, quelle que soit l'implémentation.
+- **Incomplet ≠ suppression.** `createSnapshot` exige `complete` sans valeur par défaut ; un listing qui a raté une page est `complete: false`, et la validation comme la garde le rendent impubliable. `applyDelta` refuse un curseur expiré (`CursorResetError`) plutôt que de l'interpréter comme « tout a été supprimé ».
+- **Changeset** (§4.7) — `added`, `modified`, `deleted`, `moved` ; les déplacements s'infèrent par `identity` puis par contenu, et un appariement ambigu n'en invente aucun.
+- **Diagnostics** (§4.10) — comparés par triplet `code` + `severity` + `path`. Toute erreur interdit la publication automatique. La validation porte sur des **racines** (`roots: [{ path: 'series' }, { path: 'pages', dateRequired: false }]`) ; hors racines, les fichiers sont copiés, pas validés. Par défaut, la sortie est exactement celle de la spec — la même que toute autre implémentation. Avec `astroSchema: true` (`--astro-schema` en CLI), les champs sont en plus confrontés à `baseSeriesSchema` : ce que le build refuserait sans que le contrat le code remonte en `x-schema-invalid`.
+- **Octets vérifiés** (§4.4) — tout ce qui est lu (validation, garde, matérialisation) est confronté à l'empreinte de l'entrée : un fichier qui a changé depuis le listing (`entry-hash-mismatch`) rend le snapshot impubliable. Une entrée `placeholder` (non téléchargée) ou `conflict` (copie conflictuelle) n'est jamais lue et bloque la publication.
+- **Garde** (§4.11) — `guardChangeSet(changeSet, base, target, { read, policy })` applique des seuils fournis par le site : suppressions massives, déplacements massifs, fichier trop lourd. Toujours actives : snapshot incomplet ou vide, et série privée (`private: true` sur l'un de ses fichiers index) qui ne l'est plus dans target. La garde est *fail-closed* côté base : un fichier index illisible (non matérialisé, octets divergents, frontmatter illisible) y rend la série privée par prudence.
+
+### Providers
+
+| Provider | Capacités | Particularités |
+|---|---|---|
+| `FilesystemProvider` | lecture/écriture locales, `sha256` + `dropbox` calculés | hachage en flux, dossiers exclus jamais parcourus ; lien symbolique écarté par défaut (`followSymlinks` pour suivre ceux qui restent sous `root`), erreur de lecture → `complete: false` avec le motif dans `problems` |
+| `DropboxProvider` | lecture/écriture distantes, incrémental, identité stable, webhook, `dropbox` | OAuth avec ou sans secret (PKCE), retry 429/5xx avec `Retry-After` plafonné (`maxRetryWait`, 60 s), upload par session au-delà de 150 Mio, casse des dossiers reconstruite ; les erreurs ne recopient jamais le corps de la réponse |
+| `WebDAVProvider` | lecture/écriture distantes, `x-etag` | PROPFIND `Depth: 1` récursif, ETag conservé tel que rendu par le serveur ; fichier sans taille → `complete: false` ; identifiants jamais dans une erreur |
+
+Un pipeline ne suppose jamais une capacité absente : sans webhook, il réconcilie périodiquement ; sans incrémental, il relit le listing complet (`waitForQuiescence` compare alors des listings successifs).
+
+Le webhook Dropbox n'est qu'un **déclencheur** : `dropboxChallenge(url)` répond à la vérification, `verifyDropboxSignature(rawBody, header, appSecret)` authentifie la notification. Le Worker qui les appelle ne lit jamais Dropbox.
+
+### Orchestration minimale
+
+```ts
+import { readFile, writeFile } from 'node:fs/promises';
+import { createSnapshot, diffSnapshots, guardChangeSet, parseSnapshot, validateSnapshot } from '@regrets/hyperfocale/ingest';
+import { FilesystemProvider, materializeSnapshot } from '@regrets/hyperfocale/ingest/fs';
+import { DropboxClient, DropboxProvider } from '@regrets/hyperfocale/ingest/dropbox';
+
+const source = new DropboxProvider({
+  client: new DropboxClient({ refreshToken: process.env.DROPBOX_REFRESH_TOKEN, appKey: process.env.DROPBOX_APP_KEY }),
+  root: '/Mon site',
+  ignore: ['_todo/'],
+});
+const corpus = new FilesystemProvider({ root: 'content' }); // le dossier que lit le Content Layer
+
+// 1. Dernier état publié (versionné avec le site) et état courant de la source.
+const base = parseSnapshot(await readFile('.hyperfocale/snapshot.json', 'utf-8'));
+const listing = await source.list();
+const target = await createSnapshot(listing.entries, {
+  complete: listing.complete,
+  source: { provider: 'dropbox', revision: listing.revision },
+});
+
+// 2. Diff, validation, garde : une seule erreur, et rien n'est publié.
+const changeSet = diffSnapshots(base, target);
+const diagnostics = [
+  ...(await validateSnapshot(target, { read: (path) => source.read(path), roots: [{ path: 'series' }] })),
+  ...(await guardChangeSet(changeSet, base, target, {
+    read: (side, path) => (side === 'base' ? corpus.read(path) : source.read(path)),
+    policy: { maxDeletedSeries: 5, maxDeletedMediaRatio: 0.2 },
+  })),
+];
+if (diagnostics.some((d) => d.severity === 'error')) throw new Error('publication refusée');
+
+// 3. Matérialisation, puis le nouvel état publié. `astro build` lit `content/`
+//    comme n'importe quel corpus Hyperfocale.
+await materializeSnapshot(changeSet, { targetDir: 'content', read: (path) => source.read(path) });
+await writeFile('.hyperfocale/snapshot.json', `${JSON.stringify(target, null, 2)}\n`);
+```
+
+#### Ce que garantit `materializeSnapshot`, et ce qu'il ne garantit pas
+
+- **Confinement** : aucune écriture, suppression ni renommage hors de `targetDir`. Un chemin non conforme au §4.1 (`..`, `/` initial…) ou dont un composant sous `targetDir` est un lien symbolique — le fichier compris — lève `UnsafePathError` avant toute opération ; le contrôle est refait juste avant d'appliquer. `targetDir` lui-même peut être un lien : c'est le choix de l'appelant.
+- **Tout ou rien à la lecture** : tout ce qui doit être écrit est lu et vérifié contre son empreinte (`sha256`, puis `dropbox`) *avant* la moindre modification. Une empreinte divergente (`ContentMismatchError`) ou une lecture en échec laisse le dossier intact.
+- **Pas de perte** : une erreur d'entrée-sortie *pendant* l'application laisse le dossier à moitié à jour, mais conserve le dossier de transit (`.hyperfocale-materialize-…`), qui porte les fichiers lus et les sources des déplacements.
+- **Rien hors du changeset** n'est supprimé ; les dossiers vidés sont retirés, jusqu'au premier qui ne l'est pas.
+- **Non garanti** : l'exclusion d'un autre processus qui modifierait `targetDir` pendant l'opération. Le contrôle des liens réduit la fenêtre, il ne la ferme pas.
+
+La réplication des médias vers un stockage objet, le déploiement et les redirections des séries déplacées (`summarizeChangeSet`) appartiennent au site.
+
+### Conformité
+
+Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift : les **109 fixtures** de `izo/hyperfocale-spec main@18f48de` — 6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 26 snapshots de corpus, 44 validations, 15 diffs, 6 gardes —, rejouées par 119 tests (les 10 autres vérifient la présence et l'épinglage de la copie). Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
+
+```bash
+npm run fixtures:sync -- --ref <ref>   # recopie les fixtures d'une ref de izo/hyperfocale-spec et l'épingle dans SOURCE
+npm run fixtures:check                 # vérifie la copie octet pour octet contre le commit épinglé
+```
 
 ---
 

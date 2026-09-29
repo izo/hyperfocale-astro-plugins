@@ -1,0 +1,22 @@
+{
+  "description": "cover relatif vers un document joint absent : cover-not-image (extension) et cover-not-found (existence) se cumulent sur le même fichier.",
+  "corpus": "cover-cumulative",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "cover-not-found",
+      "severity": "warning",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "cover-not-image",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

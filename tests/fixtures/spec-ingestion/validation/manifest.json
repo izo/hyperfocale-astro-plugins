@@ -1,0 +1,11 @@
+{
+  "description": "Couverture trouvée dans images.json (par suffixe d'un chemin absolu au site, ou par résolution d'un chemin relatif) ; médias locaux et manifeste ensemble.",
+  "corpus": "manifest",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

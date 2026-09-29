@@ -1,0 +1,148 @@
+{
+  "description": "Classification \u00a74.3, dans l'ordre : images.json \u2192 derived ; parent imm\u00e9diat `media` \u2192 media ; .md/.mdx (casse ignor\u00e9e) \u2192 content ; sinon other.",
+  "input": [
+    "series/bretagne-2024/index.md",
+    "series/bretagne-2024/index.en.md",
+    "series/bretagne-2024/index.mdx",
+    "series/bretagne-2024/NOTES.MD",
+    "series/bretagne-2024/media.md",
+    "series/bretagne-2024/images.json",
+    "images.json",
+    "series/bretagne-2024/media/images.json",
+    "series/bretagne-2024/media/01.jpg",
+    "series/bretagne-2024/media/dossier.pdf",
+    "series/bretagne-2024/media/index.md",
+    "media/01.jpg",
+    "series/bretagne-2024/media/raw/01.tif",
+    "series/autre-serie/Media/01.jpg",
+    "series/autre-serie/Images.json",
+    "series/fichier-media/media",
+    "series/bretagne-2024/images.json.bak",
+    "series/bretagne-2024/cover.jpg",
+    "series/bretagne-2024/md",
+    "LISEZMOI"
+  ],
+  "expected": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/index.en.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/index.mdx",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/NOTES.MD",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/images.json",
+      "valid": true,
+      "kind": "derived",
+      "excluded": false
+    },
+    {
+      "path": "images.json",
+      "valid": true,
+      "kind": "derived",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/images.json",
+      "valid": true,
+      "kind": "derived",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/dossier.pdf",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/index.md",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "media/01.jpg",
+      "valid": true,
+      "kind": "media",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/media/raw/01.tif",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/autre-serie/Media/01.jpg",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/autre-serie/Images.json",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/fichier-media/media",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/images.json.bak",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/cover.jpg",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/bretagne-2024/md",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "LISEZMOI",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    }
+  ],
+  "collisions": []
+}

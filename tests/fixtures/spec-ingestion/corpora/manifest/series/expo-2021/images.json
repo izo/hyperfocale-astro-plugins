@@ -1,0 +1,6 @@
+{
+  "images": [
+    { "url": "./media/a.jpg", "alt": "Vue A", "width": 3000, "height": 2000 },
+    { "url": "./media/b.jpg", "alt": "Vue B" }
+  ]
+}

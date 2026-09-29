@@ -11,6 +11,13 @@ export default defineConfig({
     'components/index': 'src/components/index.ts',
     'helpers/index': 'src/helpers/index.ts',
     'cli/init': 'src/cli/init.ts',
+    // Contrat d'ingestion : sous-chemins additifs, jamais importés par
+    // l'intégration. `ingest/index`, `ingest/dropbox` et `ingest/webdav`
+    // restent sans module `node:*` (vérifié par tests/unit/ingest/exports.test.ts).
+    'ingest/index': 'src/ingest/index.ts',
+    'ingest/fs': 'src/ingest/fs.ts',
+    'ingest/dropbox': 'src/ingest/dropbox.ts',
+    'ingest/webdav': 'src/ingest/webdav.ts',
   },
   format: ['esm'],
   // Déclarations émises séparément par `tsc --emitDeclarationOnly` (script build) :

@@ -1,0 +1,60 @@
+{
+  "description": "Octets lus ≠ hash de l'entrée (fichier modifié entre le listing et la lecture) : entry-hash-mismatch, le fichier est traité comme non lu. index.md est vérifié par sha256 (son contenu lu, sans titre, aurait produit title-missing) ; images.json, qui ne porte que dropbox, est vérifié par dropbox (son contenu lu aurait produit images-json-invalid).",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:e359c707dd3d5e2ae9f848fc27661c655ffbac0829b692e34fa98178343aca1b",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/images.json",
+        "kind": "derived",
+        "size": 30,
+        "hashes": {
+          "dropbox": "a7f74908aba6dad9eb75ccb89d7904f31a2e298d4109c30addff0ea448a9d029"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/bretagne-2024/index.md": "---\ndate: 2024-06-15\n---\n\nModifié après le listing.\n",
+    "series/bretagne-2024/images.json": "{\"images\": \"01.jpg\"}\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-hash-mismatch",
+      "severity": "error",
+      "path": "series/bretagne-2024/images.json"
+    },
+    {
+      "code": "entry-hash-mismatch",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

@@ -1,0 +1,161 @@
+{
+  "description": "Entrées structurellement invalides : size négative ou non entière, kind hors vocabulaire, state inconnu, hashes non objet, valeur sha256 non hexadécimale minuscule, algorithme ni enregistré ni x-, valeur x- non chaîne ; path non chaîne et entrée non objet → path \"\". Ces entrées sont écartées du reste ; l'id n'est pas recalculé (sans objet).",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:36d7d30cefe76c1b008f4f040cad8c5cc56d9f26f67e43e0470f6eebe86a63a1",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": -1,
+        "hashes": {
+          "dropbox": "9b024a8ac11a50794036c6a26dccd5643f5f797e38c07b324b01262d175e70d3",
+          "sha256": "05adab3bdc908c11854a88b0cd17ddfb3ce769fd572ba871879ebeebd4220afc"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/03.jpg",
+        "kind": "media",
+        "size": 1.5,
+        "hashes": {
+          "dropbox": "9b024a8ac11a50794036c6a26dccd5643f5f797e38c07b324b01262d175e70d3",
+          "sha256": "05adab3bdc908c11854a88b0cd17ddfb3ce769fd572ba871879ebeebd4220afc"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/04.jpg",
+        "kind": "image",
+        "size": 5,
+        "hashes": {
+          "dropbox": "9b024a8ac11a50794036c6a26dccd5643f5f797e38c07b324b01262d175e70d3",
+          "sha256": "05adab3bdc908c11854a88b0cd17ddfb3ce769fd572ba871879ebeebd4220afc"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/05.jpg",
+        "kind": "media",
+        "size": 5,
+        "state": "downloading"
+      },
+      {
+        "path": "series/bretagne-2024/media/06.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": [
+          "05adab3bdc908c11854a88b0cd17ddfb3ce769fd572ba871879ebeebd4220afc"
+        ]
+      },
+      {
+        "path": "series/bretagne-2024/media/07.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "sha256": "05ADAB3BDC908C11854A88B0CD17DDFB3CE769FD572BA871879EBEEBD4220AFC"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/08.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "md5": "0cc175b9c0f1b6a831c399e269772661"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/09.jpg",
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "x-etag": 42
+        }
+      },
+      {
+        "path": 42,
+        "kind": "media",
+        "size": 5,
+        "hashes": {
+          "dropbox": "9b024a8ac11a50794036c6a26dccd5643f5f797e38c07b324b01262d175e70d3",
+          "sha256": "05adab3bdc908c11854a88b0cd17ddfb3ce769fd572ba871879ebeebd4220afc"
+        }
+      },
+      "series/bretagne-2024/media/10.jpg"
+    ]
+  },
+  "files": {
+    "series/bretagne-2024/index.md": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": ""
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/02.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/03.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/04.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/05.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/06.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/07.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/08.jpg"
+    },
+    {
+      "code": "entry-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/09.jpg"
+    }
+  ]
+}

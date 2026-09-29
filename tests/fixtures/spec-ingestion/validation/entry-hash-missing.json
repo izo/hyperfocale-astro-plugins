@@ -1,0 +1,53 @@
+{
+  "description": "Entrées matérialisées sans hash : clé hashes absente, et objet hashes vide.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:781f6a41d3801b4f2cb950519176035c2421c58390a7191dac4931d868ce5695",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {}
+      }
+    ]
+  },
+  "files": {
+    "series/bretagne-2024/index.md": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-hash-missing",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/01.jpg"
+    },
+    {
+      "code": "entry-hash-missing",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/02.jpg"
+    }
+  ]
+}

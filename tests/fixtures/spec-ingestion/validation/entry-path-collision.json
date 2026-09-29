@@ -1,0 +1,55 @@
+{
+  "description": "Deux chemins \u00e9gaux apr\u00e8s NFC + minuscule simple (cas impossible sur un disque insensible \u00e0 la casse, d'o\u00f9 le snapshot inline) : le diagnostic porte sur le second dans l'ordre canonique (01.JPG < 01.jpg en octets UTF-8).",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:040adc31a50ef85618a4a17527273eb456a03639f8048b4de9884db10b47afb5",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.JPG",
+        "kind": "media",
+        "size": 17,
+        "hashes": {
+          "dropbox": "b9e6914a74aabdb07a34cfb1872487b9fa3da68e2edb64e79c407fb9e1ea5ec5",
+          "sha256": "b387e8d09c7cb29087f04e1930e2f0b4d44dd3494b5548a04464416172d83654"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/bretagne-2024/index.md": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affich\u00e9 avant la galerie.\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-path-collision",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/01.jpg"
+    }
+  ]
+}

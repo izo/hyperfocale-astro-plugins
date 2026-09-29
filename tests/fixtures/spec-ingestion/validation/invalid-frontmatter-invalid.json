@@ -1,0 +1,22 @@
+{
+  "description": "YAML illisible, et YAML lisible qui n'est pas un mapping. Aucun diagnostic de champ en cascade.",
+  "corpus": "invalid-frontmatter-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/liste-2024/index.md"
+    }
+  ]
+}

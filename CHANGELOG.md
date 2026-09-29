@@ -7,6 +7,48 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.19.0] — 2026-09-29
+
+Le contrat d'ingestion de la spec (couche 4, 2.10-draft) entre dans le paquet : snapshot, diff, validation, garde de publication, et trois providers génériques. Quatre sous-chemins **additifs** — l'intégration Astro n'en charge rien, et rien ne change pour un site qui ne les importe pas.
+
+Le principe reste Astro-native : un provider alimente un dossier, le Content Layer lit ce dossier. Aucun loader Dropbox ou WebDAV n'apparaît dans le build, aucune requête de visiteur ne contacte une source éditoriale.
+
+### Ajouté
+
+- **`@regrets/hyperfocale/ingest`** — le contrat, agnostique du runtime (WebCrypto, aucun module `node:*`) : types (`ContentSnapshot`, `ContentChangeSet`, `ProviderCapabilities`, `ContentProvider`, `PublicationRecord`, `Diagnostic`…), `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical` (ordre des octets UTF-8), `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`.
+
+  Deux garde-fous tiennent l'invariant « incomplet ≠ suppression » : `createSnapshot` exige `complete` **sans valeur par défaut**, et `applyDelta` lève `CursorResetError` sur un curseur expiré au lieu d'y lire « tout a été supprimé ».
+
+  `validateSnapshot` produit les diagnostics de la spec (§4.10), triplet `code` + `severity` + `path`, un seul par couple. Un snapshot s'y vérifie au lieu d'être cru sur parole : rejet structurel (`snapshot-invalid`, `entry-invalid`), `id` recalculé, `kind` confronté au chemin, octets lus confrontés à l'empreinte (`entry-hash-mismatch`), entrées `placeholder` et `conflict` jamais lues. Sur demande (`astroSchema: true`, `--astro-schema`), il va un pas plus loin que le contrat : les champs sont confrontés à `baseSeriesSchema`, et une violation sans code propre (`tags: solo`) remonte en `x-schema-invalid`. Désactivé par défaut, pour que la sortie reste exactement celle de la spec — les fixtures contiennent des frontmatters que le build refuserait et que le contrat tient pour de simples avertissements.
+
+  `guardChangeSet(changeSet, base, target, { read, policy })` lit les fichiers index des deux côtés pour suivre la confidentialité des séries (`private: true`), y compris à travers un déplacement. Elle est *fail-closed* côté base : un index illisible — non matérialisé, octets divergents, frontmatter qui ne se lit pas — rend la série privée par prudence, si bien qu'un miroir local altéré bloque la publication au lieu de laisser passer une exposition.
+
+- **`@regrets/hyperfocale/ingest/fs`** (Node) — `FilesystemProvider` (parcours récursif, hachage `sha256` + `dropbox` en flux ; liens symboliques écartés par défaut, `followSymlinks` pour suivre ceux qui restent sous la racine ; toute lacune rend le listing incomplet, le motif dans `ProviderListing.problems`), `hashFile`, `hashBytes`, et `materializeSnapshot`, qui applique un changeset à un dossier.
+
+  Garanties de `materializeSnapshot` : aucune opération hors du dossier cible — un chemin qui traverse un lien symbolique lève `UnsafePathError` avant toute écriture ; tout ce qui doit être écrit est lu et vérifié contre son empreinte avant la moindre modification, si bien qu'une divergence (`ContentMismatchError`) laisse le dossier intact ; une erreur d'entrée-sortie pendant l'application conserve le dossier de transit, sans perte ; rien n'est supprimé hors du changeset. Non garanti : l'exclusion d'un autre processus qui modifierait le dossier pendant l'opération.
+
+- **`@regrets/hyperfocale/ingest/dropbox`** — `DropboxClient` (rafraîchissement OAuth avec ou sans secret, pagination, curseurs, upload par session au-delà de 150 Mio, retry 429/5xx avec `Retry-After` plafonné — `maxRetryWait`, 60 s par défaut, au-delà `DropboxRateLimitError` —, attentes interruptibles par `signal`, erreurs qui ne recopient jamais le corps de la réponse) et `DropboxProvider` (casse des dossiers reconstruite, `identity` = `id`, delta replié dans l'ordre de Dropbox). `verifyDropboxSignature` et `dropboxChallenge` servent le webhook ; le module s'importe dans un Worker.
+
+- **`@regrets/hyperfocale/ingest/webdav`** — `WebDAVProvider`, sans dépendance : PROPFIND `Depth: 1` récursif, parseur XML minimal, empreinte `x-etag` ; un fichier sans taille rend le listing incomplet, et les identifiants n'apparaissent dans aucune erreur.
+
+- **États de publication** — `PUBLICATION_STATES` et `isPublicationTransition(from, to)`, la liste exhaustive des transitions de §4.9, amorçage compris : `sourceDirty` avant toute publication, ou `sourceSynced` pour un pipeline mis en service sur une production déjà publiée.
+
+- **CLI** — `hyperfocale validate`, `snapshot` et `diff`, sortie lisible ou `--json`, codes de sortie 0 / 1 (diagnostic `error`) / 2 (mauvais usage).
+
+- **Conformité** — les fixtures cross-language de la spec sont copiées à une ref épinglée (`tests/fixtures/spec-ingestion/`, `npm run fixtures:sync` / `fixtures:check`) et rejouées en totalité : les 109 fixtures de `izo/hyperfocale-spec main@18f48de` (6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 26 snapshots de corpus, 44 validations, 15 diffs, 6 gardes), par 119 tests tous verts — les 10 autres vérifient la présence et l'épinglage de la copie.
+
+- **Dépendance** — `js-yaml` passe en `dependencies` (la 4.3 qu'Astro 7 tire déjà, dédupliquée). Le frontmatter y est lu en schéma YAML 1.2 *core* : une date reste le texte écrit, là où le schéma par défaut convertit `2024-02-30` en 1er mars.
+
+### Modifié
+
+- **Commande inconnue du CLI** : `hyperfocale <inconnu>` rend désormais 2 avec l'usage. Elle lançait `init` et écrivait `src/content.config.ts` sans qu'on l'ait demandé. `hyperfocale` seul et `hyperfocale init` n'ont pas changé.
+
+### Rétro-compatibilité
+
+Aucun changement cassant pour un site Astro : l'entrée racine, les composants, les helpers et les routes sont intacts, et un test vérifie que `.` n'atteint aucun code d'ingestion, sur les sources comme dans `dist/`.
+
+---
+
 ## [0.18.2] — 2026-08-24
 
 Second correctif de sécurité issu de l'audit du jour, après la 0.18.1. Aucun changement d'API.

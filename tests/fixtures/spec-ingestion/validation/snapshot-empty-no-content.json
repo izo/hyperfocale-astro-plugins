@@ -1,0 +1,35 @@
+{
+  "description": "Des entrées, mais aucune de kind content.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:f4eca23682c318e67cfd76cd26ccf2d3acaf2ddae5b594e70c995bd212cdc7d3",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "LISEZMOI.txt",
+        "kind": "other",
+        "size": 17,
+        "hashes": {
+          "dropbox": "6439b12019e9e8940a3673e66241474d0b2892a1ab579fb513452153d2c7f1e1",
+          "sha256": "8307917ae44fc7a935ebc867f9591a8c56a7978fae3e2273d29de849c69cdf48"
+        }
+      }
+    ]
+  },
+  "files": {},
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "snapshot-empty",
+      "severity": "error",
+      "path": ""
+    }
+  ]
+}

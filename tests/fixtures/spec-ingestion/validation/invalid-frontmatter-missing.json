@@ -1,0 +1,22 @@
+{
+  "description": "Fichier index sans bloc --- initial, et bloc ouvert jamais refermé.",
+  "corpus": "invalid-frontmatter-missing",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "frontmatter-missing",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "frontmatter-missing",
+      "severity": "error",
+      "path": "series/sans-fin-2024/index.md"
+    }
+  ]
+}

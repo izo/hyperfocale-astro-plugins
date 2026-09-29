@@ -1,0 +1,17 @@
+{
+  "description": "Page d'index de section qui porte un media/.",
+  "corpus": "invalid-section-has-media",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "section-has-media",
+      "severity": "warning",
+      "path": "archives/music"
+    }
+  ]
+}

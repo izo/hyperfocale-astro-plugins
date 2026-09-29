@@ -1,0 +1,105 @@
+{
+  "description": "Première publication (base null) d'un snapshot incomplet et sans entrée content, dont un média dépasse maxFileBytes.media : les deux gardes toujours actives et guard-oversize. Aucune lecture.",
+  "base": null,
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:296a313dc51c79220f81b9ebc39cbd7552681a40cbfbc52d52e7ec2014fdc8da",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": false,
+    "entries": [
+      {
+        "path": "LISEZMOI.txt",
+        "kind": "other",
+        "size": 6,
+        "hashes": {
+          "dropbox": "5e900b2223dccf6c7b8843f88beca94f035de8d5dda628e3f1473a428f01d50d",
+          "sha256": "36a43f39edcced307498aa7993f74959d624aad03f5dca78266fd31e55312b1c"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 17,
+        "hashes": {
+          "dropbox": "66a76e57f929e3d45166286029cf0badc3eb7a1160f080344f81204ad53bd083",
+          "sha256": "e36f588a7eec2a13f0a5cc07013f900b80ad3789dcd87fd0ff3863b1b803bce8"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": null,
+    "target": "sha256:296a313dc51c79220f81b9ebc39cbd7552681a40cbfbc52d52e7ec2014fdc8da",
+    "added": [
+      {
+        "path": "LISEZMOI.txt",
+        "kind": "other",
+        "size": 6,
+        "hashes": {
+          "dropbox": "5e900b2223dccf6c7b8843f88beca94f035de8d5dda628e3f1473a428f01d50d",
+          "sha256": "36a43f39edcced307498aa7993f74959d624aad03f5dca78266fd31e55312b1c"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 17,
+        "hashes": {
+          "dropbox": "66a76e57f929e3d45166286029cf0badc3eb7a1160f080344f81204ad53bd083",
+          "sha256": "e36f588a7eec2a13f0a5cc07013f900b80ad3789dcd87fd0ff3863b1b803bce8"
+        }
+      }
+    ],
+    "modified": [],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {},
+    "target": {}
+  },
+  "policy": {
+    "maxFileBytes": {
+      "media": 10
+    }
+  },
+  "expected": [
+    {
+      "code": "guard-snapshot-empty",
+      "severity": "error",
+      "path": ""
+    },
+    {
+      "code": "guard-snapshot-incomplete",
+      "severity": "error",
+      "path": ""
+    },
+    {
+      "code": "guard-oversize",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/02.jpg"
+    }
+  ]
+}

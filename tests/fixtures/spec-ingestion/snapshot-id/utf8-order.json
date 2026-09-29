@@ -1,0 +1,25 @@
+{
+  "description": "Entr\u00e9es fournies dans l'ordre UTF-16 (U+1F600 avant U+FF21) : l'ordre canonique est celui des octets UTF-8 (U+FF21 = EF BC A1 avant U+1F600 = F0 9F 98 80).",
+  "entries": [
+    {
+      "path": "series/\ud83d\ude00/index.md",
+      "kind": "content",
+      "size": 5,
+      "hashes": {
+        "dropbox": "e9f699871b833a0b679e057982408cb0d793ae726d34edb29e3281a2264ce421",
+        "sha256": "4030f0c0b99ba5e189b6fe295448a8ca31ca589a55930175de18032545c11501"
+      }
+    },
+    {
+      "path": "series/\uff21/index.md",
+      "kind": "content",
+      "size": 11,
+      "hashes": {
+        "dropbox": "3ea4d4b74dc9a6fe66c0664f398975874317f52c10aed19735d1ab2138e86727",
+        "sha256": "29c1c9538f00064b03e78d9a2d0850f09253a53372b4f767263461f35cd08e4c"
+      }
+    }
+  ],
+  "expectedCanonical": "series/\uff21/index.md\tcontent\t11\tdropbox=3ea4d4b74dc9a6fe66c0664f398975874317f52c10aed19735d1ab2138e86727,sha256=29c1c9538f00064b03e78d9a2d0850f09253a53372b4f767263461f35cd08e4c\nseries/\ud83d\ude00/index.md\tcontent\t5\tdropbox=e9f699871b833a0b679e057982408cb0d793ae726d34edb29e3281a2264ce421,sha256=4030f0c0b99ba5e189b6fe295448a8ca31ca589a55930175de18032545c11501\n",
+  "expectedId": "sha256:f46ae4a09c289e14e451616eb28923980cae0c9525373c0d179fed1517ac5bea"
+}

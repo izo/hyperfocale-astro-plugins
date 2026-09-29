@@ -1,0 +1,45 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:7ee89edbdf6e75198a43afa45373ce4a6d057ef2181e911f95595afe803a114e",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "archives/concert-2010/index.md",
+      "kind": "content",
+      "size": 87,
+      "hashes": {
+        "dropbox": "44cc407d5c52e02c36859ce4da30c66f03b4c0d6937a77271acbbcd96ef81157",
+        "sha256": "366deb9103d0ff53ec005d6fb7e91deb95195147a49ceda8e7461ea3e485b37a"
+      }
+    },
+    {
+      "path": "archives/concert-2010/media/01.jpg",
+      "kind": "media",
+      "size": 35,
+      "hashes": {
+        "dropbox": "a531156d2993f1f4c8af9680f76c49f5597fad7625da2b4991192bb4cbef64f0",
+        "sha256": "766d6dbac9fdb479b50a07765897b50fb173636981e91b87a7d50a132e596ae8"
+      }
+    },
+    {
+      "path": "brouillons/Idee_En_Vrac/index.md",
+      "kind": "content",
+      "size": 102,
+      "hashes": {
+        "dropbox": "1a17581ea39629e30bcac3a3067533997b3e35191c15b8b64730cb462f293390",
+        "sha256": "55c1f775948aeb3f0de6c69b38426d6414bc2337ef457e11e50911e1f4f75980"
+      }
+    },
+    {
+      "path": "pages/a-propos/index.md",
+      "kind": "content",
+      "size": 95,
+      "hashes": {
+        "dropbox": "c56282ded11f63f05975b4ffb9b73d9782857afe26b000c12672a22e6c91f033",
+        "sha256": "604865d2170ee0dc7b62af92059154cd908bf7624c127091c9adee64d1379a12"
+      }
+    }
+  ]
+}

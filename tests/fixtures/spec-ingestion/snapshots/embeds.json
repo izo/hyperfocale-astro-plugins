@@ -1,0 +1,27 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:4fb9795b3800320eec6b698ddbbd8d465a37a6a0de42d1b1c37d4240847caa20",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/documentaire-2022/index.md",
+      "kind": "content",
+      "size": 527,
+      "hashes": {
+        "dropbox": "14852a0ae3d523dc292d01c8867a608da6846d45072bfc362210390196168a73",
+        "sha256": "52a6f68b89d23ea9c309fc578d46b583494007dc35efe1ea37152cb76879e2e7"
+      }
+    },
+    {
+      "path": "series/documentaire-2022/media/o-jardim-poster.jpg",
+      "kind": "media",
+      "size": 51,
+      "hashes": {
+        "dropbox": "be51398be75f4a79a1bb96be5b012015fe1b0769ca7498a899720fb9081b70d2",
+        "sha256": "111e1f42688a39c7728a0d3f61035212da52d0b0443bfc6c548eb01f77b66737"
+      }
+    }
+  ]
+}

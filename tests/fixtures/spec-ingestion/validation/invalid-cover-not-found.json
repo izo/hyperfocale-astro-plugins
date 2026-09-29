@@ -1,0 +1,17 @@
+{
+  "description": "cover relatif introuvable (ni dans le snapshot, ni dans images.json).",
+  "corpus": "invalid-cover-not-found",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "cover-not-found",
+      "severity": "warning",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

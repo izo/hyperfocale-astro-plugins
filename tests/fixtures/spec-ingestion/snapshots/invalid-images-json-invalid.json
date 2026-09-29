@@ -1,0 +1,45 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:be3beac2e795f5719b80b16c8744924ff6912247dc47c18391f352c2a0327e82",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/bretagne-2024/images.json",
+      "kind": "derived",
+      "size": 21,
+      "hashes": {
+        "dropbox": "f7515b9b83a8b85e507769456e280960a3d950e83faf877630cc4aad4434ca85",
+        "sha256": "05f9de96050291183efa6e7d00a56c5c68aac922065a2852eeed75addfb0e097"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+        "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+      }
+    },
+    {
+      "path": "series/illisible-2024/images.json",
+      "kind": "derived",
+      "size": 13,
+      "hashes": {
+        "dropbox": "6d224dca24f4f6decdf59e314763a0088b84363d1ff0eef206878a5a90b29ec7",
+        "sha256": "ffdfc94715c6450a6ace1bc32300935ca2b4f041e926d7bd2942e6146de571a7"
+      }
+    },
+    {
+      "path": "series/illisible-2024/index.md",
+      "kind": "content",
+      "size": 89,
+      "hashes": {
+        "dropbox": "fb890b764f3e5d60b147d23a94d8432b06afc3a242f91688895b84f74c5d72c4",
+        "sha256": "f796c315766636b55ed7ddb202c185a30b1db60b6f60d52592089f12ec3d44ea"
+      }
+    }
+  ]
+}

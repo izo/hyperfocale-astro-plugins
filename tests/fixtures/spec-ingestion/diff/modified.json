@@ -1,0 +1,108 @@
+{
+  "description": "Un média remplacé sous le même nom (contenu et taille différents).",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:e83aa21f4a3c631312693c43ed1292fa2898d0314a210a83a0cb5e1065bfa06f",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "708b2f4a43f49fba9fc06189792772b732d37c923db33cbda4ae34347dfb304c",
+          "sha256": "91e82c1ba9357c90a32c427008cb84d6f7211ac4beb83016fe058310db41feae"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:ff3b5015521802912c1f1b77326d11d92ce45a453a69cd58e1a90aa65237d9f1",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "kind": "media",
+        "size": 15,
+        "hashes": {
+          "dropbox": "17d8944512496288cb138c67456b3c3b8d044b365205d1da7a8d4f71d406e937",
+          "sha256": "2f801f9643b20f11d3fe2b1a0ee982f26381ffc20d932e59682c13758749a07d"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:e83aa21f4a3c631312693c43ed1292fa2898d0314a210a83a0cb5e1065bfa06f",
+    "target": "sha256:ff3b5015521802912c1f1b77326d11d92ce45a453a69cd58e1a90aa65237d9f1",
+    "added": [],
+    "modified": [
+      {
+        "path": "series/bretagne-2024/media/02.jpg",
+        "before": {
+          "path": "series/bretagne-2024/media/02.jpg",
+          "kind": "media",
+          "size": 6,
+          "hashes": {
+            "dropbox": "708b2f4a43f49fba9fc06189792772b732d37c923db33cbda4ae34347dfb304c",
+            "sha256": "91e82c1ba9357c90a32c427008cb84d6f7211ac4beb83016fe058310db41feae"
+          }
+        },
+        "after": {
+          "path": "series/bretagne-2024/media/02.jpg",
+          "kind": "media",
+          "size": 15,
+          "hashes": {
+            "dropbox": "17d8944512496288cb138c67456b3c3b8d044b365205d1da7a8d4f71d406e937",
+            "sha256": "2f801f9643b20f11d3fe2b1a0ee982f26381ffc20d932e59682c13758749a07d"
+          }
+        }
+      }
+    ],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  }
+}

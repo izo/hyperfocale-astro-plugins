@@ -1,0 +1,17 @@
+{
+  "description": "images: dans le frontmatter et images.json dans la même série.",
+  "corpus": "invalid-images-conflict",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "images-conflict",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

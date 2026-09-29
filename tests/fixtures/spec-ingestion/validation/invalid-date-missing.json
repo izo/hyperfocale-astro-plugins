@@ -1,0 +1,17 @@
+{
+  "description": "Série sans date sous une racine dateRequired: true.",
+  "corpus": "invalid-date-missing",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "date-missing",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

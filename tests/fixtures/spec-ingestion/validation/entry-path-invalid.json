@@ -1,0 +1,111 @@
+{
+  "description": "Chemins invalides dans un snapshot : / initial, segment .., chemin exclu (\u00a74.2), chemin non NFC, antislash. Ces entr\u00e9es sont \u00e9cart\u00e9es du reste de la validation.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:43aceb2bb9b5bddc2c2eb930f6fa2782339c51ae8f04b15cd65266e56aa8983a",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "/series/bretagne-2024/media/03.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "458e48dabeadc47fca843822d375509a3407bb11fe2dd9f640d57d6e6e910c03",
+          "sha256": "62f919af5b592b241d5b1d8d218a01429d65686cadd6118365e9b81680bc3cc6"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 88,
+        "hashes": {
+          "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+          "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/../04.jpg",
+        "kind": "other",
+        "size": 6,
+        "hashes": {
+          "dropbox": "7318aed7f9dd64d163c537b53b8f4cfc9cbcf426f39af6cddf8ea0408ff5cfa5",
+          "sha256": "74e568bcdd1ba6989c5d01bd95df31ac2297fda462cd652b789399ae5df57a84"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/.DS_Store",
+        "kind": "media",
+        "size": 2,
+        "hashes": {
+          "dropbox": "7578c77b8c2447cbe110d3bd49834825dbf1a67d7b599885e60b8d81b81155c1",
+          "sha256": "f9c7af7ebcbf098b9f5f37361d1b168bb2e5b98d930ceef0f055377a8c94db61"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "138d7ee44eb57d6e36cd8f42a4347ef6d7a577b58bfa3b16f1c6d1bb6a58ea7e",
+          "sha256": "b1fef9822cccc948255949bebdfd081bd9bd38d78fb1e6b346592e101ab98d55"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/cafe\u0301.jpg",
+        "kind": "media",
+        "size": 8,
+        "hashes": {
+          "dropbox": "7e2081086e51023f0f83d93471daa56827f42690aae4ce182fd8944ad989cca8",
+          "sha256": "0b64f2e37a0c358477a185e9d8df0345e6e640908f9c4376555bccd2950d159f"
+        }
+      },
+      {
+        "path": "series\\bretagne-2024\\media\\02.jpg",
+        "kind": "other",
+        "size": 6,
+        "hashes": {
+          "dropbox": "708b2f4a43f49fba9fc06189792772b732d37c923db33cbda4ae34347dfb304c",
+          "sha256": "91e82c1ba9357c90a32c427008cb84d6f7211ac4beb83016fe058310db41feae"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/bretagne-2024/index.md": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affich\u00e9 avant la galerie.\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "/series/bretagne-2024/media/03.jpg"
+    },
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/../04.jpg"
+    },
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/.DS_Store"
+    },
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/media/cafe\u0301.jpg"
+    },
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "series\\bretagne-2024\\media\\02.jpg"
+    }
+  ]
+}

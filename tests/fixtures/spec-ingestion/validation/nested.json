@@ -1,0 +1,11 @@
+{
+  "description": "Sections §1.10 (dont la racine du corpus, sans slug), rangement profond §1.2, conteneur §1.8 dont la couverture traverse une sous-série : aucun diagnostic.",
+  "corpus": "nested",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

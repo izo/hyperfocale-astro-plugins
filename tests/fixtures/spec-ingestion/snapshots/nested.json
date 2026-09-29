@@ -1,0 +1,117 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:aad09987d5c8ca80dedff0782304d9fe8a852d5c82a27f0835787e96ac7818b1",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "archives/festivals/printemps-bourges-2008/index.md",
+      "kind": "content",
+      "size": 167,
+      "hashes": {
+        "dropbox": "bbee22349ddf810484b24ada2027909c6ac81ee1a642005a31f7d9b557e52d27",
+        "sha256": "aadff59777d0249682c442e1e1e9ba101d1c2a898539533e175a5ce39fa197ac"
+      }
+    },
+    {
+      "path": "archives/festivals/printemps-bourges-2008/media/01.jpg",
+      "kind": "media",
+      "size": 55,
+      "hashes": {
+        "dropbox": "7ae20a06f92e86c47d5af12472e57ad033c1a7253c8d2680a94a99d685c01954",
+        "sha256": "24d86bc59dd3452bbda75d5c03d04facddfad145279dbbddb171090095efd387"
+      }
+    },
+    {
+      "path": "archives/festivals/printemps-bourges-2008/the-kooks/index.md",
+      "kind": "content",
+      "size": 131,
+      "hashes": {
+        "dropbox": "42b3696fb68e23c4446768ef78e460c925c4cf9239d056a4957058986cd6f1a4",
+        "sha256": "6e24e81e2bf802c7db8670817f417afae6e6bb8c50f7c0f0e81645b46d12a28a"
+      }
+    },
+    {
+      "path": "archives/festivals/printemps-bourges-2008/the-kooks/media/01.jpg",
+      "kind": "media",
+      "size": 65,
+      "hashes": {
+        "dropbox": "2a9dce5729bb8e2e426c3163d8777404955bec7bcd56b1297670068678a35ea3",
+        "sha256": "09a81d534fcdb47cdcc1f2c18eb502eff1fb8ec5b67ac586bd6c548968ecf1d3"
+      }
+    },
+    {
+      "path": "archives/festivals/printemps-bourges-2008/the-wombats/index.md",
+      "kind": "content",
+      "size": 133,
+      "hashes": {
+        "dropbox": "f75a18adb58c67697f4aff21db482867010f2ee75dd791f5c6767ca9b213787c",
+        "sha256": "b16b0be669876887f4a4611f2bee560be09e2eb1832a476feb146cfe77b0cde3"
+      }
+    },
+    {
+      "path": "archives/festivals/printemps-bourges-2008/the-wombats/media/01.jpg",
+      "kind": "media",
+      "size": 67,
+      "hashes": {
+        "dropbox": "8721f7daf0b397b2161e87b3b78168efbb51938516862b7a95761bfbd06c4ae2",
+        "sha256": "933cdc1767054063216ed62b7bd43f657faf665d0381529936e6db662a17b170"
+      }
+    },
+    {
+      "path": "archives/music/concerts/2010/the-wombats-paris-2010/index.md",
+      "kind": "content",
+      "size": 130,
+      "hashes": {
+        "dropbox": "a6195b1aa12970d30bc9399d47d610aa45d53d110304b85802b8ee3e05b947f5",
+        "sha256": "a6978c548d85300ec25b8c65c44e6cbed79e841d96a07ba4febefcfd75e31236"
+      }
+    },
+    {
+      "path": "archives/music/concerts/2010/the-wombats-paris-2010/media/01.jpg",
+      "kind": "media",
+      "size": 65,
+      "hashes": {
+        "dropbox": "40073a1c031e9b3a9159d3e28e6ae19cdbd75a5a1a60f0b19c842bec379d2a7e",
+        "sha256": "58635190f9e08b1379439c8476dc03cd768fe7a07dfc76656a5e9156c7e2e005"
+      }
+    },
+    {
+      "path": "archives/music/concerts/2010/the-wombats-paris-2010/media/02.jpg",
+      "kind": "media",
+      "size": 65,
+      "hashes": {
+        "dropbox": "275d2e4bf680c41435914ba21499be8c818040a3ad4824588e3870799b0f46b8",
+        "sha256": "6175d41d5c433ea05093301912574fa4f056cc0c50b4a6ef5cdb74027473bb8a"
+      }
+    },
+    {
+      "path": "archives/music/concerts/index.md",
+      "kind": "content",
+      "size": 108,
+      "hashes": {
+        "dropbox": "ed6932581fa67c7234b5f6f51fbc66e557e4dfc780c199986d7c089315620f1b",
+        "sha256": "f45e1e7bc96149e0e9cfa439227548549ddae63529042caf6447471b520c7e2c"
+      }
+    },
+    {
+      "path": "archives/music/index.md",
+      "kind": "content",
+      "size": 149,
+      "hashes": {
+        "dropbox": "77b76a72cfb9cc264e6754a72b64c9fdfefd11324e9315f046ab66dd67b81877",
+        "sha256": "74e7ca926890353023eb3a9dc919ee3758cede605ee1ee5f82159be4e5b83495"
+      }
+    },
+    {
+      "path": "index.md",
+      "kind": "content",
+      "size": 119,
+      "hashes": {
+        "dropbox": "1c7107d5d4946c3e61ed56db9ccf60e75d30ed0463ddf633014465a649ecbcfe",
+        "sha256": "da24402226b0ada7539d978ae30ea995d8b213f115e477b996de061525962735"
+      }
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "description": "Même corpus sous la racine par défaut : tout est validé, y compris les brouillons et les pages sans date.",
+  "corpus": "roots",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "slug-invalid",
+      "severity": "error",
+      "path": "brouillons/Idee_En_Vrac"
+    },
+    {
+      "code": "frontmatter-missing",
+      "severity": "error",
+      "path": "brouillons/Idee_En_Vrac/index.md"
+    },
+    {
+      "code": "date-missing",
+      "severity": "error",
+      "path": "pages/a-propos/index.md"
+    }
+  ]
+}

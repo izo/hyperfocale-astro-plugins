@@ -1,0 +1,11 @@
+{
+  "description": "Contenus embarqués §1.11 : plateforme reconnue, plateforme inconnue, poster désigné comme couverture.",
+  "corpus": "embeds",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

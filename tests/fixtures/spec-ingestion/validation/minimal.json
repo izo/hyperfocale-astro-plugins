@@ -1,0 +1,11 @@
+{
+  "description": "Une série canonique : aucun diagnostic.",
+  "corpus": "minimal",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}
