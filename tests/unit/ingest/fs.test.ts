@@ -80,12 +80,68 @@ describe('FilesystemProvider', () => {
     expect(new TextDecoder().decode(await provider.read('archives/café/media/01.jpg'))).toBe('jpg');
   });
 
-  it('suit un lien vers un fichier, ignore un lien vers un dossier', async () => {
-    tree(work, { 'real/a.md': 'a', 'outside.txt': 'o' });
-    symlinkSync(join(work, 'real'), join(work, 'loop'));
-    symlinkSync(join(work, 'outside.txt'), join(work, 'real', 'link.txt'));
-    const listing = await new FilesystemProvider({ root: work }).list();
-    expect(listing.entries.map((e) => e.path)).toEqual(['outside.txt', 'real/a.md', 'real/link.txt']);
+  describe('liens symboliques', () => {
+    function links() {
+      const root = join(work, 'root');
+      tree(root, { 'real/a.md': 'a', 'real/b.md': 'b' });
+      tree(work, { 'outside.txt': 'o', 'outdir/x.md': 'x' });
+      symlinkSync(join(root, 'real'), join(root, 'alias'));        // dossier sous la racine
+      symlinkSync(join(root, 'real', 'a.md'), join(root, 'a-link.md')); // fichier sous la racine
+      symlinkSync(join(work, 'outside.txt'), join(root, 'escape.txt')); // fichier hors racine
+      symlinkSync(join(work, 'outdir'), join(root, 'escape-dir'));    // dossier hors racine
+      symlinkSync(root, join(root, 'real', 'self'));                  // cycle
+      symlinkSync(join(root, 'absent'), join(root, 'broken'));        // cassé
+      symlinkSync(join(work, 'outside.txt'), join(root, '.hidden-link')); // exclu : silencieux
+      return root;
+    }
+
+    it('par défaut : tout lien est écarté, le listing est incomplet et dit pourquoi', async () => {
+      const root = links();
+      const listing = await new FilesystemProvider({ root }).list();
+      expect(listing.complete).toBe(false);
+      expect(listing.entries.map((e) => e.path)).toEqual(['real/a.md', 'real/b.md']);
+      expect(listing.problems?.map((p) => p.path)).toEqual([
+        'a-link.md',
+        'alias',
+        'broken',
+        'escape-dir',
+        'escape.txt',
+        'real/self',
+      ]);
+      expect(listing.problems?.every((p) => p.reason.includes('followSymlinks: false'))).toBe(true);
+    });
+
+    it('followSymlinks : suivis sous la racine, écartés hors racine, cassés ou en cycle', async () => {
+      const root = links();
+      const listing = await new FilesystemProvider({ root, followSymlinks: true }).list();
+      expect(listing.complete).toBe(false);
+      expect(listing.entries.map((e) => e.path)).toEqual(['a-link.md', 'alias/a.md', 'alias/b.md', 'real/a.md', 'real/b.md']);
+      expect(listing.problems?.map((p) => [p.path, p.reason.split(' (')[0]])).toEqual([
+        ['alias/self', 'lien symbolique en cycle'],
+        ['broken', 'lien symbolique cassé'],
+        ['escape-dir', 'lien symbolique hors de la racine'],
+        ['escape.txt', 'lien symbolique hors de la racine'],
+        ['real/self', 'lien symbolique en cycle'],
+      ]);
+    });
+
+    it('un corpus sans lien reste complet, sans problems', async () => {
+      tree(work, { 'c/index.md': 'x' });
+      const listing = await new FilesystemProvider({ root: join(work, 'c') }).list();
+      expect(listing).toMatchObject({ complete: true });
+      expect(listing.problems).toBeUndefined();
+    });
+
+    it('read et write refusent de traverser un lien — hors racine même avec followSymlinks', async () => {
+      const root = links();
+      await expect(new FilesystemProvider({ root }).read('alias/a.md')).rejects.toBeInstanceOf(UnsafePathError);
+      await expect(new FilesystemProvider({ root }).write('alias/new.md', new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
+      const following = new FilesystemProvider({ root, followSymlinks: true });
+      expect(new TextDecoder().decode(await following.read('alias/a.md'))).toBe('a');
+      await expect(following.read('escape-dir/x.md')).rejects.toBeInstanceOf(UnsafePathError);
+      await expect(following.write('escape-dir/new.md', new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
+      expect(existsSync(join(work, 'outdir', 'new.md'))).toBe(false);
+    });
   });
 
   it.skipIf(process.getuid?.() === 0)('une erreur de lecture rend le listing incomplet sans l\'interrompre', async () => {

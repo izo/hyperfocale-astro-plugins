@@ -16,6 +16,7 @@ export type {
   EntryKind,
   EntryState,
   HashMap,
+  ListingProblem,
   ModifiedEntry,
   MovedEntry,
   ProviderCallOptions,

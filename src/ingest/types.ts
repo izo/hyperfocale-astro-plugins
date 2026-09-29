@@ -186,11 +186,20 @@ export interface ProviderCapabilities {
   readonly hashAlgorithms: readonly string[];
 }
 
+/** Ce qui a rendu un listing incomplet, pour le diagnostic humain. */
+export interface ListingProblem {
+  /** Chemin concerné, relatif à la racine (`''` pour la racine elle-même). */
+  readonly path: string;
+  readonly reason: string;
+}
+
 /** Résultat d'un listing complet d'un provider. */
 export interface ProviderListing {
   readonly entries: readonly SnapshotEntry[];
   /** `false` dès qu'une erreur ou une page manquante a été rencontrée. */
   readonly complete: boolean;
+  /** Motifs de l'incomplétude, quand le provider sait les nommer. */
+  readonly problems?: readonly ListingProblem[];
   /** Point de reprise pour `changes()`, si le provider est incrémental. */
   readonly cursor?: string;
   /** Révision opaque de la source. */

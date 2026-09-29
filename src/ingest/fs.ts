@@ -7,8 +7,8 @@
 
 import { createHash, randomBytes, type Hash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { lstat, mkdir, readdir, readFile, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, sep } from 'node:path';
+import { lstat, mkdir, readdir, readFile, realpath, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, sep } from 'node:path';
 import { mapConcurrent } from './concurrency.js';
 import { DROPBOX_BLOCK_SIZE } from './hash.js';
 import { classifyPath, compareCanonical, isExcluded, normalizePath } from './paths.js';
@@ -17,6 +17,7 @@ import type {
   ContentChangeSet,
   ContentProvider,
   HashMap,
+  ListingProblem,
   MovedEntry,
   ProviderCallOptions,
   ProviderCapabilities,
@@ -107,6 +108,12 @@ export interface FilesystemProviderOptions {
   readonly hashAlgorithms?: readonly LocalHashAlgorithm[];
   /** Fichiers hachés simultanément. Défaut 8. */
   readonly concurrency?: number;
+  /**
+   * Suit les liens symboliques dont la cible reste sous `root` (chemin réel).
+   * Défaut `false` : tout lien, vers un fichier ou un dossier, est écarté du
+   * listing, qui devient `complete: false` avec le motif dans `problems`.
+   */
+  readonly followSymlinks?: boolean;
 }
 
 /**
@@ -117,10 +124,16 @@ export interface FilesystemProviderOptions {
  * - Chemins normalisés NFC — APFS rend les noms tels qu'écrits, souvent NFD
  *   depuis le Finder. Un chemin invalide au sens du §4.1 (`\` dans un nom sous
  *   Linux) est listé tel quel : c'est à `validateSnapshot` de le signaler.
- * - Un lien symbolique vers un fichier est suivi ; vers un dossier, ignoré
- *   (pas de cycle possible).
+ * - Liens symboliques : écartés par défaut, le listing devenant incomplet — un
+ *   lien peut faire entrer dans le corpus ce qui n'est pas sous `root`. Avec
+ *   `followSymlinks`, seuls sont suivis ceux dont le chemin réel reste sous
+ *   `root` ; les autres, et les cycles, rendent le listing incomplet.
  * - Une erreur de lecture n'interrompt pas le parcours : l'entrée manque, et
- *   le listing est déclaré `complete: false` — donc impubliable.
+ *   le listing est déclaré `complete: false` — donc impubliable. `problems`
+ *   dit pourquoi.
+ * - `read` et `write` refusent tout chemin qui sortirait de `root` : segment
+ *   `..`, ou lien symbolique (hors du chemin réel de `root` avec
+ *   `followSymlinks`, quel qu'il soit sans).
  */
 export class FilesystemProvider implements ContentProvider {
   readonly type = 'filesystem';
@@ -129,6 +142,7 @@ export class FilesystemProvider implements ContentProvider {
   private readonly ignore: readonly ExclusionRule[];
   private readonly algorithms: readonly LocalHashAlgorithm[];
   private readonly concurrency: number;
+  private readonly followSymlinks: boolean;
   // Chemin sur le disque de chaque entrée du dernier listing — il peut différer
   // du chemin NFC du contrat sur un filesystem sensible à la normalisation.
   private onDisk = new Map<string, string>();
@@ -138,6 +152,7 @@ export class FilesystemProvider implements ContentProvider {
     this.ignore = options.ignore ?? [];
     this.algorithms = options.hashAlgorithms ?? ALL_ALGORITHMS;
     this.concurrency = options.concurrency ?? 8;
+    this.followSymlinks = options.followSymlinks ?? false;
     this.capabilities = {
       localRead: true,
       localWrite: true,
@@ -153,8 +168,11 @@ export class FilesystemProvider implements ContentProvider {
   }
 
   async list(opts: ProviderCallOptions = {}): Promise<ProviderListing> {
-    let complete = true;
+    const problems: ListingProblem[] = [];
     const files: Array<{ path: string; abs: string }> = [];
+    const realRoot = await realpath(this.root);
+    const visited = new Set<string>([realRoot]);
+    const excluded = (path: string) => isExcluded(path, this.ignore) || isExcluded(`${path}/`, this.ignore);
 
     // `rawDir` : chemin tel que sur le disque (un filesystem Linux distingue NFC
     // et NFD) ; `relDir` : le même, normalisé, pour le contrat.
@@ -165,28 +183,46 @@ export class FilesystemProvider implements ContentProvider {
         dirents = await readdir(join(this.root, rawDir), { withFileTypes: true });
       } catch (err) {
         if (rawDir === '') throw err;
-        complete = false;
+        problems.push({ path: relDir, reason: `dossier illisible (${(err as Error).message})` });
         return;
       }
       for (const dirent of dirents) {
         const path = (relDir === '' ? dirent.name : `${relDir}/${dirent.name}`).normalize('NFC');
         const raw = join(rawDir, dirent.name);
+        const abs = join(this.root, raw);
         if (dirent.isDirectory()) {
           if (!isExcluded(`${path}/`, this.ignore)) await walk(raw, path);
           continue;
         }
-        if (isExcluded(path, this.ignore)) continue;
-        const abs = join(this.root, raw);
-        let isFile = dirent.isFile();
         if (dirent.isSymbolicLink()) {
-          try {
-            isFile = (await stat(abs)).isFile();
-          } catch {
-            complete = false;
+          if (excluded(path)) continue;
+          if (!this.followSymlinks) {
+            problems.push({ path, reason: 'lien symbolique non suivi (followSymlinks: false)' });
             continue;
           }
+          let real: string;
+          let info;
+          try {
+            real = await realpath(abs);
+            info = await stat(real);
+          } catch (err) {
+            problems.push({ path, reason: `lien symbolique cassé (${(err as Error).message})` });
+            continue;
+          }
+          if (real !== realRoot && !real.startsWith(`${realRoot}${sep}`)) {
+            problems.push({ path, reason: 'lien symbolique hors de la racine' });
+          } else if (info.isDirectory()) {
+            if (visited.has(real)) problems.push({ path, reason: 'lien symbolique en cycle' });
+            else {
+              visited.add(real);
+              if (!isExcluded(`${path}/`, this.ignore)) await walk(raw, path);
+            }
+          } else if (info.isFile()) {
+            files.push({ path, abs });
+          }
+          continue;
         }
-        if (isFile) files.push({ path, abs });
+        if (dirent.isFile() && !isExcluded(path, this.ignore)) files.push({ path, abs });
       }
     };
     await walk('', '');
@@ -196,8 +232,8 @@ export class FilesystemProvider implements ContentProvider {
       try {
         const [info, { size, hashes }] = await Promise.all([stat(abs), hashFile(abs, this.algorithms)]);
         return { path, kind: classifyPath(path), size, hashes, modifiedAt: info.mtime.toISOString() } as SnapshotEntry;
-      } catch {
-        complete = false;
+      } catch (err) {
+        problems.push({ path, reason: `fichier illisible (${(err as Error).message})` });
         return null;
       }
     });
@@ -208,21 +244,45 @@ export class FilesystemProvider implements ContentProvider {
     const listed: SnapshotEntry[] = [];
     for (const entry of entries.filter((e): e is SnapshotEntry => e !== null).sort((a, b) => compareCanonical(a.path, b.path))) {
       if (listed.at(-1)?.path === entry.path) {
-        complete = false;
+        problems.push({ path: entry.path, reason: 'deux noms de même forme NFC' });
         continue;
       }
       listed.push(entry);
     }
     this.onDisk = new Map(files.map(({ path, abs }) => [path, abs]));
-    return { entries: listed, complete };
+    problems.sort((a, b) => compareCanonical(a.path, b.path));
+    return { entries: listed, complete: problems.length === 0, ...(problems.length > 0 ? { problems } : {}) };
+  }
+
+  /** Chemin absolu confiné à `root`, selon la politique de liens symboliques. */
+  private async confined(path: string): Promise<string> {
+    const abs = resolveInside(this.root, path);
+    if (!this.followSymlinks) {
+      await assertNoSymlink(this.root, path);
+      return abs;
+    }
+    const realRoot = await realpath(this.root);
+    // Le chemin réel du plus proche ancêtre existant doit rester sous `root`
+    // (qui existe : `realpath` vient de le résoudre, la remontée s'y arrête).
+    for (let probe = abs; ; ) {
+      try {
+        const real = await realpath(probe);
+        if (real !== realRoot && !real.startsWith(`${realRoot}${sep}`)) throw new UnsafePathError(path, relative(this.root, probe));
+        return abs;
+      } catch (err) {
+        const parent = dirname(probe);
+        if (err instanceof UnsafePathError || parent === probe) throw err;
+        probe = parent;
+      }
+    }
   }
 
   async read(path: string): Promise<Uint8Array> {
-    return new Uint8Array(await readFile(this.onDisk.get(path) ?? resolveInside(this.root, path)));
+    return new Uint8Array(await readFile(this.onDisk.get(path) ?? (await this.confined(path))));
   }
 
   async write(path: string, bytes: Uint8Array): Promise<SnapshotEntry> {
-    const abs = resolveInside(this.root, path);
+    const abs = await this.confined(path);
     await writeAtomic(abs, bytes);
     const info = await stat(abs);
     return {
