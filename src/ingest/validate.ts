@@ -1,4 +1,3 @@
-import { baseSeriesSchema } from '../schema.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
@@ -165,6 +164,15 @@ function manifestReferences(images: readonly unknown[], folder: string, target: 
     if (ref === null || ref === '') return false;
     return isRelativeReference(ref) ? resolveReference(folder, ref) === target : ref.endsWith(`/${target}`);
   });
+}
+
+/**
+ * Schéma du build, chargé à la demande : `zod` n'entre dans le graphe
+ * d'imports de `./ingest` que si l'appelant demande `astroSchema`.
+ */
+async function loadSeriesSchema() {
+  const { baseSeriesSchema } = await import('../schema.js');
+  return baseSeriesSchema({ dateRequired: false });
 }
 
 /** Fichier index lu : `data` à `null` s'il est illisible ou non lu (placeholder, conflit, octets divergents). */
@@ -442,7 +450,7 @@ export async function validateSnapshot(
     // build : elle passe ici.
     if (options.astroSchema !== true) continue;
     const present = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null));
-    const schema = baseSeriesSchema({ dateRequired: false }).safeParse(present);
+    const schema = (await loadSeriesSchema()).safeParse(present);
     if (!schema.success) {
       const covered = new Set(section ? ['title', 'type', 'embeds'] : ['title', 'date', 'type', 'embeds']);
       const issues = schema.error.issues.filter((issue) => !covered.has(String(issue.path[0])));

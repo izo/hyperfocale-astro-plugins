@@ -21,17 +21,20 @@ const pkg = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf-8'));
 // TypeScript les efface.
 const IMPORT = /(?:^|[;\s])(?:import|export)\s+(?!type\b)(?:[^'"`;]*?\sfrom\s*)?['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g;
 
+// Imports statiques seulement : ce que charge l'import du module, sans `import()`.
+const STATIC_IMPORT = /(?:^|[;\s])(?:import|export)\s+(?!type\b)(?:[^'"`;]*?\sfrom\s*)?['"]([^'"]+)['"]/g;
+
 const BUILTINS = new Set(builtinModules);
 const isNode = (specifier: string) => specifier.startsWith('node:') || BUILTINS.has(specifier.split('/')[0] as string);
 
 /** Graphe d'imports relatifs depuis `entry` : fichiers atteints et spécificateurs externes. */
-function graph(entry: string, resolveFile: (from: string, specifier: string) => string) {
+function graph(entry: string, resolveFile: (from: string, specifier: string) => string, pattern = IMPORT) {
   const files = new Set<string>();
   const external = new Map<string, string>();
   const visit = (file: string) => {
     if (files.has(file)) return;
     files.add(file);
-    for (const match of readFileSync(file, 'utf-8').matchAll(IMPORT)) {
+    for (const match of readFileSync(file, 'utf-8').matchAll(pattern)) {
       const specifier = (match[1] ?? match[2]) as string;
       if (specifier.startsWith('.')) visit(resolveFile(file, specifier));
       else external.set(specifier, relative(ROOT, file));
@@ -82,6 +85,19 @@ describe('ingest — aucun module node:* hors ./ingest/fs', () => {
   it('le scanner détecte bien node:* là où il y en a (ingest/fs)', () => {
     const { external } = graph(resolve(ROOT, 'src/ingest/fs.ts'), fromSource);
     expect([...external.keys()].some(isNode)).toBe(true);
+  });
+});
+
+describe('ingest — zod n\'est chargé qu\'avec astroSchema', () => {
+  it('src/ingest/index.ts n\'atteint pas src/schema.ts par un import statique', () => {
+    const { files, external } = graph(resolve(ROOT, 'src/ingest/index.ts'), fromSource, STATIC_IMPORT);
+    expect([...files].map((f) => relative(ROOT, f))).not.toContain('src/schema.ts');
+    expect(external.has('zod')).toBe(false);
+  });
+
+  it('dist/ingest/index.js ne charge pas zod à l\'import (après build)', () => {
+    const { external } = graph(resolve(ROOT, 'dist/ingest/index.js'), fromDist, STATIC_IMPORT);
+    expect([...external.keys()].sort()).toEqual(['js-yaml']);
   });
 });
 
