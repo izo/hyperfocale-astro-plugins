@@ -2,8 +2,10 @@ import { baseSeriesSchema } from '../schema.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
+import { computeSnapshotId } from './hash.js';
 import {
   basename,
+  classifyPath,
   collisionKey,
   compareCanonical,
   dirname,
@@ -44,7 +46,9 @@ const RULES: Partial<Record<DiagnosticCode, string>> = {
   'snapshot-version-unsupported': '§4.5',
   'snapshot-incomplete': '§4.5',
   'snapshot-empty': '§4.10',
+  'snapshot-id-mismatch': '§4.6',
   'entry-path-invalid': '§4.1',
+  'entry-kind-mismatch': '§4.3',
   'entry-path-collision': '§4.1',
   'entry-hash-missing': '§4.4',
   'entry-not-materialized': '§4.5',
@@ -167,8 +171,10 @@ interface ParsedIndex {
  * Les contrôles d'entrée (`snapshot-*`, `entry-*`) portent sur tout le
  * snapshot ; les contrôles de structure et de frontmatter sur les seules
  * racines configurées — hors racines, les fichiers sont copiés, pas validés.
- * Une entrée au chemin invalide est écartée de tout le reste, et une entrée
- * `placeholder` n'est jamais lue.
+ * Un snapshot se vérifie, il ne se croit pas sur parole : l'`id` est recalculé,
+ * et un `kind` qui contredit le chemin est signalé puis remplacé par la
+ * classification recalculée pour la suite. Une entrée au chemin invalide est
+ * écartée de tout le reste, et une entrée `placeholder` n'est jamais lue.
  *
  * Au-delà du §4.10, les champs sont confrontés à `baseSeriesSchema`, le schéma
  * du build Astro : une violation sans code propre au contrat (`tags: solo`,
@@ -193,6 +199,10 @@ export async function validateSnapshot(
   if (!snapshot.complete) {
     push('snapshot-incomplete', '', 'Listing incomplet : aucune publication, donc aucune suppression.');
   }
+  const recomputed = await computeSnapshotId(snapshot.entries);
+  if (recomputed !== snapshot.id) {
+    push('snapshot-id-mismatch', '', `\`id\` déclaré ${snapshot.id}, recalculé ${recomputed}.`);
+  }
 
   // ── Entrées ───────────────────────────────────────────────────────────────
   const retained: SnapshotEntry[] = [];
@@ -205,7 +215,11 @@ export async function validateSnapshot(
     } else if (isExcluded(entry.path)) {
       push('entry-path-invalid', entry.path, 'Chemin exclu (§4.2) : il n\'a pas sa place dans un snapshot.');
     } else {
-      retained.push(entry);
+      const kind = classifyPath(entry.path);
+      if (kind !== entry.kind) {
+        push('entry-kind-mismatch', entry.path, `\`kind\` déclaré « ${entry.kind} », classification « ${kind} ».`);
+      }
+      retained.push(kind === entry.kind ? entry : { ...entry, kind });
     }
   }
   retained.sort((a, b) => compareCanonical(a.path, b.path));

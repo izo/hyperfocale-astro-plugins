@@ -73,6 +73,21 @@ describe('validateSnapshot — snapshot et entrées', () => {
     ]);
   });
 
+  it('un snapshot se vérifie : id recalculé, kind contredit par le chemin recalculé', async () => {
+    const snap = await snapshot([entry('a/index.md', SERIES), entry('a/media/01.jpg')]);
+    const tampered = {
+      ...snap,
+      id: 'sha256:0000',
+      entries: snap.entries.map((e) => (e.path === 'a/index.md' ? { ...e, kind: 'other' as const } : e)),
+    };
+    const diagnostics = await validateSnapshot(tampered, { read: memoryReader({ 'a/index.md': SERIES }) });
+    // index.md, déclaré `other`, reste lu comme fichier index : ni snapshot-empty, ni media-orphan.
+    expect(triples(diagnostics)).toEqual([
+      ['snapshot-id-mismatch', 'error', ''],
+      ['entry-kind-mismatch', 'error', 'a/index.md'],
+    ]);
+  });
+
   it('une entrée au chemin invalide est écartée du reste : ni contenu, ni structure', async () => {
     const snap = await snapshot([entry('/abs/index.md', 'x'), entry('ok/media/01.jpg')]);
     const diagnostics = await validateSnapshot(snap, { read: memoryReader({}) });
