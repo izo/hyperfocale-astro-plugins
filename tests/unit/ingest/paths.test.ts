@@ -95,6 +95,12 @@ describe('isExcluded (§2.2)', () => {
     expect(isExcluded('archives/foo/a.jpg', ['_todo/', /\.tmp$/])).toBe(false);
   });
 
+  it('un chemin terminé par / désigne un dossier', () => {
+    expect(isExcluded('archives/_todo/', ['_todo/'])).toBe(true);
+    expect(isExcluded('archives/ok/', ['_todo/'])).toBe(false);
+    expect(isExcluded('archives/.git/')).toBe(true);
+  });
+
   it('une RegExp globale ne garde pas d\'état entre deux appels', () => {
     const rule = /\.tmp$/g;
     expect(isExcluded('a.tmp', [rule])).toBe(true);

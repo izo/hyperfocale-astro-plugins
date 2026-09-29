@@ -108,9 +108,14 @@ const EXCLUDED_BASENAMES = new Set(['Thumbs.db', 'desktop.ini', 'Icon\r']);
  * `._x.jpg`), et les basenames `Thumbs.db`, `desktop.ini`, `Icon\r`. Une
  * exclusion n'est jamais une erreur : le fichier n'existe simplement pas pour
  * le contrat.
+ *
+ * Un chemin terminé par `/` désigne un dossier : c'est ainsi qu'un provider
+ * teste un dossier avant d'y descendre, pour ne pas parcourir un `_todo/`.
  */
 export function isExcluded(path: string, rules: readonly ExclusionRule[] = []): boolean {
-  const segments = path.split('/');
+  const directory = path.endsWith('/');
+  const segments = (directory ? path.slice(0, -1) : path).split('/');
+  const folders = directory ? segments : segments.slice(0, -1);
   if (segments.some((segment) => segment.startsWith('.'))) return true;
   if (EXCLUDED_BASENAMES.has(segments[segments.length - 1] as string)) return true;
 
@@ -121,8 +126,7 @@ export function isExcluded(path: string, rules: readonly ExclusionRule[] = []): 
       rule.lastIndex = 0;
       if (rule.test(path)) return true;
     } else if (rule.endsWith('/')) {
-      const name = rule.slice(0, -1);
-      if (segments.slice(0, -1).includes(name)) return true;
+      if (folders.includes(rule.slice(0, -1))) return true;
     } else if (segments.includes(rule)) {
       return true;
     }

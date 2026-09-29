@@ -169,12 +169,12 @@ export class FilesystemProvider implements ContentProvider {
       }
       for (const dirent of dirents) {
         const path = (relDir === '' ? dirent.name : `${relDir}/${dirent.name}`).normalize('NFC');
-        if (isExcluded(path, this.ignore)) continue;
         const raw = join(rawDir, dirent.name);
         if (dirent.isDirectory()) {
-          await walk(raw, path);
+          if (!isExcluded(`${path}/`, this.ignore)) await walk(raw, path);
           continue;
         }
+        if (isExcluded(path, this.ignore)) continue;
         const abs = join(this.root, raw);
         let isFile = dirent.isFile();
         if (dirent.isSymbolicLink()) {
