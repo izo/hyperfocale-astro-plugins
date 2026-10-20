@@ -27,19 +27,16 @@ corriger, pas une décision à laisser filer.
 
 ## Conformité à date
 
-Dernier audit : [`docs/reports/conformite-spec-2026-07-27.md`](docs/reports/conformite-spec-2026-07-27.md)
-— **v0.8.0 contre la spec v2.6-draft, score 77 %**.
+La version courante de la spec est celle de l'en-tête de la canonique —
+**2.11-draft** au 2026-10-20. L'état de conformité du plugin y est tenu en
+**§0.5** : c'est lui qui fait foi, pas ce fichier.
 
-L'implémentation courante couvre notamment : schéma étendu (IPTC, images et
-fichiers distants, `attachments`, tags, `published`/`draft`/`featured`), slugs
-hiérarchiques, `querySeries`, helpers de collections/tags, documents joints
-(§1.9) et presets de domaine (§2.0.1).
+Au 2026-10-20, v0.19.0 : conforme v2.10 (contrat d'adaptateur, Annexe G jusqu'à
+G.10, §1.11, couche 4). Restent ouverts par la v2.11 (#121) :
 
-Deux écarts **critiques** restent ouverts, tous deux introduits par la v2.6 :
+- **Originaux (§1.9)** — un RAW ou un `.xmp` de `media/` tombe encore en
+  document joint `file`, donc proposé en téléchargement ;
+- **Garde §4.11** — ni projection publiable, ni `guard-originals-excluded` ;
+- **Profil `project` (G.12)** — non couvert (COULD).
 
-- **§1.10 page d'index de section** (`#SPEC-001`) — le champ `type` est absent et
-  `date` est requise par défaut : un `index.md` déclarant `type: section` **casse
-  le build**. C'est le seul écart qui fait échouer du contenu conforme.
-- **§1.5.1 manifeste `images.json`** (`#SPEC-002`) — non implémenté.
-
-Se reporter à l'audit pour la matrice complète et les écarts de moindre priorité.
+Les audits datés de `docs/reports/` sont des archives.
