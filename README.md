@@ -7,6 +7,8 @@
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
+> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.11-draft**. La v0.19.0 est conforme v2.10 ; les originaux (§1.9), leur exclusion par la garde (§4.11) et le profil `project` (G.12), ajoutés en v2.11, ne sont pas encore couverts ([#121](https://github.com/izo/hyperfocale-astro-plugins/issues/121)). Ne pas lui donner à publier un dossier de travail qui porte des RAW.
+
 Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
 
 ---
@@ -811,7 +813,7 @@ npx hyperfocale diff <base.json> <target.json> [--json]
 
 ## Ingestion
 
-Implémentation TypeScript de référence de la **couche 4 de la spec** (§4.1–4.13, 2.10-draft) : comment un corpus édité ailleurs — Dropbox, WebDAV, un disque — devient un **snapshot** complet et reproductible, se compare au dernier snapshot publié, se valide, puis se matérialise dans le dossier que lit Astro.
+Implémentation TypeScript de référence de la **couche 4 de la spec** (§4.1–4.13, introduite en 2.10-draft ; les ajouts 2.11 à §4.11 ne sont pas encore implémentés, #121) : comment un corpus édité ailleurs — Dropbox, WebDAV, un disque — devient un **snapshot** complet et reproductible, se compare au dernier snapshot publié, se valide, puis se matérialise dans le dossier que lit Astro.
 
 > **Astro-native, sans exception.** Le provider alimente un dossier ; le Content Layer lit ce dossier. Rien de ce module n'est chargé par l'intégration Astro, aucune requête de visiteur ne contacte un provider, et un site construit depuis la révision N fonctionne sans accès à la source. Changer de provider ne touche ni une page, ni un composant, ni une route.
 
