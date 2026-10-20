@@ -1,0 +1,69 @@
+{
+  "description": "Un original n'est ni une image ni un document joint (§1.9) : cover vers un .RAF produit cover-not-image, une entrée attachments: vers ce même fichier produit attachment-not-found, bien que le fichier existe dans media/. L'entrée vers notes.txt est valide.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:b5ae9e9afc1f200cb3673cd2c124c4d3d3837e83b655c9481122faae1b54ba3c",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/references-2026/index.md",
+        "kind": "content",
+        "size": 156,
+        "hashes": {
+          "dropbox": "d1c92cfae967bf817671e09985042f0337789f114b2a6527208d68da9623b4c7",
+          "sha256": "73abd71461adf07892bae9037d4760a9c56ebb4394e525a80b8921ba28b9190d"
+        }
+      },
+      {
+        "path": "series/references-2026/media/A.RAF",
+        "kind": "media",
+        "size": 35,
+        "hashes": {
+          "dropbox": "73025fee341930170167b63c5c1d612906a0d6813a54fe46738928086472d7a1",
+          "sha256": "cd4c7c3da37c99da4601adb2af391e75c8bbc95218f51322f0009080543a3286"
+        }
+      },
+      {
+        "path": "series/references-2026/media/a.jpg",
+        "kind": "media",
+        "size": 35,
+        "hashes": {
+          "dropbox": "ca1fb7d59be59aa946e3261dc71860f65c397e8d3ef7878bfa30e22b2ed8dbb7",
+          "sha256": "58b35fda294ebc40892108db7c23a89f246e3e4a8f450f2dbad46e4d8f185ab2"
+        }
+      },
+      {
+        "path": "series/references-2026/media/notes.txt",
+        "kind": "media",
+        "size": 39,
+        "hashes": {
+          "dropbox": "2443e615eacf2e7038388aefcee5190cf425878013d51a8db4d417a041df7802",
+          "sha256": "2c784e988513adc15b489fc6fe7529b21ac7dedd3ef708e362e4390b96d6d257"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/references-2026/index.md": "---\ntitle: \"Références vers un original\"\ndate: 2026-06-14\ncover: \"./media/A.RAF\"\nattachments:\n  - file: \"./media/A.RAF\"\n  - file: \"./media/notes.txt\"\n---\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "attachment-not-found",
+      "severity": "warning",
+      "path": "series/references-2026/index.md"
+    },
+    {
+      "code": "cover-not-image",
+      "severity": "error",
+      "path": "series/references-2026/index.md"
+    }
+  ]
+}

@@ -150,6 +150,7 @@ export type DiagnosticCode =
   | 'guard-mass-move'
   | 'guard-private-exposed'
   | 'guard-oversize'
+  | 'guard-originals-excluded'
   // Contrôle propre à une implémentation ou à un consommateur (§4.10).
   | `x-${string}`;
 
@@ -165,6 +166,12 @@ export interface Diagnostic {
   readonly message: string;
   /** Règle de la spec invoquée (`§1.2`). */
   readonly rule?: string;
+  /**
+   * Champs propres à un code, normatifs pour lui seul (§4.10) : nombre
+   * d'entrées et somme de leurs tailles pour `guard-originals-excluded`.
+   */
+  readonly count?: number;
+  readonly bytes?: number;
 }
 
 /**

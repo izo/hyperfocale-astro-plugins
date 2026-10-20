@@ -11,6 +11,7 @@ import {
   isDefaultIndexFile,
   isExcluded,
   isImagePath,
+  isOriginalPath,
   isWithin,
   joinPath,
   normalizePath,
@@ -431,6 +432,10 @@ export async function validateSnapshot(
         const target = typeof file === 'string' && isRelativeReference(file) ? resolveReference(folder, file) : null;
         if (target === null || dirname(target) !== mediaDir || !byPath.has(target)) {
           push('attachment-not-found', path, `Pièce jointe « ${String(file)} » absente de \`media/\`.`);
+        } else if (isOriginalPath(target)) {
+          // Un original n'est pas un document joint (§1.9, règle 12) : le
+          // fichier existe, mais l'entrée ne désigne rien de publiable.
+          push('attachment-not-found', path, `Pièce jointe « ${String(file)} » : un original n'est pas un document joint.`);
         }
       }
     }

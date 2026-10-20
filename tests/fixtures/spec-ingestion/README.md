@@ -11,6 +11,7 @@ fixtures/ingestion/
 ├── README.md
 ├── corpora/<nom>/…            corpus filesystem d'entrée
 ├── snapshots/<nom>.json       snapshot attendu de corpora/<nom>
+├── publishable/<cas>.json     projection publiable attendue d'un snapshot (originaux retirés)
 ├── validation/<cas>.json      diagnostics attendus de la validation
 ├── diff/<cas>.json            ContentChangeSet attendu entre deux snapshots
 ├── guard/<cas>.json           diagnostics attendus de la garde de publication
@@ -25,13 +26,13 @@ fixtures/ingestion/
 - **Octets exacts** : `fixtures/.gitattributes` désactive toute conversion de fin de ligne. Un checkout qui réécrirait `\n` en `\r\n` changerait les hashes attendus.
 - **Échappement** : les fixtures `paths/`, `snapshot-id/` et `validation/entry-path-*.json` écrivent tout caractère non ASCII en `\uXXXX`, pour qu'une forme NFD, un homoglyphe (Α grec, K Kelvin) ou un caractère de contrôle restent visibles. Le parsing JSON rend les mêmes chaînes.
 - **Ordre canonique** : tri par la séquence d'octets **UTF-8** du chemin (§4.1) — ni UTF-16, ni collation locale.
-- **Diagnostics** : on compare le triplet **`code` + `severity` + `path`**, jamais `message` ni `rule`. Les listes attendues sont triées par `path` (ordre canonique) puis par `code` (ordre des octets), et ne contiennent jamais deux fois le même couple `(code, path)`. Un diagnostic qui porte sur le snapshot entier a pour `path` la chaîne vide `""`.
+- **Diagnostics** : on compare le triplet **`code` + `severity` + `path`**, jamais `message` ni `rule` — plus les champs propres à un code quand la spec en définit (`count` et `bytes` de `guard-originals-excluded`, §4.11). Les listes attendues sont triées par `path` (ordre canonique) puis par `code` (ordre des octets), et ne contiennent jamais deux fois le même couple `(code, path)`. Un diagnostic qui porte sur le snapshot entier a pour `path` la chaîne vide `""`.
 
 ## Formats
 
 ### `corpora/<nom>/`
 
-Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaque fichier devient une entrée dont le chemin est relatif à `corpora/<nom>/`, en POSIX, normalisé NFC, exclusions §4.2 appliquées. Les médias sont de petits fichiers de quelques octets : l'extension suffit à la classification, le contenu (le chemin du fichier suivi de `\n`) ne sert qu'à rendre chaque hash unique. `corpora/attachments/…/media/notes.txt` est volontairement vide (0 octet).
+Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaque fichier devient une entrée dont le chemin est relatif à `corpora/<nom>/`, en POSIX, normalisé NFC, exclusions §4.2 appliquées. Les médias sont de petits fichiers de quelques octets : l'extension suffit à la classification, le contenu (le chemin du fichier suivi de `\n`) ne sert qu'à rendre chaque hash unique. `corpora/attachments/…/media/notes.txt` est volontairement vide (0 octet). Dans `corpora/originals/`, les deux `.RAF` répètent cette ligne 16 fois : un original pèse plus lourd que les images publiées, ce que `guard/originals.json` exploite.
 
 | Corpus | Ce qu'il couvre | Diagnostics attendus |
 |---|---|---|
@@ -41,6 +42,7 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `manifest` | couverture trouvée dans `images.json` par suffixe (chemin absolu au site) et par résolution (chemin relatif) ; manifeste + médias locaux | aucun |
 | `attachments` | documents joints §1.9, fichier vide | aucun |
 | `embeds` | contenus embarqués §1.11, plateforme inconnue, poster en couverture | aucun |
+| `originals` | dossier de travail du profil `project` (G.12) : RAW `.RAF`, sidecars `.xmp`, JPEG de l'appareil (extensions en majuscules), devis PDF | aucun |
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
 | `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
@@ -50,6 +52,20 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 Snapshot attendu de `corpora/<nom>` (§4.5) : `createdAt` figé à `1970-01-01T00:00:00.000Z`, `complete: true`, pas de `source`, hashes `sha256` **et** `dropbox`, ni `identity`, ni `modifiedAt`, ni `state` (valeur par défaut).
 
 Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `path`, `kind`, `size`, `hashes`. `createdAt` et les champs informatifs ajoutés par une implémentation (`modifiedAt`…) sont ignorés. L'`id` dépend des algorithmes présents : une implémentation qui calcule d'autres algorithmes compare sur `sha256` + `dropbox` seuls.
+
+### `publishable/<cas>.json`
+
+```json
+{ "description": "…", "corpus": "<nom>", "expected": <snapshot> }
+```
+
+Projection publiable (§4.11) : le snapshot sans ses entrées originales, `id` recalculé. L'entrée est `snapshots/<corpus>.json`, ou un `snapshot` donné inline à la place de `corpus`. Comparaison : comme pour `snapshots/` — `format`, `version`, `id`, `complete`, et pour chaque entrée `path`, `kind`, `size`, `hashes`.
+
+| Cas | Ce qu'il couvre |
+|---|---|
+| `originals` | dossier de travail : `.RAF` et `.xmp` retirés, JPEG, devis et `index.md` gardés |
+| `no-originals` | snapshot sans original (`minimal`) : la projection est le snapshot lui-même, même `id` |
+| `extensions` | casse ignorée (`.RAF`, `.Dng`, `.XMP`), dernier point seul (`.jpg.cr3` original, `.raf.jpg` image), fichier sans extension, entrées `other` à extension d'original gardées |
 
 ### `validation/<cas>.json`
 
@@ -76,7 +92,7 @@ Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `m
   "files": { "base": { "<chemin>": "<texte>" }, "target": { … } }, "policy": { … }, "expected": [ { "code", "severity", "path" } ] }
 ```
 
-`changeSet` est le diff de `base` vers `target`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
+`changeSet` est le diff de `base` vers `publishable(target)`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7 ; sans original dans `target`, c'est le diff vers `target` lui-même). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
 
 ### `snapshot-id/<cas>.json`
 
@@ -140,6 +156,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-conflict` | `validation/entry-conflict.json` |
 | `entry-hash-mismatch` | `validation/entry-hash-mismatch.json` |
 | `slug-invalid` … `embed-url-missing` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
+| `cover-not-image`, `attachment-not-found` vers un original | `validation/originals-references.json` (snapshot inline) ; `validation/originals.json` vérifie qu'un dossier de travail sain n'en produit aucun |
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |
 
@@ -149,6 +166,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `guard-mass-move` | `guard/mass-move.json` |
 | `guard-private-exposed` | `guard/private-exposed.json`, `guard/private-fail-closed.json` (fail-closed côté `base` : octets divergents, `placeholder`, frontmatter illisible) |
 | `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` | `guard/always-active.json` |
+| `guard-originals-excluded` | `guard/originals.json` (`count` et `bytes` comparés ; `.RAF` au-delà de `maxFileBytes.media` sans `guard-oversize`, puisqu'ils ne sont pas publiés) |
 
 Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au consommateur.
 

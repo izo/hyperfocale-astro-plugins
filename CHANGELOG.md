@@ -7,6 +7,45 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.20.0] — 2026-10-20
+
+La spec 2.11-draft entre dans le paquet : les **originaux** — RAW et sidecars de développement — sont une troisième catégorie de fichiers de `media/`, à côté des images et des documents joints, et le profil **Projet** (G.12) décrit le dossier de travail qui les porte. Jusqu'ici, un `.RAF` de `media/` tombait en document joint de classe `file` et était proposé en téléchargement après la galerie.
+
+### Ajouté
+
+- **Originaux (§1.9)** — liste fermée de la spec, insensible à la casse : `ORIGINAL_EXTENSIONS` (entrée racine) et `isOriginal(filename)` (`/helpers`). Un original n'alimente ni la galerie, ni la liste des pièces jointes, ni le fallback de couverture ; `classifyAttachment()` rend `null`, et une entrée `files[]` (frontmatter ou `images.json`) qui en désigne un est écartée.
+
+  L'exclusion se fait **dès le glob** des documents joints, pas seulement au rendu : un fichier globbé en `?url` est émis par Vite — copié dans `dist/`, ou inliné en base64 sous 4 Ko — même si rien ne l'affiche. Un test relit les motifs du glob pour qu'ils restent égaux à la liste.
+
+- **Projection publiable (§4.11)** — `publishable(snapshot)` dans `/ingest` : le snapshot sans ses entrées originales, `id` recalculé ; sans original, le snapshot lui-même. Avec `isOriginalPath`, `isOriginalEntry` (classe `media` recalculée **et** extension d'original : une entrée `other` ne l'est jamais) et une copie de `ORIGINAL_EXTENSIONS` (le sous-chemin n'importe pas zod ; un test vérifie l'égalité).
+
+- **Garde** — `guard-originals-excluded` (`info`, toujours évaluée) rapporte le nombre et le poids des originaux retirés, dans deux champs normatifs, `count` et `bytes`, désormais portés par `Diagnostic`. `guard-oversize` ne s'évalue plus que sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
+
+- **Validation (§4.10, règle 12)** — une entrée `attachments:` qui désigne un original produit `attachment-not-found`, même si le fichier existe. `cover` vers un original produisait déjà `cover-not-image`.
+
+- **Profil `project` (G.12)** — preset `project` (collection `work`, prefix `/suivi`, date requise) et bloc `project:` au schéma (`status`, `stage`, `client`, `contact`, `start`, `end`, `due`, `deliverables`, `tasks`). Rien n'y fait échouer un build : statut inconnu et clés inconnues sont conservés, un livrable sans `name` passe. `PROJECT_STATUSES` à la racine. Aucun composant ne rend ce bloc.
+
+- **Conformité** — fixtures resynchronisées sur `izo/hyperfocale-spec main@51cbf73` : corpus `originals`, dossier `publishable/` (3 cas), `guard/originals.json`, `validation/originals.json` et `originals-references.json`, toutes rejouées et vertes.
+
+### Corrigé
+
+- **`.tif`** — reconnu comme image depuis la spec 2.9, mais absent du glob de galerie et de `classifyAttachment` : un `.tif` sortait en pièce jointe. Les extensions image en majuscules (`.JPG` des boîtiers) alimentent désormais la galerie au lieu de tomber en pièce jointe.
+
+### Écart assumé
+
+- La collection du preset `project` est `work`, pas le `projects` de G.12 : `portfolio` l'occupe depuis la 0.8.0, et deux presets ne partagent jamais une collection. Le prefix, recommandation de l'annexe, est localisé comme les autres (`/suivi`).
+- Une graphie d'extension mixte (`.Raf`) est écartée du rendu mais reste copiée au build : le glob de Vite compare à la casse près, et seules les graphies tout en minuscules et tout en majuscules y sont nommées.
+
+### À faire côté consommateur d'ingestion
+
+Le diff de publication doit partir de `publishable(target)`, et c'est la projection qu'on matérialise et qu'on enregistre comme snapshot publié — sans quoi les originaux d'une source partent en production (voir l'orchestration du README). `guardChangeSet(changeSet, base, target, …)` garde sa signature : `target` reste le snapshot de la source.
+
+### Rétro-compatibilité
+
+Aucun changement d'API cassant. Un site dont `media/` ne porte aucun original et aucune image en majuscules ne voit aucune différence. Un premier diff vers une projection range en `deleted` les originaux qu'un snapshot publié antérieur contiendrait : c'est une vraie suppression de la production, comptée dans `maxDeletedMediaRatio`.
+
+---
+
 ## [0.19.0] — 2026-09-29
 
 Le contrat d'ingestion de la spec (couche 4, 2.10-draft) entre dans le paquet : snapshot, diff, validation, garde de publication, et trois providers génériques. Quatre sous-chemins **additifs** — l'intégration Astro n'en charge rien, et rien ne change pour un site qui ne les importe pas.

@@ -62,6 +62,13 @@ describe('package exports — vocabulaires du schéma', () => {
     expect(Object.keys(root)).toEqual(expect.arrayContaining(vocabularies));
   });
 
+  it('expose les vocabulaires des originaux et des statuts de projet (v2.11)', async () => {
+    const root = await import('../../src/index.js');
+    expect(root.ORIGINAL_EXTENSIONS).toHaveLength(26);
+    expect(root.ORIGINAL_EXTENSIONS).toEqual(expect.arrayContaining(['raf', 'dng', 'xmp', 'cos']));
+    expect(root.PROJECT_STATUSES).toEqual(['prospect', 'en-cours', 'livre', 'archive']);
+  });
+
   it('expose les trois vocabulaires connus', async () => {
     const root = await import('../../src/index.js');
     expect(root.CONTENT_TYPES).toEqual(['series', 'section']);

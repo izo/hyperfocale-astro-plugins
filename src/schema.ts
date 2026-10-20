@@ -92,6 +92,58 @@ const imageEntrySchema = z.union([
 /** Classes de documents joints non-image (spec §1.9). */
 export const ATTACHMENT_KINDS = ['video', 'audio', 'document', 'file'] as const;
 
+/**
+ * Extensions des originaux (spec §1.9, v2.11) — RAW puis sidecars de
+ * développement. Liste **fermée**, versionnée avec la spec : deux
+ * implémentations doivent classer un fichier de la même façon. Comparée en
+ * minuscules sur ce qui suit le dernier point du nom.
+ *
+ * Un original n'est ni une image ni un document joint : il n'alimente ni la
+ * galerie, ni la liste des pièces jointes, ni le fallback de couverture.
+ * `@regrets/hyperfocale/ingest` en porte une copie (le sous-chemin n'importe
+ * pas zod) ; un test vérifie qu'elles restent égales.
+ */
+export const ORIGINAL_EXTENSIONS = [
+  'raf', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'pef', 'dng',
+  '3fr', 'iiq', 'x3f', 'srw', 'rwl', 'erf', 'mos', 'mef', 'kdc', 'dcr',
+  'xmp', 'pp3', 'dop', 'cos',
+] as const;
+
+/**
+ * Statuts du profil Projet (spec Annexe G.12) — slugs ASCII, stables entre
+ * outils. Vocabulaire **ouvert** côté schéma : une valeur inconnue est
+ * conservée et ne fait jamais échouer un build (G.12), d'où le `z.string()`.
+ */
+export const PROJECT_STATUSES = ['prospect', 'en-cours', 'livre', 'archive'] as const;
+
+/**
+ * Bloc `project:` du profil Projet (spec Annexe G.12). Tout est optionnel, et
+ * rien n'y fait échouer un build : un livrable sans `name` ou une tâche sans
+ * `title` se signale dans un outil de gestion, pas ici. Les clés inconnues
+ * passent — un outil de gestion qui réécrit `index.md` doit les préserver.
+ */
+const projectSchema = z.looseObject({
+  status: z.string().optional(),
+  stage: z.string().optional(),
+  client: z.string().optional(),
+  contact: z.string().optional(),
+  start: z.coerce.date().optional(),
+  end: z.coerce.date().optional(),
+  due: z.coerce.date().optional(),
+  deliverables: z
+    .array(z.looseObject({ name: z.string().optional(), date: z.coerce.date().optional() }))
+    .optional(),
+  tasks: z
+    .array(
+      z.looseObject({
+        title: z.string().optional(),
+        done: z.boolean().default(false),
+        due: z.coerce.date().optional(),
+      }),
+    )
+    .optional(),
+});
+
 /** Métadonnées optionnelles d'un document joint local — bloc `attachments:` (spec §1.9). */
 const attachmentMetaSchema = z.object({
   file: z.string(),
@@ -204,6 +256,9 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     // sert l'octet : la frontière est l'emplacement du fichier, pas la nature
     // du média.
     embeds: z.array(embedSchema).optional(),
+    // Données de gestion du profil Projet (spec G.12). Un dossier de travail
+    // ne se publie pas tel quel : un adaptateur web ne DOIT PAS rendre ce bloc.
+    project: projectSchema.optional(),
   });
 
   if (!dateRequired) return schema;
@@ -315,6 +370,12 @@ export interface Attachment {
 
 /** Hébergeur reconnu d'un contenu embarqué — la liste reste ouverte (spec §1.11). */
 export type EmbedPlatform = (typeof EMBED_PLATFORMS)[number];
+
+/** Extension d'un original (spec §1.9, v2.11). */
+export type OriginalExtension = (typeof ORIGINAL_EXTENSIONS)[number];
+
+/** Statut connu d'un projet (spec G.12). */
+export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
 
 /**
  * Contenu embarqué résolu — retourné par `getSeriesEmbeds()` (spec §1.11).

@@ -1,6 +1,6 @@
 import { getCollection } from 'astro:content';
 import type { CollectionEntry, CollectionKey } from 'astro:content';
-import { EMBED_PLATFORMS } from '../schema.js';
+import { EMBED_PLATFORMS, ORIGINAL_EXTENSIONS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
 
 /**
@@ -59,17 +59,29 @@ const _seriesCache = new Map<string, Series[]>();
 // Le motif ne PEUT PAS porter le nom de collection : `import.meta.glob` est
 // analysé statiquement par Vite et n'accepte qu'un littéral. On globe donc
 // tout `src/content/`, et `matchMedia()` filtre par collection à l'exécution.
+//
+// `tif` rejoint les extensions image en spec 2.9 ; le glob ne portait que `tiff`.
+// Vite compare les extensions à la casse près : `.JPG` (boîtiers) et `.TIF`
+// doivent être nommés, comme ils l'étaient pour les originaux ci-dessous.
 const _imageGlob = import.meta.glob<{ default: ImageMetadata }>(
-  '/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+  '/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF,TIF,TIFF}',
   { eager: true },
 );
 
-// Glob des documents joints — tout media/ sauf les extensions image (spec §1.9, #MVP-006).
+// Glob des documents joints — tout media/ sauf les images (spec §1.9, #MVP-006).
 // `query: '?url'` fait servir les fichiers comme assets statiques et retourne leur URL.
+//
+// Les originaux (RAW, sidecars — §1.9, v2.11) sont exclus **dès le glob**, et
+// pas seulement par `classifyAttachment` : un fichier globbé en `?url` est
+// copié dans le build, si bien qu'un `.RAF` filtré après coup partirait quand
+// même en production. Le motif est littéral (Vite l'analyse statiquement) ;
+// `ORIGINAL_EXTENSIONS` reste la référence, un test vérifie qu'ils concordent.
 const _attachmentGlob = import.meta.glob<string>(
   [
     '/src/content/**/media/*',
-    '!/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tiff}',
+    '!/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF,TIF,TIFF}',
+    '!/src/content/**/media/*.{raf,cr2,cr3,nef,nrw,arw,srf,sr2,orf,rw2,pef,dng,3fr,iiq,x3f,srw,rwl,erf,mos,mef,kdc,dcr,xmp,pp3,dop,cos}',
+    '!/src/content/**/media/*.{RAF,CR2,CR3,NEF,NRW,ARW,SRF,SR2,ORF,RW2,PEF,DNG,3FR,IIQ,X3F,SRW,RWL,ERF,MOS,MEF,KDC,DCR,XMP,PP3,DOP,COS}',
   ],
   { eager: true, query: '?url', import: 'default' },
 );
@@ -520,11 +532,29 @@ const ATTACHMENT_KIND_BY_EXTENSION: Record<string, AttachmentKind> = {
   pdf: 'document', epub: 'document', txt: 'document', md: 'document',
 };
 
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tiff']);
+const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tif', 'tiff']);
+const ORIGINAL_EXTENSION_SET = new Set<string>(ORIGINAL_EXTENSIONS);
+
+/** Extension d'un nom de fichier, en minuscules — ce qui suit le dernier point. */
+function extensionOf(filename: string): string | null {
+  const base = filename.split('/').pop() ?? filename;
+  const dot = base.lastIndexOf('.');
+  return dot <= 0 ? null : base.slice(dot + 1).toLowerCase();
+}
+
+/**
+ * Le fichier est-il un original (spec §1.9, v2.11) — RAW ou sidecar ?
+ * L'extension seule décide, en minuscules : `DSCF0001.RAF` en est un,
+ * `DSCF0001.raf.jpg` est une image.
+ */
+export function isOriginal(filename: string): boolean {
+  return ORIGINAL_EXTENSION_SET.has(extensionOf(filename.split('?')[0] ?? filename) ?? '');
+}
 
 /**
  * Classe un fichier de `media/` selon la spec §1.9.
- * Retourne `null` pour une image (qui alimente la galerie, pas les pièces jointes)
+ * Retourne `null` pour une image (qui alimente la galerie, pas les pièces jointes),
+ * pour un original (RAW, sidecar — ignoré, ni galerie ni pièce jointe, v2.11)
  * et pour les fichiers de métadonnées — `index.md`, ainsi que `images.json`, qui
  * « n'est jamais un média ni un document joint » (§1.5.1).
  * Toute extension inconnue tombe dans la classe `file` — ne lève jamais d'erreur.
@@ -533,10 +563,9 @@ export function classifyAttachment(filename: string): AttachmentKind | null {
   const base = filename.split('/').pop() ?? filename;
   const lower = base.toLowerCase();
   if (lower === 'index.md' || lower === 'images.json') return null;
-  const dot = base.lastIndexOf('.');
-  if (dot <= 0) return 'file';
-  const ext = base.slice(dot + 1).toLowerCase();
-  if (IMAGE_EXTENSIONS.has(ext)) return null;
+  const ext = extensionOf(base);
+  if (ext === null) return 'file';
+  if (IMAGE_EXTENSIONS.has(ext) || ORIGINAL_EXTENSION_SET.has(ext)) return null;
   return ATTACHMENT_KIND_BY_EXTENSION[ext] ?? 'file';
 }
 
@@ -561,14 +590,17 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
 
   // Mode distant (spec §1.9) : `files[]` a priorité sur les non-images de media/
   const remoteFiles = data?.files as Array<{ url: string; title?: string; kind?: AttachmentKind; size?: number }> | undefined;
+  // Un original n'apparaît jamais dans `files:` (§1.9) : une entrée qui en
+  // désigne un est écartée plutôt que proposée en téléchargement.
+  const notOriginal = (f: { url: string }) => !isOriginal(f.url);
   if (remoteFiles && remoteFiles.length > 0) {
-    return remoteFiles.map(toAttachment);
+    return remoteFiles.filter(notOriginal).map(toAttachment);
   }
 
   // Clé `files` du manifeste (§1.5.1) — mêmes entrées qu'en §1.9 mode distant.
   const manifestFiles = readManifest(dirSlug)?.files;
   if (manifestFiles && manifestFiles.length > 0) {
-    return manifestFiles.map(toAttachment);
+    return manifestFiles.filter(notOriginal).map(toAttachment);
   }
 
   // Métadonnées frontmatter indexées par nom de fichier (bloc `attachments:`)

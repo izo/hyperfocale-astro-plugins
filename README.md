@@ -7,7 +7,7 @@
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
-> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.11-draft**. La v0.19.0 est conforme v2.10 ; les originaux (§1.9), leur exclusion par la garde (§4.11) et le profil `project` (G.12), ajoutés en v2.11, ne sont pas encore couverts ([#121](https://github.com/izo/hyperfocale-astro-plugins/issues/121)). Ne pas lui donner à publier un dossier de travail qui porte des RAW.
+> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.11-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) a son preset. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
 
 Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
 
@@ -105,8 +105,11 @@ hyperfocale({ preset: 'portfolio' })   // → collection `projects`, routes sous
 | `book` | `books` | `/livres` | `false` | Un livre lu |
 | `place` | `places` | `/lieux` | `false` | Un lieu |
 | `screen` | `screens` | `/ecrans` | `false` | Un écran |
+| `project` | `work` | `/suivi` | `true` | Un projet photo en cours (dossier de travail) |
 
-Les onze profils de l'Annexe G sont couverts. Seul `series`, `press` et `event` exigent une date : ailleurs le contenu est intemporel — une recette, un lieu, une démo non datée restent valides.
+Les douze profils de l'Annexe G sont couverts. Seuls `series`, `press`, `event` et `project` exigent une date : ailleurs le contenu est intemporel — une recette, un lieu, une démo non datée restent valides.
+
+`project` (G.12) décrit un dossier de travail, pas une publication : sa collection est `work` et non le `projects` de l'annexe, déjà pris par `portfolio` depuis la 0.8.0. Le schéma accepte son bloc `project:` (`status`, `stage`, `client`, `contact`, `start`, `end`, `due`, `deliverables`, `tasks`) sans jamais échouer — statut inconnu et clés inconnues conservés — mais aucun composant ne le rend : un adaptateur web ne DOIT PAS l'exposer. Statuts connus : `PROJECT_STATUSES`.
 
 Toute option explicite l'emporte sur le preset : `hyperfocale({ preset: 'music', prefix: '/albums' })` garde la collection `albums` mais sert `/albums`.
 
@@ -653,12 +656,17 @@ getParentCollection('bretagne-2024');           // → null
 
 ### `classifyAttachment(filename)`
 
-Classe un fichier selon son extension : `'video' | 'audio' | 'document' | 'file'`. Retourne `null` pour une image ou `index.md`. Ne lève jamais d'erreur (extension inconnue → `'file'`). Synchrone.
+Classe un fichier selon son extension : `'video' | 'audio' | 'document' | 'file'`. Retourne `null` pour une image, pour un original (RAW, sidecar — §1.9, v2.11) ou pour `index.md`. Ne lève jamais d'erreur (extension inconnue → `'file'`). Synchrone.
 
 ```ts
 classifyAttachment('interview.mp3'); // → 'audio'
 classifyAttachment('01.jpg');        // → null (alimente la galerie, pas les pièces jointes)
+classifyAttachment('DSCF0001.RAF');  // → null (original : ignoré, ni galerie ni pièce jointe)
 ```
+
+### `isOriginal(filename)`
+
+`true` si l'extension — ce qui suit le dernier point, en minuscules — appartient à la liste fermée des originaux (`ORIGINAL_EXTENSIONS`, exportée à la racine). Un original n'alimente ni la galerie, ni les pièces jointes, ni le fallback de couverture ; le glob des documents joints l'exclut avant le build, si bien qu'il n'est jamais copié dans `dist/`. Seules les graphies tout en minuscules ou tout en majuscules sont exclues du glob (`.raf`, `.RAF`) : Vite compare à la casse près, et une graphie mixte (`.Raf`) est écartée du rendu mais copiée.
 
 ### `serializeSeries(series)`
 
@@ -813,7 +821,7 @@ npx hyperfocale diff <base.json> <target.json> [--json]
 
 ## Ingestion
 
-Implémentation TypeScript de référence de la **couche 4 de la spec** (§4.1–4.13, introduite en 2.10-draft ; les ajouts 2.11 à §4.11 ne sont pas encore implémentés, #121) : comment un corpus édité ailleurs — Dropbox, WebDAV, un disque — devient un **snapshot** complet et reproductible, se compare au dernier snapshot publié, se valide, puis se matérialise dans le dossier que lit Astro.
+Implémentation TypeScript de référence de la **couche 4 de la spec** (§4.1–4.13, introduite en 2.10-draft, projection publiable de la 2.11 comprise) : comment un corpus édité ailleurs — Dropbox, WebDAV, un disque — devient un **snapshot** complet et reproductible, se compare au dernier snapshot publié, se valide, puis se matérialise dans le dossier que lit Astro.
 
 > **Astro-native, sans exception.** Le provider alimente un dossier ; le Content Layer lit ce dossier. Rien de ce module n'est chargé par l'intégration Astro, aucune requête de visiteur ne contacte un provider, et un site construit depuis la révision N fonctionne sans accès à la source. Changer de provider ne touche ni une page, ni un composant, ni une route.
 
@@ -827,7 +835,7 @@ source éditoriale ── provider ──► ContentSnapshot N+1 ── diffSnap
 
 | Import | Contenu | Runtime |
 |---|---|---|
-| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
+| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `publishable`, `isOriginalPath`, `isOriginalEntry`, `ORIGINAL_EXTENSIONS`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
 | `@regrets/hyperfocale/ingest/fs` | `FilesystemProvider`, `hashFile`, `hashBytes`, `materializeSnapshot` | Node |
 | `@regrets/hyperfocale/ingest/dropbox` | `DropboxClient`, `DropboxProvider`, `verifyDropboxSignature`, `dropboxChallenge` | agnostique — `fetch` + WebCrypto, importable dans un Worker |
 | `@regrets/hyperfocale/ingest/webdav` | `WebDAVProvider` | agnostique — `fetch` |
@@ -842,6 +850,7 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 - **Diagnostics** (§4.10) — comparés par triplet `code` + `severity` + `path`. Toute erreur interdit la publication automatique. La validation porte sur des **racines** (`roots: [{ path: 'series' }, { path: 'pages', dateRequired: false }]`) ; hors racines, les fichiers sont copiés, pas validés. Par défaut, la sortie est exactement celle de la spec — la même que toute autre implémentation. Avec `astroSchema: true` (`--astro-schema` en CLI), les champs sont en plus confrontés à `baseSeriesSchema` : ce que le build refuserait sans que le contrat le code remonte en `x-schema-invalid`.
 - **Octets vérifiés** (§4.4) — tout ce qui est lu (validation, garde, matérialisation) est confronté à l'empreinte de l'entrée : un fichier qui a changé depuis le listing (`entry-hash-mismatch`) rend le snapshot impubliable. Une entrée `placeholder` (non téléchargée) ou `conflict` (copie conflictuelle) n'est jamais lue et bloque la publication.
 - **Garde** (§4.11) — `guardChangeSet(changeSet, base, target, { read, policy })` applique des seuils fournis par le site : suppressions massives, déplacements massifs, fichier trop lourd. Toujours actives : snapshot incomplet ou vide, et série privée (`private: true` sur l'un de ses fichiers index) qui ne l'est plus dans target. La garde est *fail-closed* côté base : un fichier index illisible (non matérialisé, octets divergents, frontmatter illisible) y rend la série privée par prudence.
+- **Originaux** (§1.9, §4.11, v2.11) — le snapshot d'une source garde ses RAW et sidecars ; le snapshot **publié** n'en a jamais. `publishable(target)` les retire (`id` recalculé) : c'est vers lui que va le diff de publication, c'est lui qu'on matérialise et qu'on enregistre. La validation porte sur `target` tel quel. La garde rapporte l'exclusion en `guard-originals-excluded` (`info`, champs `count` et `bytes`) et n'évalue `guard-oversize` que sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
 
 ### Providers
 
@@ -859,7 +868,7 @@ Le webhook Dropbox n'est qu'un **déclencheur** : `dropboxChallenge(url)` répon
 
 ```ts
 import { readFile, writeFile } from 'node:fs/promises';
-import { createSnapshot, diffSnapshots, guardChangeSet, parseSnapshot, validateSnapshot } from '@regrets/hyperfocale/ingest';
+import { createSnapshot, diffSnapshots, guardChangeSet, parseSnapshot, publishable, validateSnapshot } from '@regrets/hyperfocale/ingest';
 import { FilesystemProvider, materializeSnapshot } from '@regrets/hyperfocale/ingest/fs';
 import { DropboxClient, DropboxProvider } from '@regrets/hyperfocale/ingest/dropbox';
 
@@ -879,7 +888,10 @@ const target = await createSnapshot(listing.entries, {
 });
 
 // 2. Diff, validation, garde : une seule erreur, et rien n'est publié.
-const changeSet = diffSnapshots(base, target);
+//    Le diff va vers la projection publiable : les originaux (RAW, sidecars)
+//    restent dans la source, jamais dans le site (§4.11).
+const published = await publishable(target);
+const changeSet = diffSnapshots(base, published);
 const diagnostics = [
   ...(await validateSnapshot(target, { read: (path) => source.read(path), roots: [{ path: 'series' }] })),
   ...(await guardChangeSet(changeSet, base, target, {
@@ -892,7 +904,7 @@ if (diagnostics.some((d) => d.severity === 'error')) throw new Error('publicatio
 // 3. Matérialisation, puis le nouvel état publié. `astro build` lit `content/`
 //    comme n'importe quel corpus Hyperfocale.
 await materializeSnapshot(changeSet, { targetDir: 'content', read: (path) => source.read(path) });
-await writeFile('.hyperfocale/snapshot.json', `${JSON.stringify(target, null, 2)}\n`);
+await writeFile('.hyperfocale/snapshot.json', `${JSON.stringify(published, null, 2)}\n`);
 ```
 
 #### Ce que garantit `materializeSnapshot`, et ce qu'il ne garantit pas

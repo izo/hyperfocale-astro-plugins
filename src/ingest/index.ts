@@ -40,7 +40,10 @@ export {
   isExcluded,
   isImagePath,
   isIndexFile,
+  isOriginalEntry,
+  isOriginalPath,
   normalizePath,
+  ORIGINAL_EXTENSIONS,
 } from './paths.js';
 export type { ExclusionRule, NormalizedPath } from './paths.js';
 
@@ -56,7 +59,7 @@ export {
 } from './hash.js';
 export type { ContentComparison } from './hash.js';
 
-export { CursorResetError, SnapshotFormatError, applyDelta, createSnapshot, parseSnapshot } from './snapshot.js';
+export { CursorResetError, SnapshotFormatError, applyDelta, createSnapshot, parseSnapshot, publishable } from './snapshot.js';
 export type { CreateSnapshotOptions, SnapshotFormatErrorCode } from './snapshot.js';
 
 export { diffSnapshots } from './diff.js';

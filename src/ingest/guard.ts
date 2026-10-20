@@ -1,7 +1,7 @@
 import { finalizeDiagnostics } from './diff.js';
 import { parseFrontmatter } from './frontmatter.js';
 import { verifyEntryBytes } from './hash.js';
-import { basename, compareCanonical, dirname, isIndexFile } from './paths.js';
+import { basename, compareCanonical, dirname, isIndexFile, isOriginalEntry } from './paths.js';
 import { indexFolders } from './series.js';
 import { countKind } from './snapshot.js';
 import type { ContentChangeSet, ContentSnapshot, Diagnostic, EntryKind, SnapshotEntry } from './types.js';
@@ -56,7 +56,14 @@ function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path:
  *   même chemin, ou à la destination de ses fichiers index déplacés — et qui
  *   n'y est plus privée. Diagnostic sur son dossier dans target ; supprimer une
  *   série privée n'est pas l'exposer ;
- * - `guard-oversize` : une entrée de target dépasse `maxFileBytes[kind]`.
+ * - `guard-oversize` : une entrée de `publishable(target)` dépasse
+ *   `maxFileBytes[kind]` — un original exclu ne bloque pas la publication ;
+ * - `guard-originals-excluded` (info, toujours évaluée) : target porte au moins
+ *   un original (§1.9), retiré du snapshot publié ; `count` et `bytes`
+ *   rapportent le nombre d'entrées et la somme de leurs tailles.
+ *
+ * `target` est le snapshot de la source ; `changeSet` est le diff de base vers
+ * `publishable(target)` (§4.11).
  *
  * Tous les fichiers index des séries de base sont lus, puis ceux de la série
  * homologue dans target quand la série de base est privée. Un fichier index
@@ -156,8 +163,19 @@ export async function guardChangeSet(
     }
   }
 
+  const originals = target.entries.filter((entry) => isOriginalEntry(entry));
+  if (originals.length > 0) {
+    const bytes = originals.reduce((sum, entry) => sum + entry.size, 0);
+    diagnostics.push({
+      ...guard('guard-originals-excluded', 'info', '', `${originals.length} originaux exclus du snapshot publié (${bytes} octets).`),
+      count: originals.length,
+      bytes,
+    });
+  }
+
   if (maxFileBytes !== undefined) {
     for (const entry of target.entries) {
+      if (isOriginalEntry(entry)) continue;
       const limit = maxFileBytes[entry.kind];
       if (limit !== undefined && entry.size > limit) {
         diagnostics.push(

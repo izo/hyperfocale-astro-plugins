@@ -2,14 +2,14 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { PRESETS, PRESET_ALIASES, resolvePreset, type PresetName } from '../../src/presets.js';
 import hyperfocale from '../../src/index.js';
 
-// Les onze profils de l'Annexe G, dans l'ordre où elle les énumère.
+// Les douze profils de l'Annexe G, dans l'ordre où elle les énumère.
 const ALL_PRESETS: PresetName[] = [
   'series', 'portfolio', 'music', 'catalog', 'press', 'recipe',
-  'event', 'app', 'book', 'place', 'screen',
+  'event', 'app', 'book', 'place', 'screen', 'project',
 ];
 
 describe('PRESETS — table de configuration', () => {
-  it('couvre les 11 profils de l’Annexe G', () => {
+  it('couvre les 12 profils de l’Annexe G', () => {
     expect(Object.keys(PRESETS).sort()).toEqual([...ALL_PRESETS].sort());
   });
 
@@ -78,6 +78,13 @@ describe('PRESETS — table de configuration', () => {
       expect(PRESETS[name]).toEqual({ collectionName, prefix, dateRequired });
     },
   );
+
+  // G.12 : date requise (prise de vue ou début). La collection `projects` de
+  // l'annexe est déjà celle de portfolio : le profil prend `work`.
+  it('project : collectionName=work, prefix=/suivi, dateRequired=true', () => {
+    expect(PRESETS.project).toEqual({ collectionName: 'work', prefix: '/suivi', dateRequired: true });
+    expect(PRESETS.project.prefix).not.toBe(PRESETS.portfolio.prefix);
+  });
 
   it('un seul profil daté parmi les cinq ajoutés — `event`', () => {
     const dated = (['event', 'app', 'book', 'place', 'screen'] as const)

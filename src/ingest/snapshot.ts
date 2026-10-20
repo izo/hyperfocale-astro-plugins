@@ -1,5 +1,5 @@
 import { computeSnapshotId } from './hash.js';
-import { collisionKey, compareCanonical, dirname } from './paths.js';
+import { collisionKey, compareCanonical, dirname, isOriginalEntry } from './paths.js';
 import { ENTRY_KINDS } from './types.js';
 import type {
   ContentSnapshot,
@@ -241,4 +241,19 @@ function alignFolderCase(path: string, folders: ReadonlyMap<string, string>): st
 /** Nombre d'entrées d'une classe donnée. */
 export function countKind(entries: readonly SnapshotEntry[], kind: EntryKind): number {
   return entries.reduce((n, entry) => (entry.kind === kind ? n + 1 : n), 0);
+}
+
+/**
+ * Projection publiable (§4.11, v2.11) : le snapshot à l'identique — format,
+ * version, `createdAt`, `complete`, `source`, champs inconnus — sans ses
+ * entrées originales (§1.9), `id` recalculé (§4.6). Un snapshot sans original
+ * est rendu tel quel, au même `id`.
+ *
+ * Ce qui se publie est `publishable(target)` : le diff de publication et la
+ * garde partent de cette projection, la validation porte sur `target` brut.
+ */
+export async function publishable(snapshot: ContentSnapshot): Promise<ContentSnapshot> {
+  const entries = snapshot.entries.filter((entry) => !isOriginalEntry(entry));
+  if (entries.length === snapshot.entries.length) return snapshot;
+  return { ...snapshot, id: await computeSnapshotId(entries), entries };
 }

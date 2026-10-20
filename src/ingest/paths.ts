@@ -175,6 +175,36 @@ export function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.has(extensionOf(path) ?? '');
 }
 
+/**
+ * Extensions des originaux (§1.9, v2.11) — liste fermée, versionnée avec la
+ * spec : RAW puis sidecars de développement. Une extension absente reste un
+ * document joint `file` ; elle s'ajoute par PR contre la spec, jamais ici seul.
+ */
+export const ORIGINAL_EXTENSIONS: readonly string[] = [
+  'raf', 'cr2', 'cr3', 'nef', 'nrw', 'arw', 'srf', 'sr2', 'orf', 'rw2', 'pef', 'dng',
+  '3fr', 'iiq', 'x3f', 'srw', 'rwl', 'erf', 'mos', 'mef', 'kdc', 'dcr',
+  'xmp', 'pp3', 'dop', 'cos',
+];
+const ORIGINAL_EXTENSION_SET = new Set(ORIGINAL_EXTENSIONS);
+
+/**
+ * L'extension du chemin (dernier point, en minuscules) est-elle celle d'un
+ * original (§1.9) ? Ne regarde que le nom : la catégorie n'existe que dans
+ * `media/`, ce que vérifie `isOriginalEntry`.
+ */
+export function isOriginalPath(path: string): boolean {
+  return ORIGINAL_EXTENSION_SET.has(extensionOf(path) ?? '');
+}
+
+/**
+ * Entrée originale (§4.11) : classée `media` par son chemin (§4.3, la
+ * classification recalculée, pas le `kind` déclaré) et d'extension originale.
+ * Une entrée `other` n'est jamais originale, même avec une extension RAW.
+ */
+export function isOriginalEntry(entry: { readonly path: string }): boolean {
+  return classifyPath(entry.path) === 'media' && isOriginalPath(entry.path);
+}
+
 const INDEX_FILE =/^index(?:\.[a-z]{2}(?:-[A-Z]{2})?)?\.md$|^index\.mdx$/;
 
 /**

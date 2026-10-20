@@ -1,0 +1,49 @@
+{
+  "description": "Projection publiable du dossier de travail : les deux .RAF et les deux .xmp sont retirés, l'id est recalculé ; les JPEG, le devis PDF et index.md restent.",
+  "corpus": "originals",
+  "expected": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:5b2e284a84d88127f7b6666b1bc016fb3178b83ada82ded4ad617e6db9b73642",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "projects/mariage-dupont-2026/index.md",
+        "kind": "content",
+        "size": 720,
+        "hashes": {
+          "dropbox": "78d0338a10a4013c481775ac73c4adc8ef2e3f949cdf01a19abeb9aa2dfea81e",
+          "sha256": "05abef842169f3320019d917c85879df91062d2b677582e09dce6c26487db598"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0001.JPG",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "cdd7879225cfeefeef30926ef3be6df26955a9e7e0733a7e2abd5601890bda89",
+          "sha256": "63ebbc2d9a493d79ec76bd1e243d785fc494d62bd5e36397f5aeecda6466a103"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0002.JPG",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "19de7fcf985d5dc1ce71e64aab619f9f1a9d074c907349991a5c52ba4f1ce328",
+          "sha256": "29be22cd7d7e87a2560dfce5b44330e78bc1f296619ee4e9e9a97e3576fd2c76"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/devis.pdf",
+        "kind": "media",
+        "size": 45,
+        "hashes": {
+          "dropbox": "d2c8f9471ec6a240e018b83ee28f534d83bb6b1d35c869e7aca6fcf1e5e4a589",
+          "sha256": "506998231aff4e21ddd5e0ac04b0e09ce7050d90aaa809c4166f533eb4709391"
+        }
+      }
+    ]
+  }
+}

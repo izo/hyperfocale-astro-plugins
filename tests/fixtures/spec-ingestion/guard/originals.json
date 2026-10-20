@@ -1,0 +1,151 @@
+{
+  "description": "Première publication (base null) d'un dossier de travail : changeSet est le diff vers publishable(target). Les originaux sont exclus et rapportés par guard-originals-excluded (count, bytes) ; les .RAF dépassent maxFileBytes.media mais ne sont pas publiés, donc pas de guard-oversize. Aucune lecture.",
+  "base": null,
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:72cf834efda09ef209495d40c8782dc0dbd1e930759c27498842fd5c5e624f75",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "projects/mariage-dupont-2026/index.md",
+        "kind": "content",
+        "size": 720,
+        "hashes": {
+          "dropbox": "78d0338a10a4013c481775ac73c4adc8ef2e3f949cdf01a19abeb9aa2dfea81e",
+          "sha256": "05abef842169f3320019d917c85879df91062d2b677582e09dce6c26487db598"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0001.JPG",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "cdd7879225cfeefeef30926ef3be6df26955a9e7e0733a7e2abd5601890bda89",
+          "sha256": "63ebbc2d9a493d79ec76bd1e243d785fc494d62bd5e36397f5aeecda6466a103"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0001.RAF",
+        "kind": "media",
+        "size": 768,
+        "hashes": {
+          "dropbox": "9f91e6e1e5dfd58a6493787488ef8298544db683cc3e7f0b54839dbe3edf3ab9",
+          "sha256": "eb3442ea6efe557323243bc645820882c656b593a04c9bb0eb37647e2fee5e0a"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0001.xmp",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "1fd051fd30d16a4ce0aec57d5f8ef6f532a39dd38eddc2a320e97ba7e4935679",
+          "sha256": "c2cd53cc788a742b9f978f05f2b7458729872ac657bdb166ef61f505e4951b0c"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0002.JPG",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "19de7fcf985d5dc1ce71e64aab619f9f1a9d074c907349991a5c52ba4f1ce328",
+          "sha256": "29be22cd7d7e87a2560dfce5b44330e78bc1f296619ee4e9e9a97e3576fd2c76"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0002.RAF",
+        "kind": "media",
+        "size": 768,
+        "hashes": {
+          "dropbox": "de57adef9bf57f96e9cba0734ebf55333bbda18161ef19cc7fd0f2a17ca391c2",
+          "sha256": "615eaad6a51f8cf33c226107cec782416e8a983452d39f5c474ac0b511b474f5"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0002.xmp",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "99e233c986467a2684863c31d02a1ce27691f573c7cddb7ab5080d8d3a742fb1",
+          "sha256": "e48b6c2b58136d31e64864721129575f1578f12e9836537835628b1766e55dad"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/devis.pdf",
+        "kind": "media",
+        "size": 45,
+        "hashes": {
+          "dropbox": "d2c8f9471ec6a240e018b83ee28f534d83bb6b1d35c869e7aca6fcf1e5e4a589",
+          "sha256": "506998231aff4e21ddd5e0ac04b0e09ce7050d90aaa809c4166f533eb4709391"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": null,
+    "target": "sha256:5b2e284a84d88127f7b6666b1bc016fb3178b83ada82ded4ad617e6db9b73642",
+    "added": [
+      {
+        "path": "projects/mariage-dupont-2026/index.md",
+        "kind": "content",
+        "size": 720,
+        "hashes": {
+          "dropbox": "78d0338a10a4013c481775ac73c4adc8ef2e3f949cdf01a19abeb9aa2dfea81e",
+          "sha256": "05abef842169f3320019d917c85879df91062d2b677582e09dce6c26487db598"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0001.JPG",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "cdd7879225cfeefeef30926ef3be6df26955a9e7e0733a7e2abd5601890bda89",
+          "sha256": "63ebbc2d9a493d79ec76bd1e243d785fc494d62bd5e36397f5aeecda6466a103"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/DSCF0002.JPG",
+        "kind": "media",
+        "size": 48,
+        "hashes": {
+          "dropbox": "19de7fcf985d5dc1ce71e64aab619f9f1a9d074c907349991a5c52ba4f1ce328",
+          "sha256": "29be22cd7d7e87a2560dfce5b44330e78bc1f296619ee4e9e9a97e3576fd2c76"
+        }
+      },
+      {
+        "path": "projects/mariage-dupont-2026/media/devis.pdf",
+        "kind": "media",
+        "size": 45,
+        "hashes": {
+          "dropbox": "d2c8f9471ec6a240e018b83ee28f534d83bb6b1d35c869e7aca6fcf1e5e4a589",
+          "sha256": "506998231aff4e21ddd5e0ac04b0e09ce7050d90aaa809c4166f533eb4709391"
+        }
+      }
+    ],
+    "modified": [],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {},
+    "target": {}
+  },
+  "policy": {
+    "maxFileBytes": {
+      "media": 100
+    }
+  },
+  "expected": [
+    {
+      "code": "guard-originals-excluded",
+      "severity": "info",
+      "path": "",
+      "count": 4,
+      "bytes": 1632
+    }
+  ]
+}

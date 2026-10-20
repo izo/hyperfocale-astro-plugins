@@ -1,0 +1,219 @@
+{
+  "description": "Extension comparée en minuscules sur la partie qui suit le dernier point (§4.1) : .RAF, .Dng, .XMP, .3fr, .cos, .dop, .pp3 et .jpg.cr3 sont des originaux ; .raf.jpg est une image, raf (sans extension) et notes.txt restent des documents joints. Seules les entrées de kind media sont concernées : s/notes.xmp et s/raw/e.nef (kind other) restent.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:99544a7860a03627ea747657c61a17e71c8ae2855a02d7bb6b92d7a3a03893cd",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "s/index.md",
+        "kind": "content",
+        "size": 11,
+        "hashes": {
+          "dropbox": "1a9065271c04487eaa322e45ae216332d941555d38cf4184f8aeb65aea6091e4",
+          "sha256": "e210d62125a60ed8e0dad4829cc4606ce052b2f7171508faf3accaf5f6122ebf"
+        }
+      },
+      {
+        "path": "s/media/A.RAF",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "3d63396211989f15fd17a21041d437080affd313deff4ae0e7ddaa143b8f90c0",
+          "sha256": "a0831ececb0b465690a24860f14d2308374ab3f69f45a00d66c526c54a952f84"
+        }
+      },
+      {
+        "path": "s/media/a.jpg",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "a82df79984522cb30bfd628d9fa995a54d83ee2a04289ac00b670638ca1a1364",
+          "sha256": "db19ef82f2a3d76bbc3a9d5e356c224ee890b0ab02ae17943e5d0cc471d52aba"
+        }
+      },
+      {
+        "path": "s/media/b.Dng",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "54245b84cb3ea9316b6473cbc07270e6781144b68969154afe8e3d8dbb8dd048",
+          "sha256": "58f4f372b53da2e714fe4541a30e5403ec5d5f9874a57110f198e9f1b06b422a"
+        }
+      },
+      {
+        "path": "s/media/b.XMP",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "734feee131eeb5cef059f60803f2ca165184324d0b53f993e9b51ab42d881aa9",
+          "sha256": "a32dcd77dd4ba0d22b71ad664a9075245a46d183fff6010c2e54f2b49082a585"
+        }
+      },
+      {
+        "path": "s/media/c.3fr",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "fe10e8eac98e5ecdc60505dea86c0abfc97ba87514563067175cee0f38a677b4",
+          "sha256": "ce8b39451e3bf30b4fa282956e27dcff4c41c93f4a3022b65a3977c1e34b62d3"
+        }
+      },
+      {
+        "path": "s/media/c.cos",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "5643c0dc5c1baca6a4d5acbd9570a8fbf8070b0ef24b2eeeba3a47da312a6773",
+          "sha256": "50a6239f0b8d165f157d7aa52cad074609c316003188fa0a19f5b5c7983b5032"
+        }
+      },
+      {
+        "path": "s/media/c.dop",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "5865bf8f4d5e8036ce5fa6e0b859a0d1540ebea932dcb49ce7a0f0850682ea3b",
+          "sha256": "15a022d79b2e3e4ad6f65e83fb512bab02f8199ba584d90a7cddbbf760044fac"
+        }
+      },
+      {
+        "path": "s/media/c.pp3",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "8875695d4ffc66afdfe9c4680d7f52ea263dccb7c092df84598a7e3a3ae67c6b",
+          "sha256": "1cc6eb2b8400ea68b561a7a9e3dd48a3486688dacaa140cfb85bb50d7d130a89"
+        }
+      },
+      {
+        "path": "s/media/d.jpg.cr3",
+        "kind": "media",
+        "size": 18,
+        "hashes": {
+          "dropbox": "402b6298fa1e075e41eecf90c318964aad738a5837d9efd3eff5a3d44d2b330c",
+          "sha256": "a6ea612dfe8993bdc31cf67db2f0c283dc7bcd0814ca28a71c684b8c7fcd4746"
+        }
+      },
+      {
+        "path": "s/media/d.raf.jpg",
+        "kind": "media",
+        "size": 18,
+        "hashes": {
+          "dropbox": "178adb1c9df963e12b306f3ea021c02dd0d2315aa5db66f4155618d2fd0ad0c5",
+          "sha256": "5629c139345e138694084b6a0a959ca631f9c58aab05f8dc089fc54363edaad9"
+        }
+      },
+      {
+        "path": "s/media/notes.txt",
+        "kind": "media",
+        "size": 18,
+        "hashes": {
+          "dropbox": "de198a06a1b03e8d601e3a082637442205ee9f5ef090b098516d96727cb70a29",
+          "sha256": "09a0e531d9eaac8aa0a14cfc69facdfb5980ba1740132e042d679645c38de0c1"
+        }
+      },
+      {
+        "path": "s/media/raf",
+        "kind": "media",
+        "size": 12,
+        "hashes": {
+          "dropbox": "e67dbfb02d516f9604e697ede138fcd35b7e19d059af548ed340f9cb4742f755",
+          "sha256": "e70ef5ccc6ebeb3f3d8d4c6548d6a60cc3c2be97391d76b04654149988630abe"
+        }
+      },
+      {
+        "path": "s/notes.xmp",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "dropbox": "20792b2b091c849be6781b6beeb1e6a6059610f42ef926368e07281585c64f4c",
+          "sha256": "f0007c2f88c74e26efcc462fb58dc6b20aaf9cc3abc281efff289d90e89997e0"
+        }
+      },
+      {
+        "path": "s/raw/e.nef",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "dropbox": "b4bb15dfc9835d13d9c7cfb5045754ce67f8f359c30b10055217c5faba4551b0",
+          "sha256": "7aae491107cfef43d51d76498292f3d49df6cf0066d92349b4f040f9d0721e20"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:9d84aa3bf30eb203534541aae33b8f2f3370427e2665c714e90b084ba73aa8cb",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "s/index.md",
+        "kind": "content",
+        "size": 11,
+        "hashes": {
+          "dropbox": "1a9065271c04487eaa322e45ae216332d941555d38cf4184f8aeb65aea6091e4",
+          "sha256": "e210d62125a60ed8e0dad4829cc4606ce052b2f7171508faf3accaf5f6122ebf"
+        }
+      },
+      {
+        "path": "s/media/a.jpg",
+        "kind": "media",
+        "size": 14,
+        "hashes": {
+          "dropbox": "a82df79984522cb30bfd628d9fa995a54d83ee2a04289ac00b670638ca1a1364",
+          "sha256": "db19ef82f2a3d76bbc3a9d5e356c224ee890b0ab02ae17943e5d0cc471d52aba"
+        }
+      },
+      {
+        "path": "s/media/d.raf.jpg",
+        "kind": "media",
+        "size": 18,
+        "hashes": {
+          "dropbox": "178adb1c9df963e12b306f3ea021c02dd0d2315aa5db66f4155618d2fd0ad0c5",
+          "sha256": "5629c139345e138694084b6a0a959ca631f9c58aab05f8dc089fc54363edaad9"
+        }
+      },
+      {
+        "path": "s/media/notes.txt",
+        "kind": "media",
+        "size": 18,
+        "hashes": {
+          "dropbox": "de198a06a1b03e8d601e3a082637442205ee9f5ef090b098516d96727cb70a29",
+          "sha256": "09a0e531d9eaac8aa0a14cfc69facdfb5980ba1740132e042d679645c38de0c1"
+        }
+      },
+      {
+        "path": "s/media/raf",
+        "kind": "media",
+        "size": 12,
+        "hashes": {
+          "dropbox": "e67dbfb02d516f9604e697ede138fcd35b7e19d059af548ed340f9cb4742f755",
+          "sha256": "e70ef5ccc6ebeb3f3d8d4c6548d6a60cc3c2be97391d76b04654149988630abe"
+        }
+      },
+      {
+        "path": "s/notes.xmp",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "dropbox": "20792b2b091c849be6781b6beeb1e6a6059610f42ef926368e07281585c64f4c",
+          "sha256": "f0007c2f88c74e26efcc462fb58dc6b20aaf9cc3abc281efff289d90e89997e0"
+        }
+      },
+      {
+        "path": "s/raw/e.nef",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "dropbox": "b4bb15dfc9835d13d9c7cfb5045754ce67f8f359c30b10055217c5faba4551b0",
+          "sha256": "7aae491107cfef43d51d76498292f3d49df6cf0066d92349b4f040f9d0721e20"
+        }
+      }
+    ]
+  }
+}

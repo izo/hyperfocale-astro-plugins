@@ -24,6 +24,7 @@ import {
   isExcluded,
   normalizePath,
   parseSnapshot,
+  publishable,
   sha256Hex,
   validateSnapshot,
 } from '../../../src/ingest/index.js';
@@ -39,8 +40,16 @@ function cases(dir: string): Array<[string, any]> {
     .map((name) => [name.replace(/\.json$/, ''), JSON.parse(readFileSync(join(FIXTURES, dir, name), 'utf-8'))]);
 }
 
+// Triplet code + severity + path, plus les champs propres à un code quand la
+// spec en définit (`count` et `bytes` de `guard-originals-excluded`, §4.11).
 const triples = (diagnostics: readonly Diagnostic[]) =>
-  diagnostics.map(({ code, severity, path }) => ({ code, severity, path }));
+  diagnostics.map(({ code, severity, path, count, bytes }) => ({
+    code,
+    severity,
+    path,
+    ...(count !== undefined ? { count } : {}),
+    ...(bytes !== undefined ? { bytes } : {}),
+  }));
 
 describe('fixtures de la spec — présence', () => {
   it('la copie est épinglée à un commit de izo/hyperfocale-spec', () => {
@@ -48,7 +57,7 @@ describe('fixtures de la spec — présence', () => {
     expect(source).toMatch(/^commit=[0-9a-f]{40}$/m);
   });
 
-  it.each(['corpora', 'snapshots', 'validation', 'diff', 'guard', 'snapshot-id', 'paths', 'hashes'])('%s/ est présent', (dir) => {
+  it.each(['corpora', 'snapshots', 'publishable', 'validation', 'diff', 'guard', 'snapshot-id', 'paths', 'hashes'])('%s/ est présent', (dir) => {
     expect(existsSync(join(FIXTURES, dir))).toBe(true);
   });
 });
@@ -130,6 +139,19 @@ describe('fixtures — snapshots/ ← corpora/ (§4.5)', () => {
   }
 });
 
+describe('fixtures — publishable/ (§4.11)', () => {
+  for (const [name, fixture] of cases('publishable')) {
+    it(`${name} — ${fixture.description}`, async () => {
+      const snapshot = parseSnapshot(
+        fixture.corpus !== undefined
+          ? readFileSync(join(FIXTURES, 'snapshots', `${fixture.corpus}.json`), 'utf-8')
+          : fixture.snapshot,
+      );
+      expect(comparable(await publishable(snapshot))).toEqual(comparable(parseSnapshot(fixture.expected)));
+    });
+  }
+});
+
 describe('fixtures — validation/ (§4.10)', () => {
   for (const [name, fixture] of cases('validation')) {
     it(`${name} — ${fixture.description}`, async () => {
@@ -178,7 +200,8 @@ describe('fixtures — guard/ (§4.11)', () => {
       const base = fixture.base === null ? null : parseSnapshot(fixture.base);
       const target = parseSnapshot(fixture.target);
       // Le changeset fourni est celui du diff : on le vérifie au passage.
-      const { diagnostics: _d, ...changeSet } = diffSnapshots(base, target);
+      // Le diff de publication va de base à la projection publiable (§4.11).
+      const { diagnostics: _d, ...changeSet } = diffSnapshots(base, await publishable(target));
       const { diagnostics: _e, ...expectedChangeSet } = fixture.changeSet;
       expect(changeSet).toEqual(expectedChangeSet);
       const diagnostics = await guardChangeSet(fixture.changeSet, base, target, { read, policy: fixture.policy });
