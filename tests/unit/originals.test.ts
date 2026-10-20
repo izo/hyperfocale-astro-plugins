@@ -28,16 +28,32 @@ describe('originaux — liste fermée (§1.9)', () => {
     expect([...INGEST_ORIGINAL_EXTENSIONS]).toEqual([...ORIGINAL_EXTENSIONS]);
   });
 
-  // `import.meta.glob` n'accepte qu'un littéral : les motifs d'exclusion du
-  // glob des documents joints recopient la liste. On les relit dans la source.
-  it('le glob des documents joints exclut exactement la liste, en minuscules et en majuscules', () => {
+  // `import.meta.glob` n'accepte qu'un littéral : le motif d'exclusion du glob
+  // des documents joints recopie la liste, sous sa forme insensible à la casse
+  // (une classe par lettre — Vite compare à la casse près, #125). On le relit
+  // dans la source et on le compare à la forme dérivée de la liste.
+  const caseInsensitive = (ext: string) =>
+    [...ext].map((c) => (/[a-z]/.test(c) ? `[${c}${c.toUpperCase()}]` : c)).join('');
+
+  it('le glob des documents joints exclut exactement la liste, insensible à la casse', () => {
     const source = readFileSync(resolve(__dirname, '../../src/helpers/index.ts'), 'utf-8');
-    const block = source.slice(source.indexOf('const _attachmentGlob'), source.indexOf(');', source.indexOf('const _attachmentGlob')));
-    const groups = [...block.matchAll(/!\/src\/content\/\*\*\/media\/\*\.\{([^}]+)\}/g)].map((m) => (m[1] as string).split(','));
-    const lower = groups.find((g) => g.includes('raf'));
-    const upper = groups.find((g) => g.includes('RAF'));
-    expect(lower).toEqual(SPEC_LIST);
-    expect(upper).toEqual(SPEC_LIST.map((e) => e.toUpperCase()));
+    const start = source.indexOf('const _attachmentGlob');
+    const block = source.slice(start, source.indexOf(');', start));
+    const groups = [...block.matchAll(/'!\/src\/content\/\*\*\/media\/\*\.\{([^}]+)\}'/g)].map((m) => m[1] as string);
+    const expected = ORIGINAL_EXTENSIONS.map(caseInsensitive).join(',');
+    expect(groups).toContain(expected);
+    // Hors le groupe des images, une seule exclusion : la forme dérivée, et
+    // plus aucune graphie figée (`raf`, `RAF`) à côté d'elle.
+    const originals = groups.filter((g) => !g.split(',').includes('jpg'));
+    expect(originals).toEqual([expected]);
+  });
+
+  it('la forme insensible à la casse couvre toutes les graphies', () => {
+    expect(caseInsensitive('raf')).toBe('[rR][aA][fF]');
+    expect(caseInsensitive('3fr')).toBe('3[fF][rR]');
+    const re = (ext: string) => new RegExp(`^${caseInsensitive(ext)}$`);
+    for (const spelling of ['raf', 'RAF', 'Raf', 'rAf', 'raF']) expect(re('raf').test(spelling)).toBe(true);
+    expect(re('3fr').test('3Fr')).toBe(true);
   });
 });
 

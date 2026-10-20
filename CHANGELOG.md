@@ -30,11 +30,11 @@ La spec 2.11-draft entre dans le paquet : les **originaux** — RAW et sidecars 
 ### Corrigé
 
 - **`.tif`** — reconnu comme image depuis la spec 2.9, mais absent du glob de galerie et de `classifyAttachment` : un `.tif` sortait en pièce jointe. Les extensions image en majuscules (`.JPG` des boîtiers) alimentent désormais la galerie au lieu de tomber en pièce jointe.
+- **Originaux en casse mixte** (#125) — le glob des documents joints ne nommait que les graphies tout en minuscules et tout en majuscules : Vite comparant à la casse près, un `DSCF0002.Raf` était écarté du rendu par `isOriginal`, mais émis au build. Le motif d'exclusion porte désormais une classe par lettre (`[rR][aA][fF]`, `3[fF][rR]`…), sidecars compris ; `tests/unit/originals.test.ts` vérifie qu'il est exactement la forme insensible à la casse dérivée d'`ORIGINAL_EXTENSIONS`, et un e2e qu'un `.Raf` de plus de 4 Ko n'apparaît nulle part dans `dist/`, ni en fichier ni en base64.
 
 ### Écart assumé
 
 - La collection du preset `project` est `work`, pas le `projects` de G.12 : `portfolio` l'occupe depuis la 0.8.0, et deux presets ne partagent jamais une collection. Le prefix, recommandation de l'annexe, est localisé comme les autres (`/suivi`).
-- Une graphie d'extension mixte (`.Raf`) est écartée du rendu mais reste copiée au build : le glob de Vite compare à la casse près, et seules les graphies tout en minuscules et tout en majuscules y sont nommées.
 
 ### À faire côté consommateur d'ingestion
 
