@@ -666,7 +666,7 @@ classifyAttachment('DSCF0001.RAF');  // → null (original : ignoré, ni galerie
 
 ### `isOriginal(filename)`
 
-`true` si l'extension — ce qui suit le dernier point, en minuscules — appartient à la liste fermée des originaux (`ORIGINAL_EXTENSIONS`, exportée à la racine). Un original n'alimente ni la galerie, ni les pièces jointes, ni le fallback de couverture ; le glob des documents joints l'exclut avant le build, si bien qu'il n'est jamais copié dans `dist/`. Seules les graphies tout en minuscules ou tout en majuscules sont exclues du glob (`.raf`, `.RAF`) : Vite compare à la casse près, et une graphie mixte (`.Raf`) est écartée du rendu mais copiée.
+`true` si l'extension — ce qui suit le dernier point, en minuscules — appartient à la liste fermée des originaux (`ORIGINAL_EXTENSIONS`, exportée à la racine). Un original n'alimente ni la galerie, ni les pièces jointes, ni le fallback de couverture ; le glob des documents joints l'exclut avant le build, si bien qu'il n'est jamais copié dans `dist/`. L'exclusion du glob est insensible à la casse, comme la liste : Vite comparant à la casse près, chaque lettre y est une classe (`[rR][aA][fF]`), si bien que `.raf`, `.RAF` et `.Raf` sont tous trois écartés avant le build.
 
 ### `serializeSeries(series)`
 

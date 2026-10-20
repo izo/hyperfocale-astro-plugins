@@ -527,11 +527,12 @@ describe('#SEC-002 · encodage de l\'identifiant d\'embed', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * `atelier-2026` porte une image, un devis PDF et deux originaux (`.RAF` et
- * `.xmp`). Comme pour les posters, le glob de Vite ne s'exerce que sur un vrai
+ * `atelier-2026` porte une image, un devis PDF et trois originaux (`.RAF`,
+ * `.xmp` et `.Raf`, en casse mixte — #125). Comme pour les posters, le glob de Vite ne s'exerce que sur un vrai
  * build : c'est ici que se vérifie qu'un original n'est ni rendu ni copié.
  */
 describe('originaux (§1.9, v2.11)', () => {
+  const ORIGINALS = ['DSCF0001.RAF', 'DSCF0001.xmp'];
   const page = () => htmlOf('series/atelier-2026/index.html');
 
   it('la galerie ne montre que l\'image', () => {
@@ -544,7 +545,7 @@ describe('originaux (§1.9, v2.11)', () => {
     expect(html).toContain('class="hf-attachments');
     expect(html).toContain('devis.pdf');
     // Le body de la série cite les noms : on cherche des liens, pas du texte.
-    expect(html).not.toMatch(/href="[^"]*DSCF0001\.(RAF|xmp)/);
+    expect(html).not.toMatch(/href="[^"]*DSCF000[12]\.(RAF|xmp|Raf)/);
   });
 
   it('aucun original n\'est copié dans le build', () => {
@@ -561,9 +562,30 @@ describe('originaux (§1.9, v2.11)', () => {
     // de même — on cherche donc son contenu, pas seulement un fichier.
     const html = page();
     expect(html).toContain('data:application/pdf;base64,');
-    for (const name of ['DSCF0001.RAF', 'DSCF0001.xmp']) {
+    for (const name of ORIGINALS) {
       const content = Buffer.from(`atelier-2026/media/${name}\n`).toString('base64');
       expect(html).not.toContain(content);
+    }
+  });
+
+  // #125 — Vite compare les extensions à la casse près : seule une classe par
+  // caractère (`[rR][aA][fF]`) exclut `.Raf` du glob. Sans elle, le fichier est
+  // écarté du rendu mais émis quand même. `DSCF0002.Raf` pèse plus de 4 Ko à
+  // dessein : sous ce seuil, Vite l'inlinerait dans le bundle serveur, que le
+  // build statique jette — le test passerait sans rien prouver. On le cherche
+  // partout dans `dist/` : comme fichier, et comme contenu inliné en base64.
+  it('un original en casse mixte (`.Raf`) n\'est émis nulle part', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+        d.isDirectory() ? walk(resolve(dir, d.name)) : [resolve(dir, d.name)],
+      );
+    const source = readFileSync(resolve(DEMO_SITE, 'src/content/series/atelier-2026/media/DSCF0002.Raf'));
+    expect(source.length).toBeGreaterThan(4096);
+    const files = walk(DEMO_DIST);
+    expect(files.filter((f) => /DSCF0002|\.raf$/i.test(f))).toEqual([]);
+    const content = source.toString('base64').slice(0, 64);
+    for (const f of files.filter((f) => /\.(html|js|mjs|css|json)$/.test(f))) {
+      expect(readFileSync(f, 'utf-8'), f).not.toContain(content);
     }
   });
 });

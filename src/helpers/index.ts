@@ -76,12 +76,17 @@ const _imageGlob = import.meta.glob<{ default: ImageMetadata }>(
 // copié dans le build, si bien qu'un `.RAF` filtré après coup partirait quand
 // même en production. Le motif est littéral (Vite l'analyse statiquement) ;
 // `ORIGINAL_EXTENSIONS` reste la référence, un test vérifie qu'ils concordent.
+//
+// Vite (picomatch) compare les extensions à la casse près, et la liste fermée
+// est insensible à la casse : chaque lettre est donc une classe (`[rR][aA][fF]`),
+// les chiffres restent nus (`3[fF][rR]`). Nommer seulement `raf` et `RAF`
+// laissait passer `.Raf` — écarté du rendu, mais émis au build (#125). La forme
+// est exactement celle que `tests/unit/originals.test.ts` dérive de la liste.
 const _attachmentGlob = import.meta.glob<string>(
   [
     '/src/content/**/media/*',
     '!/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF,TIF,TIFF}',
-    '!/src/content/**/media/*.{raf,cr2,cr3,nef,nrw,arw,srf,sr2,orf,rw2,pef,dng,3fr,iiq,x3f,srw,rwl,erf,mos,mef,kdc,dcr,xmp,pp3,dop,cos}',
-    '!/src/content/**/media/*.{RAF,CR2,CR3,NEF,NRW,ARW,SRF,SR2,ORF,RW2,PEF,DNG,3FR,IIQ,X3F,SRW,RWL,ERF,MOS,MEF,KDC,DCR,XMP,PP3,DOP,COS}',
+    '!/src/content/**/media/*.{[rR][aA][fF],[cC][rR]2,[cC][rR]3,[nN][eE][fF],[nN][rR][wW],[aA][rR][wW],[sS][rR][fF],[sS][rR]2,[oO][rR][fF],[rR][wW]2,[pP][eE][fF],[dD][nN][gG],3[fF][rR],[iI][iI][qQ],[xX]3[fF],[sS][rR][wW],[rR][wW][lL],[eE][rR][fF],[mM][oO][sS],[mM][eE][fF],[kK][dD][cC],[dD][cC][rR],[xX][mM][pP],[pP][pP]3,[dD][oO][pP],[cC][oO][sS]}',
   ],
   { eager: true, query: '?url', import: 'default' },
 );
