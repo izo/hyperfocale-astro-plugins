@@ -32,6 +32,12 @@ La spec 2.11-draft entre dans le paquet : les **originaux** — RAW et sidecars 
 - **`.tif`** — reconnu comme image depuis la spec 2.9, mais absent du glob de galerie et de `classifyAttachment` : un `.tif` sortait en pièce jointe. Les extensions image en majuscules (`.JPG` des boîtiers) alimentent désormais la galerie au lieu de tomber en pièce jointe.
 - **Originaux en casse mixte** (#125) — le glob des documents joints ne nommait que les graphies tout en minuscules et tout en majuscules : Vite comparant à la casse près, un `DSCF0002.Raf` était écarté du rendu par `isOriginal`, mais émis au build. Le motif d'exclusion porte désormais une classe par lettre (`[rR][aA][fF]`, `3[fF][rR]`…), sidecars compris ; `tests/unit/originals.test.ts` vérifie qu'il est exactement la forme insensible à la casse dérivée d'`ORIGINAL_EXTENSIONS`, et un e2e qu'un `.Raf` de plus de 4 Ko n'apparaît nulle part dans `dist/`, ni en fichier ni en base64.
 
+### Sécurité
+
+- **esbuild 0.28.0 → 0.28.2** (GHSA-g7r4-m6w7-qqqr, sévérité faible, signalé par le Dependency Dashboard #1) — les versions 0.27.3 à 0.28.0 laissaient le serveur de développement d'esbuild lire un fichier arbitraire sous Windows ; corrigé en 0.28.1. esbuild n'est qu'une dépendance de **développement**, tirée par `tsup` et par `astro` → `vite` : rien n'en part dans le paquet publié, et un site consommateur résout son propre esbuild par Astro.
+
+  La montée passe par le **retrait** de l'`overrides: { esbuild: ">=0.25.0" }` du `package.json`, pas par un plancher relevé. Ce plancher — celui du correctif de l'avis de 2025 sur les esbuild ≤ 0.24.2 — ne protégeait plus rien : `tsup` 9 exige `^0.28.2` et `vite` 8 `^0.27.0 || ^0.28.0`. Il faisait pire, en forçant une résolution unique que le lockfile avait figée à 0.28.0, **sous** la plage déclarée par `tsup` lui-même (`npm ls` la marquait `overridden`). Sans lui, npm résout 0.28.2 pour les trois consommateurs, dédupliquée ; seuls `esbuild` et ses 26 binaires `@esbuild/*` changent dans le lockfile. Un `overrides` ne s'applique de toute façon qu'au projet racine, jamais chez un consommateur du paquet.
+
 ### Écart assumé
 
 - La collection du preset `project` est `work`, pas le `projects` de G.12 : `portfolio` l'occupe depuis la 0.8.0, et deux presets ne partagent jamais une collection. Le prefix, recommandation de l'annexe, est localisé comme les autres (`/suivi`).
