@@ -349,7 +349,7 @@ export const seriesCollection = defineCollection({
   };
 }
 
-// Surface publique du schéma. Les **trois** vocabulaires de `schema.ts` sont
+// Surface publique du schéma. Les vocabulaires de `schema.ts` sont
 // exposés ici, et pas seulement `CONTENT_TYPES` : un consommateur qui écrit un
 // formulaire, un lint ou un import depuis un CMS a besoin des valeurs licites,
 // et rien ne justifie qu'il doive passer par `/helpers` — un sous-chemin qui
@@ -360,6 +360,8 @@ export {
   CONTENT_TYPES,
   ATTACHMENT_KINDS,
   EMBED_PLATFORMS,
+  ORIGINAL_EXTENSIONS,
+  PROJECT_STATUSES,
 } from './schema.js';
 export type {
   SeriesData,
@@ -370,6 +372,8 @@ export type {
   AttachmentKind,
   Embed,
   EmbedPlatform,
+  OriginalExtension,
+  ProjectStatus,
 } from './schema.js';
 export { PRESETS, PRESET_ALIASES, resolvePreset } from './presets.js';
 export type { PresetName, DeprecatedPresetName, PresetConfig } from './presets.js';

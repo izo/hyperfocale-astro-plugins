@@ -12,7 +12,7 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const ROOT = resolve(__dirname, '../..');
@@ -519,5 +519,51 @@ describe('#SEC-002 · encodage de l\'identifiant d\'embed', () => {
     // Mutation inverse : si l'encodage cassait `playable`, on perdrait la façade
     // et ce test tomberait sans que le précédent le signale.
     expect(page()).toContain('Garde encodage d\'identifiant');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Originaux — spec §1.9, v2.11
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * `atelier-2026` porte une image, un devis PDF et deux originaux (`.RAF` et
+ * `.xmp`). Comme pour les posters, le glob de Vite ne s'exerce que sur un vrai
+ * build : c'est ici que se vérifie qu'un original n'est ni rendu ni copié.
+ */
+describe('originaux (§1.9, v2.11)', () => {
+  const page = () => htmlOf('series/atelier-2026/index.html');
+
+  it('la galerie ne montre que l\'image', () => {
+    const images = page().match(/<img[^>]*class="hf-gallery__img"/g) ?? [];
+    expect(images).toHaveLength(1);
+  });
+
+  it('le devis est un document joint, pas les originaux', () => {
+    const html = page();
+    expect(html).toContain('class="hf-attachments');
+    expect(html).toContain('devis.pdf');
+    // Le body de la série cite les noms : on cherche des liens, pas du texte.
+    expect(html).not.toMatch(/href="[^"]*DSCF0001\.(RAF|xmp)/);
+  });
+
+  it('aucun original n\'est copié dans le build', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+        d.isDirectory() ? walk(resolve(dir, d.name)) : [d.name],
+      );
+    expect(walk(DEMO_DIST).some((n) => /\.(raf|xmp)$/i.test(n))).toBe(false);
+  });
+
+  it('aucun original n\'est inliné en data URL', () => {
+    // Vite inline en base64 un asset de moins de 4 Ko : le devis, minuscule,
+    // sort en `data:application/pdf`. Un original globbé en `?url` sortirait
+    // de même — on cherche donc son contenu, pas seulement un fichier.
+    const html = page();
+    expect(html).toContain('data:application/pdf;base64,');
+    for (const name of ['DSCF0001.RAF', 'DSCF0001.xmp']) {
+      const content = Buffer.from(`atelier-2026/media/${name}\n`).toString('base64');
+      expect(html).not.toContain(content);
+    }
   });
 });

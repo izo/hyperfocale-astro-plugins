@@ -16,7 +16,8 @@ export type PresetName =
   | 'app'
   | 'book'
   | 'place'
-  | 'screen';
+  | 'screen'
+  | 'project';
 
 /**
  * Noms conservés pour ne pas casser les sites existants, mais qui ne sont pas
@@ -45,6 +46,13 @@ export const PRESETS: Record<PresetName, PresetConfig> = {
   book:      { collectionName: 'books',    prefix: '/livres',        dateRequired: false },
   place:     { collectionName: 'places',   prefix: '/lieux',         dateRequired: false },
   screen:    { collectionName: 'screens',  prefix: '/ecrans',        dateRequired: false },
+  // G.12 : un dossier de travail, pas une publication — `media/` y porte des
+  // originaux, que le plugin ignore (§1.9). La collection `projects` de
+  // l'annexe est prise par `portfolio` depuis la 0.8.0, et deux presets ne
+  // partagent jamais une collection : le profil prend `work`. Le prefix se
+  // distingue de `/projets` pour qu'un suivi interne ne passe pas pour une
+  // page publique.
+  project:   { collectionName: 'work',     prefix: '/suivi',         dateRequired: true  },
 };
 
 /**

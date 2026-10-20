@@ -1,0 +1,11 @@
+{
+  "description": "Dossier de travail du profil project (G.12) : RAW, sidecars XMP et JPEG de l'appareil dans media/, extensions en majuscules comprises. Les originaux sont des médias valides : aucun diagnostic.",
+  "corpus": "originals",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}
