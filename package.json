@@ -100,6 +100,6 @@
     "zod": "^4.3.6"
   },
   "dependencies": {
-    "js-yaml": "^4.3.2"
+    "js-yaml": "^5.0.0"
   }
 }
