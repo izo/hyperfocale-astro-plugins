@@ -96,8 +96,16 @@ describe('schéma — les trois formes de `images[]` (M3)', () => {
     expect(parse([{ alt: 'orpheline' }]).success).toBe(false);
   });
 
-  it('rejette une `url` qui n’en est pas une', () => {
-    expect(parse([{ url: 'pas-une-url' }]).success).toBe(false);
+  // Spec 2.12 (§1.5.1, « Entrées locales de `images:` ») : une entrée relative
+  // au fichier index est licite et se résout comme celle du manifeste. Le
+  // schéma refusait jusqu'ici toute `url` qui n'était pas absolue (`z.url()`).
+  it('accepte une `url` relative à l’index et la forme courte (§1.5.1, v2.12)', () => {
+    expect(parse([{ url: './media/03.jpg', alt: 'x' }, './media/01.jpg', '/content/s/media/02.jpg']).success).toBe(true);
+  });
+
+  it('rejette une `url` vide', () => {
+    expect(parse([{ url: '' }]).success).toBe(false);
+    expect(parse(['']).success).toBe(false);
   });
 });
 

@@ -381,7 +381,9 @@ export async function getSeriesBySlug(slug: string, collectionName?: string): Pr
  *   1. `{ src: <asset image()>, alt? }` — asset local traité par `astro:assets`
  *      (ordre curé + alt + optimisation WebP/srcset).
  *   2. `{ file: '01.jpg', alt? }` — fichier de `media/` référencé par nom.
- *   3. `{ url, alt?, width?, height? }` — image distante.
+ *   3. `{ url, alt?, width?, height? }` ou une chaîne (forme courte) — URL
+ *      absolue, absolue au site, ou relative à l'index (`./media/01.jpg`),
+ *      résolue comme une entrée du manifeste (§1.5.1, v2.12).
  *
  * À défaut, un `images.json` posé à côté d'`index.md` pilote la galerie
  * (spec §1.5.1) — l'ordre du tableau fait foi, aucun tri n'est appliqué.
@@ -392,7 +394,7 @@ export async function getSeriesBySlug(slug: string, collectionName?: string): Pr
  */
 export async function getSeriesImages(slug: string, series?: Series): Promise<ImageMetadata[]> {
   const imageList = series?.data.images as
-    | Array<{ src?: ImageMetadata; file?: string; url?: string; alt?: string; width?: number; height?: number }>
+    | Array<string | { src?: ImageMetadata; file?: string; url?: string; alt?: string; width?: number; height?: number }>
     | undefined;
 
   const dirSlug = slug.replace(/\/index$/, '');
@@ -408,6 +410,12 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
     }
     return imageList
       .map((img): ImageMetadata | null => {
+        // Forme courte et `url` : même résolution qu'une entrée du manifeste
+        // (§1.5.1 ; v2.12 pour les entrées locales de `images:`). Une URL
+        // absolue ou absolue au site est servie telle quelle ; une entrée
+        // relative (`./media/01.jpg`) désigne un fichier de `media/`, cherché
+        // dans le glob pour ses dimensions et l'optimisation Astro.
+        if (typeof img === 'string') return resolveManifestImage(img, dirSlug);
         // 1) Asset local traité par astro:assets (`src: image()`)
         if (img.src && typeof img.src === 'object') {
           return { ...img.src, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
@@ -422,16 +430,8 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
           if (!found) return null;
           return { ...found[1].default, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
         }
-        // 3) Image distante (`url`)
-        if (typeof img.url === 'string') {
-          return {
-            src: img.url,
-            width: img.width ?? 0,
-            height: img.height ?? 0,
-            format: img.url.split('.').pop() ?? 'jpg',
-            ...(img.alt !== undefined ? { alt: img.alt } : {}),
-          };
-        }
+        // 3) `url` — absolue, absolue au site, ou relative à l'index
+        if (typeof img.url === 'string') return resolveManifestImage(img, dirSlug);
         return null;
       })
       .filter((img): img is ImageMetadata => img !== null);

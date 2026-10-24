@@ -72,6 +72,8 @@ export { summarizeChangeSet } from './summary.js';
 export type { ChangeSetSummary, MovedSeries } from './summary.js';
 export { buildImagesManifest } from './manifest.js';
 export type { BuildImagesManifestOptions, ImagesManifest } from './manifest.js';
+export { buildSeriesImagesManifest, declaresImages } from './series-manifest.js';
+export type { BuildSeriesImagesManifestOptions } from './series-manifest.js';
 export { waitForQuiescence } from './quiescence.js';
 export type { QuiescenceOptions, QuiescenceResult } from './quiescence.js';
 export { parseFrontmatter } from './frontmatter.js';

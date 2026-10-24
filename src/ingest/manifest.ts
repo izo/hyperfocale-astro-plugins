@@ -89,6 +89,10 @@ export interface ImagesManifest {
  *
  * L'ordre alphabétique est l'ordre canonique du contrat (octets UTF-8, §4.1),
  * pas une collation locale : deux implémentations produisent le même fichier.
+ *
+ * Ne lit pas le frontmatter : pour décider s'il faut écrire le manifeste — pas
+ * pour une série qui porte `images:` (§1.5.1, v2.12) —, passer par
+ * `buildSeriesImagesManifest`.
  */
 export function buildImagesManifest(
   snapshot: ContentSnapshot,
