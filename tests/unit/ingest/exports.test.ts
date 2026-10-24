@@ -120,3 +120,32 @@ describe('ingest — l\'intégration Astro n\'en charge rien', () => {
     expect([...files].some((f) => f.includes('/ingest/'))).toBe(false);
   });
 });
+
+describe('/media et /loader (#130)', () => {
+  it.each(['media', 'loader'])('./%s est exporté avec ses types', (name) => {
+    expect(pkg.exports[`./${name}`]).toEqual({ types: `./dist/${name}.d.ts`, import: `./dist/${name}.js` });
+  });
+
+  it('src/media.ts : ni node:*, ni astro, ni zod — importable dans un Worker', () => {
+    const { external } = graph(resolve(ROOT, 'src/media.ts'), fromSource);
+    expect([...external.keys()]).toEqual([]);
+  });
+
+  it('dist/media.js : aucune dépendance externe (après build)', () => {
+    const { external } = graph(resolve(ROOT, 'dist/media.js'), fromDist);
+    expect([...external.keys()]).toEqual([]);
+  });
+
+  // Sur dist/ : l'exemple JSDoc de la source porte des `import` que le scanner prendrait au mot.
+  it('dist/loader.js ne dépend que de Node et d\'astro/markdown (après build)', () => {
+    const { external } = graph(resolve(ROOT, 'dist/loader.js'), fromDist);
+    expect([...external.keys()].filter((s) => !isNode(s)).sort()).toEqual(['astro/markdown']);
+  });
+
+  it('l\'intégration Astro ne charge ni /media ni /loader', () => {
+    const { files } = graph(resolve(ROOT, 'src/index.ts'), fromSource);
+    const reached = [...files].map((f) => relative(ROOT, f));
+    expect(reached).not.toContain('src/media.ts');
+    expect(reached).not.toContain('src/loader.ts');
+  });
+});

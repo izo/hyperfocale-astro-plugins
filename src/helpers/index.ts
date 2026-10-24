@@ -1,7 +1,14 @@
 import { getCollection } from 'astro:content';
 import type { CollectionEntry, CollectionKey } from 'astro:content';
-import { EMBED_PLATFORMS, ORIGINAL_EXTENSIONS } from '../schema.js';
+import { EMBED_PLATFORMS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
+import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf } from '../media.js';
+import type { ImageManifest, ManifestImage } from '../media.js';
+
+// Primitives pures, tenues par `/media` (importable hors runtime Astro) et
+// réexportées ici pour l'API historique des helpers.
+export { classifyAttachment, isOriginal, parseImageManifest };
+export type { ImageManifest, ManifestImage };
 
 /**
  * Nom de la collection lue par les helpers.
@@ -120,46 +127,6 @@ export function matchMedia(
   const m = MEDIA_PATH.exec(path);
   if (m === null || m[1] !== collection) return null;
   return { dirSlug: m[2] as string, filename: m[3] as string };
-}
-
-/** Entrée d'images d'un manifeste — forme courte (chaîne) ou longue (objet). */
-export type ManifestImage = string | { url?: string; alt?: string; width?: number; height?: number };
-
-/** Contenu utile d'un `images.json` (spec §1.5.1). */
-export interface ImageManifest {
-  images: ManifestImage[];
-  files?: Array<{ url: string; title?: string; kind?: AttachmentKind; size?: number }>;
-}
-
-/**
- * Parse un `images.json` (spec §1.5.1). Retourne `null` sur toute anomalie —
- * JSON illisible, clé `images` absente ou non-tableau — après un avertissement :
- * l'appelant se rabat alors sur `media/`. Ne lève jamais.
- *
- * @internal Exporté pour les tests : le glob étant statique, c'est le seul
- * point où la robustesse du manifeste est vérifiable sans filesystem.
- */
-export function parseImageManifest(raw: string, source = 'images.json'): ImageManifest | null {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    console.warn(`[hyperfocale] ${source} n'est pas un JSON valide — repli sur media/.`);
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null) {
-    console.warn(`[hyperfocale] ${source} ne contient pas un objet — repli sur media/.`);
-    return null;
-  }
-  const { images, files } = parsed as { images?: unknown; files?: unknown };
-  if (!Array.isArray(images)) {
-    console.warn(`[hyperfocale] ${source} : la clé "images" est absente ou n'est pas un tableau — repli sur media/.`);
-    return null;
-  }
-  return {
-    images: images as ManifestImage[],
-    ...(Array.isArray(files) ? { files: files as NonNullable<ImageManifest['files']> } : {}),
-  };
 }
 
 /** Localise le `images.json` d'une série sans le parser. */
@@ -516,62 +483,7 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
  * lui-même ne s'observe qu'en e2e. C'est ici que se décide l'exclusion.
  */
 export function posterFilenames(series?: Series): Set<string> {
-  const embeds = series?.data['embeds'] as Array<{ poster?: string }> | undefined;
-  if (!embeds || embeds.length === 0) return new Set();
-
-  const names = new Set<string>();
-  for (const embed of embeds) {
-    const poster = embed.poster;
-    if (typeof poster !== 'string' || poster === '') continue;
-    if (/^https?:\/\//.test(poster) || poster.startsWith('/')) continue;
-    const filename = (poster.replace(/^\.\//, '').split('/').pop() ?? '').trim();
-    if (filename !== '') names.add(filename);
-  }
-  return names;
-}
-
-// Classes de documents joints par extension (spec §1.9)
-const ATTACHMENT_KIND_BY_EXTENSION: Record<string, AttachmentKind> = {
-  mp4: 'video', webm: 'video', mov: 'video', m4v: 'video',
-  mp3: 'audio', m4a: 'audio', ogg: 'audio', wav: 'audio', flac: 'audio',
-  pdf: 'document', epub: 'document', txt: 'document', md: 'document',
-};
-
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tif', 'tiff']);
-const ORIGINAL_EXTENSION_SET = new Set<string>(ORIGINAL_EXTENSIONS);
-
-/** Extension d'un nom de fichier, en minuscules — ce qui suit le dernier point. */
-function extensionOf(filename: string): string | null {
-  const base = filename.split('/').pop() ?? filename;
-  const dot = base.lastIndexOf('.');
-  return dot <= 0 ? null : base.slice(dot + 1).toLowerCase();
-}
-
-/**
- * Le fichier est-il un original (spec §1.9, v2.11) — RAW ou sidecar ?
- * L'extension seule décide, en minuscules : `DSCF0001.RAF` en est un,
- * `DSCF0001.raf.jpg` est une image.
- */
-export function isOriginal(filename: string): boolean {
-  return ORIGINAL_EXTENSION_SET.has(extensionOf(filename.split('?')[0] ?? filename) ?? '');
-}
-
-/**
- * Classe un fichier de `media/` selon la spec §1.9.
- * Retourne `null` pour une image (qui alimente la galerie, pas les pièces jointes),
- * pour un original (RAW, sidecar — ignoré, ni galerie ni pièce jointe, v2.11)
- * et pour les fichiers de métadonnées — `index.md`, ainsi que `images.json`, qui
- * « n'est jamais un média ni un document joint » (§1.5.1).
- * Toute extension inconnue tombe dans la classe `file` — ne lève jamais d'erreur.
- */
-export function classifyAttachment(filename: string): AttachmentKind | null {
-  const base = filename.split('/').pop() ?? filename;
-  const lower = base.toLowerCase();
-  if (lower === 'index.md' || lower === 'images.json') return null;
-  const ext = extensionOf(base);
-  if (ext === null) return 'file';
-  if (IMAGE_EXTENSIONS.has(ext) || ORIGINAL_EXTENSION_SET.has(ext)) return null;
-  return ATTACHMENT_KIND_BY_EXTENSION[ext] ?? 'file';
+  return posterFilenamesOf(series?.data['embeds']);
 }
 
 /**

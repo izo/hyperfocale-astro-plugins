@@ -7,6 +7,42 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.21.0] — non publiée
+
+Un corpus Hyperfocale se lit désormais hors de `src/content/`. Les helpers trouvent `media/` et `images.json` par `import.meta.glob`, donc sous `src/content/` seulement et dans le runtime Astro seulement : `mathieu-drouet.com`, qui sert son corpus depuis `public/content` et ses médias depuis R2, avait dû réimplémenter loader, résolution des images et listes d'extensions, et s'était écarté de la spec en chemin (#130). Deux sous-chemins **additifs** ; rien ne change pour un site qui ne les importe pas.
+
+### Ajouté
+
+- **`@regrets/hyperfocale/media`** — `resolveSeriesMedia({ frontmatter, manifest?, mediaFiles?, url? })`, résolveur **pur** : il ne lit rien, on lui passe le frontmatter, le texte d'`images.json` et la liste de `media/`. Il rend la galerie, la couverture et les documents joints selon la spec :
+  - priorité `images:` > `images.json` > scan de `media/` (§1.5.1) ; l'ordre des deux listes écrites fait foi, formes courte et longue, trois formes d'URL, entrées relatives de `images:` résolues comme celles du manifeste (§1.5.1, v2.12) ;
+  - scan de `media/` sans récursion (§1.6, §1.8), dans l'ordre canonique (octets UTF-8, celui de `buildImagesManifest`), sans les vignettes d'embeds (§1.11) ni les originaux (§1.9) ;
+  - couverture : `cover`, sinon la première image — première entrée du manifeste quand il y en a un (§1.6, §1.5.1) ; un `cover` vers une sous-série (§1.8) est rendu sans vérification ;
+  - documents joints : `files:` > clé `files` du manifeste > `media/`, enrichis par `attachments:` (§1.9) ;
+  - jamais d'exception : une anomalie devient un diagnostic aux codes et sévérités de §4.10 (`images-conflict`, `images-json-invalid`, `media-nested`, `cover-not-found`, `cover-not-image`, `attachment-not-found`).
+
+  Ni `node:*`, ni `astro`, ni `zod` : il s'importe dans un script Node comme dans un Worker. Le sous-chemin expose aussi les primitives qu'un site recopiait — `IMAGE_EXTENSIONS`, `ORIGINAL_EXTENSIONS`, `isImagePath`, `isOriginal`, `classifyAttachment`, `parseImageManifest`.
+
+- **`@regrets/hyperfocale/loader`** — `seriesLoader({ base, locale?, fallback?, render?, exclude?, generateId? })`, loader Content Layer d'un corpus rangé dans un dossier quelconque : découverte récursive (§1.2 : tout dossier porteur d'un fichier index, `media/` jamais parcouru), repli de locale par fichiers frères (`index.<locale>.md`, sinon `index.md` — Annexe F, stratégie 2), **tout** le frontmatter passé à `parseData` (passthrough §1.3, une entrée invalide fait échouer le build), body rendu pour `render(entry)`, rechargement en développement. Le frontmatter est lu par `parseFrontmatter` d'`astro/markdown`, le parseur de `glob()`. Avec `readSeriesMedia(dir)`, qui lit `images.json` et la liste de `media/` d'une série, prête pour `resolveSeriesMedia`.
+
+- **`IMAGE_EXTENSIONS`** exporté par `/ingest` (la liste que `isImagePath` employait en privé).
+
+### Modifié
+
+- Une seule implémentation des primitives : `classifyAttachment`, `isOriginal`, `parseImageManifest` et le calcul des posters vivent dans `/media`, que `/helpers` réexporte — même API, mêmes valeurs. La lecture d'`images.json` et la résolution des références relatives, jusqu'ici privées à `validateSnapshot`, sont passées dans `ingest/manifest.ts` et `ingest/paths.ts` et servent aux deux. `posterFilenames` normalise désormais en NFC et n'écarte du scan que des références relatives (un `data:` n'en est pas une).
+
+### Tests
+
+- `tests/unit/media.test.ts` — les règles une à une, puis le **rejeu des corpus de la spec** : pour chacune des 29 fixtures de validation adossées à un corpus, chaque série est résolue depuis le disque, et ses diagnostics de médias doivent être exactement ceux que la fixture attend sur elle. Plus les résultats attendus des corpus valides (`minimal`, `manifest`, `nested`, `attachments`, `embeds`, `originals`).
+- `tests/unit/loader.test.ts` — découverte, repli de locale (`i18n`, `invalid-index-default-missing`), passthrough, schéma, rechargement, sur les mêmes corpus.
+- e2e — le demo-site déclare deux collections sur `examples/demo-site/corpus/` (hors de `src/content/`) et rend chaque entrée avec `render()` et `resolveSeriesMedia` : repli de locale, champ inconnu transmis, ordre du manifeste, original écarté, vérifiés sur le HTML produit.
+- `tests/unit/ingest/exports.test.ts` — `/media` sans aucune dépendance externe, sur la source et sur `dist/` ; `/loader` limité à Node et `astro/markdown` ; l'intégration ne charge ni l'un ni l'autre.
+
+### Rétro-compatibilité
+
+Aucun changement cassant : l'entrée racine, les composants, les helpers, les routes et `/ingest` gardent leur API et leurs résultats ; les tests existants passent sans modification.
+
+---
+
 ## [0.20.0] — 2026-10-20
 
 La spec 2.11-draft entre dans le paquet : les **originaux** — RAW et sidecars de développement — sont une troisième catégorie de fichiers de `media/`, à côté des images et des documents joints, et le profil **Projet** (G.12) décrit le dossier de travail qui les porte. Jusqu'ici, un `.RAF` de `media/` tombait en document joint de classe `file` et était proposé en téléchargement après la galerie.

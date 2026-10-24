@@ -589,3 +589,50 @@ describe('originaux (§1.9, v2.11)', () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// #130 — corpus hors de src/content/ : seriesLoader + resolveSeriesMedia
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('seriesLoader et resolveSeriesMedia dans un vrai build (#130)', () => {
+  const RUMEUR = 'archives/concerts/la-rumeur-2005';
+  const mediaOf = (html: string) =>
+    JSON.parse(/<script type="application\/json" data-media>([^<]*)<\/script>/.exec(html)?.[1] ?? 'null');
+
+  it('une page par entrée et par locale, corpus lu hors de src/content/', () => {
+    for (const locale of ['fr', 'en']) {
+      expect(fileExists(`corpus/${locale}/${RUMEUR}/index.html`)).toBe(true);
+      expect(fileExists(`corpus/${locale}/archives/salon-2022/index.html`)).toBe(true);
+    }
+  });
+
+  it('repli de locale : index.en.md pour en, index.md sinon (et pour salon-2022 en)', () => {
+    expect(htmlOf(`corpus/en/${RUMEUR}/index.html`)).toContain('<h1>La Rumeur — Le Grand Mix (EN)</h1>');
+    expect(htmlOf(`corpus/fr/${RUMEUR}/index.html`)).toContain('<h1>La Rumeur — Le Grand Mix</h1>');
+    expect(htmlOf('corpus/en/archives/salon-2022/index.html')).toContain('<h1>Salon 2022</h1>');
+  });
+
+  it('passthrough d\'un champ inconnu du schéma et body rendu par render()', () => {
+    const html = htmlOf(`corpus/fr/${RUMEUR}/index.html`);
+    expect(html).toContain('<p data-artist>La Rumeur</p>');
+    expect(html).toContain('<strong>Grand Mix</strong>');
+  });
+
+  it('médias : scan sans original, couverture explicite, document joint enrichi', () => {
+    const media = mediaOf(htmlOf(`corpus/fr/${RUMEUR}/index.html`));
+    expect(media.source).toBe('media');
+    expect(media.images.map((i: { path: string }) => i.path)).toEqual(['media/01.jpg', 'media/02.jpg']);
+    expect(media.cover.src).toBe(`/media/${RUMEUR}/media/02.jpg`);
+    expect(media.attachments).toEqual([
+      { src: `/media/${RUMEUR}/media/setlist.pdf`, kind: 'document', title: 'Setlist', size: 2 },
+    ]);
+    expect(media.diagnostics).toEqual([]);
+  });
+
+  it('médias : l\'ordre d\'images.json fait foi, couverture = première entrée', () => {
+    const media = mediaOf(htmlOf('corpus/fr/archives/salon-2022/index.html'));
+    expect(media.source).toBe('manifest');
+    expect(media.images.map((i: { path: string }) => i.path)).toEqual(['media/02.jpg', 'media/01.jpg']);
+    expect(media.cover.path).toBe('media/02.jpg');
+  });
+});

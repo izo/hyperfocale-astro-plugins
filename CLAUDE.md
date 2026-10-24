@@ -24,7 +24,9 @@ npm run dev          # tsup --watch (développement)
 src/
   index.ts          ← point d'entrée de l'intégration (defineIntegration, options)
   schema.ts         ← schéma Zod de la collection + module virtuel Vite
-  helpers/          ← API publique TypeScript (getSeriesList, getSeriesBySlug, etc.)
+  helpers/          ← API publique TypeScript (getSeriesList, getSeriesBySlug, etc.) — lit src/content/ par import.meta.glob
+  media.ts          ← résolveur de médias pur (galerie, couverture, documents joints) + primitives partagées avec helpers/
+  loader.ts         ← loader Content Layer pour un corpus hors de src/content/ (repli index.<locale>.md → index.md)
   components/       ← 9 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
                        SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry)
   routes/           ← pages Astro injectées via injectRoute()
@@ -53,6 +55,8 @@ dist/               ← build tsup (gitignored)
 
 **Peer deps** : `astro` et `zod` sont des peer dependencies. Ne pas les ajouter en dépendances directes.
 
+**Primitives de médias** : `classifyAttachment`, `isOriginal`, `parseImageManifest`, `posterFilenames` vivent dans `src/media.ts` et `/helpers` les réexporte — `/helpers` importe `astro:content`, `/media` doit rester chargeable partout (`tests/unit/ingest/exports.test.ts` le vérifie). La résolution de références relatives et la lecture d'`images.json` sont dans `src/ingest/paths.ts` et `src/ingest/manifest.ts`, partagées avec la validation : une seule implémentation de §1.5.1.
+
 ## CLI
 
 ```bash
@@ -79,6 +83,8 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 | `import hyperfocale from '@regrets/hyperfocale'` | `src/index.ts` — intégration Astro |
 | `import { ... } from '@regrets/hyperfocale/components'` | `src/components/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
+| `import { ... } from '@regrets/hyperfocale/media'` | `src/media.ts` — `resolveSeriesMedia` et primitives de médias, purs (ni `node:*`, ni astro, ni zod) |
+| `import { ... } from '@regrets/hyperfocale/loader'` | `src/loader.ts` — `seriesLoader` (Content Layer, repli de locale), `readSeriesMedia` (Node) |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
 | `import { ... } from '@regrets/hyperfocale/ingest'` | `src/ingest/index.ts` — contrat d'ingestion, agnostique (WebCrypto) |
 | `import { ... } from '@regrets/hyperfocale/ingest/fs'` | `src/ingest/fs.ts` — `FilesystemProvider`, `hashFile`, `materializeSnapshot` (Node) |

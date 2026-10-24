@@ -2,6 +2,7 @@ import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
 import { computeSnapshotId, verifyEntryBytes } from './hash.js';
+import { manifestEntryReferences, readImagesManifest } from './manifest.js';
 import {
   basename,
   classifyPath,
@@ -12,9 +13,11 @@ import {
   isExcluded,
   isImagePath,
   isOriginalPath,
+  isRelativeReference,
   isWithin,
   joinPath,
   normalizePath,
+  resolveReference,
 } from './paths.js';
 import { indexFolders, primaryIndex } from './series.js';
 import { entryStructureError, snapshotStructureError } from './snapshot.js';
@@ -46,7 +49,6 @@ export interface ValidateSnapshotOptions {
 }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const URL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
 
 // Règle de la spec invoquée par chaque code, reportée dans `Diagnostic.rule`.
@@ -123,48 +125,17 @@ function isIsoDate(value: unknown): boolean {
   return hour <= 23 && minute <= 59 && second <= 59;
 }
 
-/** Référence relative (§4.10, règle 8) : non vide, sans `/` initial ni schéma. */
-function isRelativeReference(ref: string): boolean {
-  return ref !== '' && !ref.startsWith('/') && !URL_SCHEME.test(ref);
-}
-
-/** Résout une référence relative depuis un dossier ; `null` si elle sort du corpus. */
-function resolveReference(folder: string, ref: string): string | null {
-  const stack: string[] = [];
-  for (const segment of joinPath(folder, ref.normalize('NFC')).split('/')) {
-    if (segment === '' || segment === '.') continue;
-    if (segment === '..') {
-      if (stack.length === 0) return null;
-      stack.pop();
-    } else {
-      stack.push(segment);
-    }
-  }
-  return stack.join('/');
-}
-
 /** Entrées d'images d'un `images.json`, ou `null` s'il est invalide (§1.5.1). */
-function parseManifest(content: Uint8Array | string): unknown[] | null {
+function parseManifest(content: Uint8Array | string): readonly unknown[] | null {
   const text = decodeUtf8(content);
   if (text === null) return null;
-  try {
-    const parsed: unknown = JSON.parse(text);
-    return isRecord(parsed) && Array.isArray(parsed.images) ? parsed.images : null;
-  } catch {
-    return null;
-  }
+  const result = readImagesManifest(text);
+  return result.ok ? result.manifest.images : null;
 }
 
-/**
- * Le manifeste référence-t-il `target` (§4.10, règle 9) ? Une entrée relative
- * si elle s'y résout ; une entrée absolue si elle se termine par `/<target>`.
- */
+/** Le manifeste référence-t-il `target` (§4.10, règle 9) ? */
 function manifestReferences(images: readonly unknown[], folder: string, target: string): boolean {
-  return images.some((image) => {
-    const ref = typeof image === 'string' ? image : isRecord(image) && typeof image.url === 'string' ? image.url : null;
-    if (ref === null || ref === '') return false;
-    return isRelativeReference(ref) ? resolveReference(folder, ref) === target : ref.endsWith(`/${target}`);
-  });
+  return images.some((image) => manifestEntryReferences(image, folder, target));
 }
 
 /**
@@ -324,7 +295,7 @@ export async function validateSnapshot(
   });
   const indexByPath = new Map(parsed.map((index) => [index.path, index]));
 
-  const manifests = new Map<string, unknown[] | null>();
+  const manifests = new Map<string, readonly unknown[] | null>();
   const manifestPaths = scoped.filter((e) => basename(e.path) === 'images.json' && readable(e.path)).map((e) => e.path);
   await mapConcurrent(manifestPaths, concurrency, async (path) => {
     const content = await readVerified(path);
