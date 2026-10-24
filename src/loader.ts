@@ -19,6 +19,12 @@
  * `glob()`. Le frontmatter est lu par `parseFrontmatter` d'`astro/markdown`, le
  * même parseur que `glob()`.
  *
+ * Avant la validation, `prepare` laisse le site normaliser le frontmatter —
+ * replis d'un champ que son contrat exige, typage YAML (`fallbackField`,
+ * `stringifyTags`) — et chaque repli appliqué se dit en un avertissement
+ * groupé. `sections: 'exclude'` écarte les pages d'index de section (§1.10)
+ * d'une collection de séries.
+ *
  * Node seulement (lecture du disque) ; les médias se résolvent à part, avec
  * `readSeriesMedia` puis `resolveSeriesMedia` (`@regrets/hyperfocale/media`).
  */
@@ -45,6 +51,44 @@ export interface GenerateSeriesIdOptions {
   /** Frontmatter brut, avant validation. */
   readonly data: Record<string, unknown>;
 }
+
+/** Ce que reçoit `prepare`, en plus du frontmatter. */
+export interface SeriesPrepareContext {
+  /** Identifiant de l'entrée (celui de `generateId`, sinon le chemin du dossier). */
+  readonly id: string;
+  /** Dossier du contenu, relatif à `base`, POSIX, NFC — `''` pour `base` lui-même. */
+  readonly path: string;
+  /** Dernier segment de `path` : le slug de §1.2 (`''` pour `base` lui-même). */
+  readonly slug: string;
+  /** Nom du fichier index lu (`index.md`, `index.en.md`). */
+  readonly file: string;
+  /** Chemin du fichier index, relatif à la racine du projet, POSIX — celui d'`entry.filePath`. */
+  readonly filePath: string;
+  /**
+   * Locale du fichier lu : `en` pour `index.en.md`, `undefined` pour
+   * `index.md` (langue par défaut du corpus) — y compris quand la collection,
+   * déclarée en `en`, s'est repliée sur `index.md`.
+   */
+  readonly locale: string | undefined;
+  /** Locale déclarée pour la collection (option `locale`), `undefined` sans. */
+  readonly collectionLocale: string | undefined;
+  /**
+   * Signale un repli appliqué à cette entrée. Les signalements de même
+   * message sont regroupés en **un** avertissement à la fin du chargement,
+   * avec le nombre d'entrées et leurs identifiants.
+   */
+  warn(message: string): void;
+}
+
+/**
+ * Normalisation du frontmatter avant `parseData`. Rend le frontmatter à
+ * valider ; peut être asynchrone. Une exception fait échouer l'entrée — et le
+ * chargement — comme une entrée invalide.
+ */
+export type SeriesPrepare = (
+  frontmatter: Record<string, unknown>,
+  context: SeriesPrepareContext,
+) => Record<string, unknown> | Promise<Record<string, unknown>>;
 
 /** Options de `seriesLoader`. */
 export interface SeriesLoaderOptions {
@@ -74,6 +118,92 @@ export interface SeriesLoaderOptions {
    * (`music/concerts/2010/the-wombats-paris-2010`), `index` pour `base` lui-même.
    */
   readonly generateId?: (options: GenerateSeriesIdOptions) => string;
+  /**
+   * Normalisation du frontmatter **avant** `parseData` — une fonction, ou une
+   * liste appliquée dans l'ordre. Elle reçoit le frontmatter brut (après
+   * `generateId`) et rend celui qui sera validé ; c'est aussi ce que voit le
+   * cache : une entrée n'est revalidée que si son fichier ou le résultat de
+   * `prepare` change. Absente : le frontmatter passe tel quel.
+   */
+  readonly prepare?: SeriesPrepare | readonly SeriesPrepare[];
+  /**
+   * Pages d'index de section (`type: section`, §1.10). `include` (défaut) les
+   * garde dans la collection, comme `glob()` ; `exclude` les écarte avant
+   * `generateId`, `prepare` et `parseData` — pour une collection qui ne doit
+   * contenir que des séries. Le discriminant est le seul `type` écrit dans le
+   * fichier, jamais deviné (§1.10).
+   */
+  readonly sections?: 'include' | 'exclude';
+}
+
+/** Absent au sens d'un repli : `undefined`, `null`, ou une chaîne vide une fois rognée. */
+function isMissing(value: unknown): boolean {
+  return value === undefined || value === null || (typeof value === 'string' && value.trim() === '');
+}
+
+/** Options communes des préparations fournies. */
+export interface PrepareWarnOptions {
+  /**
+   * Message de l'avertissement groupé quand la préparation modifie l'entrée ;
+   * `false` pour se taire. Défaut : un message qui nomme le champ.
+   */
+  readonly warn?: string | false;
+}
+
+/**
+ * Préparation : donne une valeur à `field` quand il est absent (`undefined`,
+ * `null` ou chaîne vide), et le signale. `value` est une valeur, ou une
+ * fonction du frontmatter et du contexte — `(_, { slug }) => slug` pour un
+ * identifiant dérivé du dossier. Le frontmatter reçu n'est pas modifié : la
+ * préparation rend une copie.
+ *
+ * @example
+ * seriesLoader({ base, prepare: [fallbackField('description', '')] })
+ */
+export function fallbackField(
+  field: string,
+  value: (frontmatter: Record<string, unknown>, context: SeriesPrepareContext) => unknown,
+  options?: PrepareWarnOptions,
+): SeriesPrepare;
+export function fallbackField(field: string, value: unknown, options?: PrepareWarnOptions): SeriesPrepare;
+export function fallbackField(field: string, value: unknown, options: PrepareWarnOptions = {}): SeriesPrepare {
+  const message = options.warn ?? `\`${field}\` absent — valeur de repli appliquée`;
+  return (frontmatter, context) => {
+    if (!isMissing(frontmatter[field])) return frontmatter;
+    const fallback = typeof value === 'function'
+      ? (value as (frontmatter: Record<string, unknown>, context: SeriesPrepareContext) => unknown)(frontmatter, context)
+      : value;
+    if (message !== false) context.warn(message);
+    return { ...frontmatter, [field]: fallback };
+  };
+}
+
+/**
+ * Préparation : les tags scalaires non textuels deviennent des chaînes. En
+ * YAML, `tags: [2004]` est un entier et `tags: [true]` un booléen, que
+ * `tags: string[]` (§1.3) refuse ; ils sont convertis par `String()`, et
+ * signalés. Une autre valeur (date, objet) est laissée au schéma. Un `tags`
+ * scalaire (`tags: 2004`) n'est pas mis en liste.
+ */
+export function stringifyTags(options: PrepareWarnOptions & { readonly field?: string } = {}): SeriesPrepare {
+  const field = options.field ?? 'tags';
+  const message = options.warn ?? `\`${field}\` : valeurs non textuelles converties en chaînes`;
+  return (frontmatter, context) => {
+    const tags = frontmatter[field];
+    if (!Array.isArray(tags)) return frontmatter;
+    const scalar = (tag: unknown) => typeof tag === 'number' || typeof tag === 'boolean' || typeof tag === 'bigint';
+    if (!tags.some(scalar)) return frontmatter;
+    if (message !== false) context.warn(message);
+    return { ...frontmatter, [field]: tags.map((tag) => (scalar(tag) ? String(tag) : tag)) };
+  };
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function listSome(ids: readonly string[], max = 10): string {
+  return ids.slice(0, max).join(', ') + (ids.length > max ? ` … (+${ids.length - max})` : '');
 }
 
 /** Un dossier porteur, et le fichier index retenu pour la locale. */
@@ -151,18 +281,59 @@ async function discover(
  *   series: defineCollection({ loader: seriesLoader({ base: 'public/content/archives', locale: 'en' }), schema }),
  *   series_fr: defineCollection({ loader: seriesLoader({ base: 'public/content/archives' }), schema }),
  * };
+ *
+ * @example
+ * // Replis d'un contrat de site, rubriques écartées.
+ * seriesLoader({
+ *   base: 'public/content/archives',
+ *   sections: 'exclude',
+ *   prepare: [
+ *     fallbackField('series_id', (_, { slug }) => slug, { warn: 'series_id absent — repli sur le nom du dossier' }),
+ *     fallbackField('description', ''),
+ *     stringifyTags(),
+ *   ],
+ * });
  */
 export function seriesLoader(options: SeriesLoaderOptions): Loader {
-  const { locale, fallback = true, render = true, exclude = [], generateId } = options;
+  const { locale, fallback = true, render = true, exclude = [], generateId, sections = 'include' } = options;
   if (locale !== undefined && !LANG.test(locale)) {
     throw new Error(`[hyperfocale] seriesLoader : locale « ${locale} » invalide — attendu [a-z]{2}(-[A-Z]{2})? (Annexe F).`);
   }
+  if (sections !== 'include' && sections !== 'exclude') {
+    throw new Error(`[hyperfocale] seriesLoader : sections « ${String(sections)} » invalide — attendu 'include' ou 'exclude'.`);
+  }
+  const prepares: readonly SeriesPrepare[] =
+    options.prepare === undefined ? [] : typeof options.prepare === 'function' ? [options.prepare] : options.prepare;
 
   return {
     name: locale === undefined ? 'hyperfocale-series-loader' : `hyperfocale-series-loader-${locale}`,
     load: async (context: LoaderContext) => {
       const projectRoot = fileURLToPath(context.config.root);
       const base = toPath(options.base, projectRoot);
+
+      /** Applique les préparations dans l'ordre ; une exception devient une entrée invalide. */
+      const prepareEntry = async (
+        frontmatter: Record<string, unknown>,
+        ctx: SeriesPrepareContext,
+      ): Promise<Record<string, unknown>> => {
+        let data = frontmatter;
+        for (const step of prepares) {
+          let next: unknown;
+          try {
+            next = await step(data, ctx);
+          } catch (error) {
+            const reason = error instanceof Error ? error.message : String(error);
+            throw new Error(`[hyperfocale] seriesLoader : prepare a échoué sur ${ctx.filePath} (« ${ctx.id} ») — ${reason}`, {
+              cause: error,
+            });
+          }
+          if (!isRecord(next)) {
+            throw new Error(`[hyperfocale] seriesLoader : prepare doit rendre un objet — ${ctx.filePath} (« ${ctx.id} »).`);
+          }
+          data = next;
+        }
+        return data;
+      };
 
       const sync = async () => {
         const exists = await stat(base).then((s) => s.isDirectory(), () => false);
@@ -173,43 +344,78 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
         }
         const untouched = new Set(context.store.keys());
         const seen = new Map<string, string>();
-        for (const found of await discover(base, locale, fallback, exclude)) {
-          const abs = join(found.dir, found.file);
-          const contents = await readFile(abs, 'utf-8');
-          const { frontmatter, content } = parseFrontmatter(contents);
-          const id = generateId?.({ path: found.path, file: found.file, data: frontmatter }) ?? (found.path === '' ? 'index' : found.path);
-          const previous = seen.get(id);
-          if (previous !== undefined) {
-            throw new Error(`[hyperfocale] seriesLoader : identifiant « ${id} » produit par ${previous} et ${abs}.`);
-          }
-          seen.set(id, abs);
-          untouched.delete(id);
+        const warnings = new Map<string, string[]>();
+        try {
+          for (const found of await discover(base, locale, fallback, exclude)) {
+            const abs = join(found.dir, found.file);
+            const contents = await readFile(abs, 'utf-8');
+            const { frontmatter, content } = parseFrontmatter(contents);
+            // §1.10 : le discriminant est `type`, tel qu'écrit dans le fichier.
+            if (sections === 'exclude' && frontmatter.type === 'section') continue;
+            const id = generateId?.({ path: found.path, file: found.file, data: frontmatter }) ?? (found.path === '' ? 'index' : found.path);
+            const previous = seen.get(id);
+            if (previous !== undefined) {
+              throw new Error(`[hyperfocale] seriesLoader : identifiant « ${id} » produit par ${previous} et ${abs}.`);
+            }
+            seen.set(id, abs);
+            untouched.delete(id);
 
-          const filePath = posix(relative(projectRoot, abs));
-          const digest = context.generateDigest(`${found.file}\n${contents}`);
-          const existing = context.store.get(id);
-          if (existing !== undefined && existing.digest === digest && existing.filePath === filePath) {
-            // Ce que fait `glob()` pour une entrée inchangée : redéclarer ses
-            // images au graphe de modules. La méthode n'est pas dans le type
-            // public de `DataStore`, d'où l'appel optionnel.
-            const store = context.store as typeof context.store & {
-              addAssetImports?: (assets: string[], filePath: string) => void;
-            };
-            if (existing.assetImports?.length) store.addAssetImports?.(existing.assetImports, filePath);
-            continue;
-          }
+            const filePath = posix(relative(projectRoot, abs));
+            const data = prepares.length === 0 ? frontmatter : await prepareEntry(frontmatter, {
+              id,
+              path: found.path,
+              slug: found.path.slice(found.path.lastIndexOf('/') + 1),
+              file: found.file,
+              filePath,
+              locale: found.file === 'index.md' ? undefined : locale,
+              collectionLocale: locale,
+              warn: (message: string) => {
+                const ids = warnings.get(message) ?? [];
+                if (!ids.includes(id)) ids.push(id);
+                warnings.set(message, ids);
+              },
+            });
 
-          const data = await context.parseData({ id, data: frontmatter, filePath: abs });
-          const rendered = render ? await context.renderMarkdown(content, { fileURL: pathToFileURL(abs) }) : undefined;
-          context.store.set({
-            id,
-            data,
-            body: content,
-            filePath,
-            digest,
-            ...(rendered !== undefined ? { rendered } : {}),
-            ...(rendered?.metadata?.imagePaths?.length ? { assetImports: rendered.metadata.imagePaths } : {}),
-          });
+            // Avec `prepare`, le cache porte aussi sur le frontmatter préparé :
+            // une préparation qui change (repli retiré, nouvelle règle) revalide.
+            // Un résultat qui ne se sérialise pas n'est jamais tenu pour inchangé.
+            let prepared: string | null = '';
+            if (prepares.length > 0) {
+              try {
+                prepared = `\n${JSON.stringify(data)}`;
+              } catch {
+                prepared = null;
+              }
+            }
+            const digest = context.generateDigest(`${found.file}\n${contents}${prepared ?? ''}`);
+            const existing = context.store.get(id);
+            if (prepared !== null && existing !== undefined && existing.digest === digest && existing.filePath === filePath) {
+              // Ce que fait `glob()` pour une entrée inchangée : redéclarer ses
+              // images au graphe de modules. La méthode n'est pas dans le type
+              // public de `DataStore`, d'où l'appel optionnel.
+              const store = context.store as typeof context.store & {
+                addAssetImports?: (assets: string[], filePath: string) => void;
+              };
+              if (existing.assetImports?.length) store.addAssetImports?.(existing.assetImports, filePath);
+              continue;
+            }
+
+            const parsed = await context.parseData({ id, data, filePath: abs });
+            const rendered = render ? await context.renderMarkdown(content, { fileURL: pathToFileURL(abs) }) : undefined;
+            context.store.set({
+              id,
+              data: parsed,
+              body: content,
+              filePath,
+              digest,
+              ...(rendered !== undefined ? { rendered } : {}),
+              ...(rendered?.metadata?.imagePaths?.length ? { assetImports: rendered.metadata.imagePaths } : {}),
+            });
+          }
+        } finally {
+          for (const [message, ids] of warnings) {
+            context.logger.warn(`${message} — ${ids.length} entrée(s) : ${listSome(ids)}`);
+          }
         }
         for (const id of untouched) context.store.delete(id);
       };
