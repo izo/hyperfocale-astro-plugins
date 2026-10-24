@@ -11,6 +11,10 @@ export default defineConfig({
     'components/index': 'src/components/index.ts',
     'helpers/index': 'src/helpers/index.ts',
     'cli/init': 'src/cli/init.ts',
+    // Résolveur de médias pur (aucun node:*, ni astro, ni zod) et loader Content
+    // Layer (Node) : lisent un corpus rangé hors de `src/content/` (#130).
+    media: 'src/media.ts',
+    loader: 'src/loader.ts',
     // Contrat d'ingestion : sous-chemins additifs, jamais importés par
     // l'intégration. `ingest/index`, `ingest/dropbox` et `ingest/webdav`
     // restent sans module `node:*` (vérifié par tests/unit/ingest/exports.test.ts).

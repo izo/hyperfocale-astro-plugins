@@ -91,6 +91,35 @@ export function joinPath(dir: string, rest: string): string {
   return dir === '' ? rest : `${dir}/${rest}`;
 }
 
+const URL_SCHEME = /^[a-z][a-z0-9+.-]*:/i;
+
+/**
+ * Référence relative à un fichier index (§4.10, règle 8) : non vide, sans `/`
+ * initial ni schéma d'URL. `./media/01.jpg` en est une ; `/content/…` et
+ * `https://…` n'en sont pas.
+ */
+export function isRelativeReference(ref: string): boolean {
+  return ref !== '' && !ref.startsWith('/') && !URL_SCHEME.test(ref);
+}
+
+/**
+ * Résout une référence relative depuis un dossier (NFC, `.` et `..` résolus) ;
+ * `null` si elle sort de la racine — un `..` de trop.
+ */
+export function resolveReference(folder: string, ref: string): string | null {
+  const stack: string[] = [];
+  for (const segment of joinPath(folder, ref.normalize('NFC')).split('/')) {
+    if (segment === '' || segment === '.') continue;
+    if (segment === '..') {
+      if (stack.length === 0) return null;
+      stack.pop();
+    } else {
+      stack.push(segment);
+    }
+  }
+  return stack.join('/');
+}
+
 /** `path` est-il `dir` lui-même ou l'un de ses descendants ? */
 export function isWithin(path: string, dir: string): boolean {
   return dir === '' || path === dir || path.startsWith(`${dir}/`);
@@ -168,11 +197,16 @@ export function extensionOf(path: string): string | null {
   return dot <= 0 ? null : name.slice(dot + 1).toLowerCase();
 }
 
-const IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'tif', 'tiff']);
+/**
+ * Extensions qui alimentent la galerie (§1.2, classe `image` de §1.9), en
+ * minuscules — comparées à l'extension du nom en minuscules.
+ */
+export const IMAGE_EXTENSIONS: readonly string[] = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'tif', 'tiff'];
+const IMAGE_EXTENSION_SET = new Set(IMAGE_EXTENSIONS);
 
 /** Le chemin désigne-t-il une image au sens de §1.2 / §1.9 (par extension) ? */
 export function isImagePath(path: string): boolean {
-  return IMAGE_EXTENSIONS.has(extensionOf(path) ?? '');
+  return IMAGE_EXTENSION_SET.has(extensionOf(path) ?? '');
 }
 
 /**

@@ -1,0 +1,36 @@
+---
+// Fixture e2e de #130 : `seriesLoader` + `readSeriesMedia` + `resolveSeriesMedia`
+// sur un corpus hors de `src/content/`.
+import { getCollection, render } from 'astro:content';
+import { readSeriesMedia } from '@regrets/hyperfocale/loader';
+import { resolveSeriesMedia } from '@regrets/hyperfocale/media';
+import { join } from 'node:path';
+
+export async function getStaticPaths() {
+  const paths = [];
+  for (const locale of ['fr', 'en'] as const) {
+    for (const entry of await getCollection(locale === 'fr' ? 'corpus_fr' : 'corpus_en')) {
+      paths.push({ params: { path: `${locale}/${entry.id}` }, props: { entry } });
+    }
+  }
+  return paths;
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const media = resolveSeriesMedia({
+  frontmatter: entry.data,
+  ...(await readSeriesMedia(join('corpus', entry.id))),
+  url: (path) => `/media/${entry.id}/${path}`,
+});
+---
+
+<html lang="fr">
+  <head><meta charset="utf-8" /><title>{entry.data.title}</title></head>
+  <body>
+    <h1>{entry.data.title}</h1>
+    <p data-artist>{(entry.data as Record<string, unknown>).artist}</p>
+    <div data-body><Content /></div>
+    <script type="application/json" data-media set:html={JSON.stringify(media).replace(/</g, '\\u003c')} />
+  </body>
+</html>

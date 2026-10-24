@@ -697,6 +697,98 @@ afterEach(() => resetSeriesCache());
 
 ---
 
+## Corpus hors de `src/content/` — `/loader` et `/media`
+
+Les helpers ci-dessus trouvent `media/` et `images.json` par `import.meta.glob`, donc sous `src/content/` seulement, et dans le runtime Astro seulement. Un site dont le corpus vit ailleurs — un dossier public, un dossier matérialisé par l'ingestion — et dont les médias sont servis d'ailleurs (un bucket) emploie à la place deux sous-chemins qui ne dépendent ni de l'un ni de l'autre :
+
+| Import | Rôle | Runtime |
+|--------|------|---------|
+| `@regrets/hyperfocale/loader` | `seriesLoader()` — loader Content Layer, repli de locale ; `readSeriesMedia()` — lit `images.json` et la liste de `media/` d'une série | Node (build) |
+| `@regrets/hyperfocale/media` | `resolveSeriesMedia()` — galerie, couverture, documents joints, en fonction pure ; `IMAGE_EXTENSIONS`, `ORIGINAL_EXTENSIONS`, `isImagePath`, `isOriginal`, `classifyAttachment`, `parseImageManifest` | Partout : ni `node:*`, ni `astro`, ni `zod` |
+
+### `seriesLoader(options)`
+
+- **Découverte (§1.2)** : tout dossier de `base` qui porte un fichier index est une entrée, à toute profondeur — sections (§1.10), conteneurs et sous-séries (§1.8) compris. Jamais de descente dans `media/`, ni dans un dossier exclu (§4.2 : `.*`, `Thumbs.db`… plus vos règles `exclude`), ni à travers un lien symbolique. Identifiant : le chemin du dossier relatif à `base` (`music/concerts/2010/the-wombats-paris-2010`), `index` pour `base` lui-même ; `generateId` pour en décider autrement (une collision lève une erreur).
+- **Repli de locale (Annexe F, stratégie 2)** : sans `locale`, chaque dossier fournit son `index.md` ; avec `locale: 'en'`, son `index.en.md`, sinon son `index.md` (`fallback: false` pour ne pas retomber). Une collection par locale donne la stratégie 3.
+- **Frontmatter entier, validé** : tout le frontmatter passe à `parseData`, donc au schéma de la collection, sans liste blanche — un champ propre au site arrive dans `entry.data`, une entrée invalide fait échouer le build. Le frontmatter est lu par `parseFrontmatter` d'`astro/markdown`, le parseur de `glob()`.
+- **Body** : `entry.body`, et rendu en HTML au chargement pour que `render(entry)` fonctionne (`render: false` pour s'en passer). En développement, toute modification d'un `.md` sous `base` recharge la collection.
+
+| Option | Type | Défaut |
+|--------|------|--------|
+| `base` | `string \| URL` — relatif à la racine du projet, absolu, ou `file:` | — |
+| `locale` | `string` — `[a-z]{2}(-[A-Z]{2})?` | aucune |
+| `fallback` | `boolean` | `true` |
+| `render` | `boolean` | `true` |
+| `exclude` | `(string \| RegExp \| (path) => boolean)[]` — règles de §4.2 | `[]` |
+| `generateId` | `({ path, file, data }) => string` | chemin du dossier |
+
+### `resolveSeriesMedia({ frontmatter, manifest?, mediaFiles?, url? })`
+
+Prend le frontmatter, le texte (ou la valeur) d'`images.json` et la liste des fichiers de `media/` ; ne lit rien. Rend `{ source, images, cover?, attachments, diagnostics }` :
+
+- **`images`** — priorité `images:` du frontmatter > `images.json` > scan de `media/` (§1.5.1). Les deux listes écrites gardent leur ordre ; une entrée est une chaîne ou `{ url, alt?, width?, height? }`, l'URL étant absolue, absolue au site, ou relative au fichier index (`./media/01.jpg`, §1.5.1, v2.12 pour `images:`). Le scan ne prend que `media/` même — aucune récursion, les sous-séries ont leur propre `media/` (§1.8) —, dans l'ordre canonique (octets UTF-8, celui de `buildImagesManifest`), moins les vignettes d'embeds (§1.11). Un original (§1.9) n'y entre jamais.
+- **`cover`** — `cover` du frontmatter, sinon la première image : la première entrée du manifeste quand il y en a un (§1.6, §1.5.1). Un `cover` qui ne désigne pas une image, ou qu'on sait absent, retombe sur ce défaut. Vers une sous-série (`./the-wombats/media/01.jpg`), il est rendu sans vérification.
+- **`attachments`** — `files:` du frontmatter > clé `files` du manifeste > fichiers de `media/` ni images ni originaux, triés et enrichis par `attachments:` (§1.9).
+- **`diagnostics`** — jamais d'exception : une anomalie devient un diagnostic aux codes et sévérités de §4.10 (`images-conflict`, `images-json-invalid`, `media-nested`, `cover-not-found`, `cover-not-image`, `attachment-not-found`), et la résolution continue avec le repli de la spec. Les corpus de fixtures de la spec sont rejoués par les tests : sur chaque série, ces diagnostics sont exactement ceux qu'attend la fixture de validation.
+
+`url(path)` rend l'URL publiée d'un fichier local à partir de son chemin relatif au dossier de la série (`media/01.jpg`), NFC, non encodé ; défaut `./<path>`. Chaque image locale garde ce chemin dans `path`. Sans `mediaFiles` (`media/` inconnu, médias distants), rien n'est scanné et les références vers `media/` ne sont pas vérifiées.
+
+### Exemple — corpus sous `public/content`, médias dans un bucket
+
+C'est le cas de `mathieu-drouet.com` : `public/content` est un lien vers le dépôt de contenu, les archives existent en anglais (`index.en.md`) et en français (`index.md`, langue d'origine), et les médias sont servis par un Worker sous `/content/…` depuis R2. `images.json` y est la liste de ce que contient le bucket : il fait foi même quand `media/` est vide sur le disque du build.
+
+```ts
+// src/content.config.ts
+import { defineCollection, z } from 'astro:content';
+import { baseSeriesSchema } from '@regrets/hyperfocale';
+import { seriesLoader } from '@regrets/hyperfocale/loader';
+
+const schema = () =>
+  baseSeriesSchema({ dateRequired: true }).safeExtend({
+    series_id: z.string(),
+    artist: z.string().optional(),
+  });
+
+export const collections = {
+  series: defineCollection({
+    loader: seriesLoader({ base: 'public/content/archives', locale: 'en' }), // index.en.md, sinon index.md
+    schema,
+  }),
+  series_fr: defineCollection({
+    loader: seriesLoader({ base: 'public/content/archives' }), // index.md
+    schema,
+  }),
+};
+```
+
+```astro
+---
+// src/pages/archives/[...slug].astro
+import { getCollection, render } from 'astro:content';
+import { readSeriesMedia } from '@regrets/hyperfocale/loader';
+import { resolveSeriesMedia } from '@regrets/hyperfocale/media';
+
+export async function getStaticPaths() {
+  return (await getCollection('series')).map((entry) => ({ params: { slug: entry.id }, props: { entry } }));
+}
+
+const { entry } = Astro.props;
+const { Content } = await render(entry);
+const { images, cover, attachments, diagnostics } = resolveSeriesMedia({
+  frontmatter: entry.data,
+  // { manifest: texte d'images.json | null, mediaFiles: [{ name, size }] | null }
+  ...(await readSeriesMedia(`public/content/archives/${entry.id}`)),
+  // Clé publique d'un fichier local : celle du bucket, servie par le Worker.
+  url: (path) => `/content/archives/${entry.id}/${path}`,
+});
+for (const d of diagnostics) console.warn(`[${entry.id}] ${d.code} : ${d.message}`);
+---
+```
+
+Une entrée de manifeste absolue au site (`/content/archives/…/media/01.jpg`) est rendue telle quelle ; une entrée relative passe par `url`. Les noms de fichiers ne sont pas encodés : encodez dans `url` si vos clés le demandent. Hors d'un composant — un script de génération d'API, un Worker —, `resolveSeriesMedia` s'appelle de la même façon avec ce que vous avez lu du disque ou du bucket.
+
+---
+
 ## Thème
 
 Le plugin injecte un thème CSS via l'option `theme` (`'light'`, `'dark'`, `'auto'`, `'none'`).

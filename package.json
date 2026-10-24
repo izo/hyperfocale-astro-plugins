@@ -1,6 +1,6 @@
 {
   "name": "@regrets/hyperfocale",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
   "license": "MIT",
@@ -41,6 +41,14 @@
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"
+    },
+    "./media": {
+      "types": "./dist/media.d.ts",
+      "import": "./dist/media.js"
+    },
+    "./loader": {
+      "types": "./dist/loader.d.ts",
+      "import": "./dist/loader.js"
     },
     "./ingest": {
       "types": "./dist/ingest/index.d.ts",

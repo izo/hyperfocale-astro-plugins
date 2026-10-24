@@ -37,6 +37,7 @@ export {
   classifyPath,
   collisionKey,
   compareCanonical,
+  IMAGE_EXTENSIONS,
   isExcluded,
   isImagePath,
   isIndexFile,
