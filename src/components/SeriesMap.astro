@@ -1,13 +1,25 @@
 ---
 import type { Series } from '../helpers/index.js';
+import { resolveLabels, pluralLabel, passthroughAttrs, type InstanceProps } from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   series: Series[];
   height?: string;
   prefix?: string;
 }
 
-const { series, height = '400px', prefix = '/series' } = Astro.props;
+const {
+  series,
+  height = '400px',
+  prefix = '/series',
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const rootAttrs = { 'aria-label': labels['map.label'], ...passthroughAttrs(rest) };
 
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 
@@ -56,19 +68,21 @@ if (geoPoints.length > 0) {
     y: Math.round(((pMaxLat - p.lat) / (pMaxLat - pMinLat)) * VIEW_H),
   }));
 }
+
+const summary = pluralLabel(labels['map.count'], points.length, locale, { count: points.length });
 ---
 
-<div class="hf-map" style={`height: ${height}`} aria-label="Carte géographique des séries">
+<div class:list={['hf-map', className]} style={`height: ${height}`} {...rootAttrs}>
   {points.length === 0 ? (
-    <p class="hf-map__empty">Aucune série avec coordonnées GPS.</p>
+    <p class="hf-map__empty">{labels['map.empty']}</p>
   ) : (
     <svg
       class="hf-map__svg"
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
       role="img"
-      aria-label={`${points.length} série${points.length > 1 ? 's' : ''} géolocalisée${points.length > 1 ? 's' : ''}`}
+      aria-label={summary}
     >
-      <title>{points.length} série{points.length > 1 ? 's' : ''} géolocalisée{points.length > 1 ? 's' : ''}</title>
+      <title>{summary}</title>
       <rect width={VIEW_W} height={VIEW_H} class="hf-map__bg" rx="4" />
       {points.map((p) => (
         <a href={p.url} class="hf-map__marker-link">
@@ -96,7 +110,7 @@ if (geoPoints.length > 0) {
     width: 100%;
     border-radius: var(--hf-card-radius, 4px);
     overflow: hidden;
-    border: 1px solid var(--hf-filter-border, var(--hf-color-border, #e0e0e0));
+    border: 1px solid var(--hf-filter-border, var(--hf-color-border));
   }
 
   .hf-map__svg {
@@ -106,19 +120,19 @@ if (geoPoints.length > 0) {
   }
 
   .hf-map__bg {
-    fill: var(--hf-map-bg, #d4dde8);
-    stroke: var(--hf-map-stroke, #b0bec5);
+    fill: var(--hf-map-bg);
+    stroke: var(--hf-map-stroke);
     stroke-width: 1;
   }
 
   .hf-map__marker {
-    fill: var(--hf-map-marker, var(--hf-color-accent, #0066ff));
+    fill: var(--hf-map-marker, var(--hf-color-accent));
     transition: fill var(--hf-transition, 200ms ease), r var(--hf-transition, 200ms ease);
   }
 
   .hf-map__marker-link:hover .hf-map__marker,
   .hf-map__marker-link:focus-visible .hf-map__marker {
-    fill: var(--hf-map-marker-hover, #004db3);
+    fill: var(--hf-map-marker-hover);
     r: 11;
   }
 
@@ -127,14 +141,14 @@ if (geoPoints.length > 0) {
   }
 
   .hf-map__marker-link:focus-visible .hf-map__marker {
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 3px;
   }
 
   .hf-map__label {
     font-family: var(--hf-font-sans, system-ui);
     font-size: 11px;
-    fill: var(--hf-color-text, #111111);
+    fill: var(--hf-color-text);
     pointer-events: none;
     opacity: 0;
     transition: opacity var(--hf-transition, 200ms ease);
@@ -151,7 +165,7 @@ if (geoPoints.length > 0) {
     justify-content: center;
     height: 100%;
     margin: 0;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     font-family: var(--hf-font-sans, system-ui);
     font-size: 0.9rem;
   }

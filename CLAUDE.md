@@ -25,10 +25,12 @@ src/
   index.ts          ← point d'entrée de l'intégration (defineIntegration, options)
   schema.ts         ← schéma Zod de la collection + module virtuel Vite
   helpers/          ← API publique TypeScript (getSeriesList, getSeriesBySlug, etc.) — lit src/content/ par import.meta.glob
+  i18n.ts           ← libellés fr/en (HF_LABELS), formats Intl (dates, pluriels, tailles) — pur
   media.ts          ← résolveur de médias pur (galerie, couverture, documents joints) + primitives partagées avec helpers/
   loader.ts         ← loader Content Layer pour un corpus hors de src/content/ (repli index.<locale>.md → index.md)
   components/       ← 9 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
                        SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry)
+                       + runtime.ts (outils internes : attributs passés, headingLevel, JSON de script)
   routes/           ← pages Astro injectées via injectRoute()
   theme/            ← base.css avec custom properties --hf-*
   ingest/           ← contrat d'ingestion (spec couche 4) : snapshot, diff, validation, garde,
@@ -37,6 +39,7 @@ src/
 tests/
   __mocks__/        ← mocks astro:content et astro:assets (modules virtuels hors runtime)
   unit/             ← tests helpers + schéma Zod ; unit/ingest/ = contrat d'ingestion
+  components/       ← rendu des 9 composants (API container d'Astro, vitest.components.config.ts)
   e2e/              ← tests routes via astro build statique
   fixtures/spec-ingestion/ ← copie épinglée des fixtures de la spec (npm run fixtures:sync / fixtures:check)
 examples/demo-site/ ← site consommateur pour tester le plugin en conditions réelles
@@ -56,6 +59,8 @@ dist/               ← build tsup (gitignored)
 **Peer deps** : `astro` et `zod` sont des peer dependencies. Ne pas les ajouter en dépendances directes.
 
 **Primitives de médias** : `classifyAttachment`, `isOriginal`, `parseImageManifest`, `posterFilenames` vivent dans `src/media.ts` et `/helpers` les réexporte — `/helpers` importe `astro:content`, `/media` doit rester chargeable partout (`tests/unit/ingest/exports.test.ts` le vérifie). La résolution de références relatives et la lecture d'`images.json` sont dans `src/ingest/paths.ts` et `src/ingest/manifest.ts`, partagées avec la validation : une seule implémentation de §1.5.1.
+
+**Composants — i18n, jetons, options par instance** (#136) : aucun libellé ni aucune couleur en dur dans `src/components/*.astro`. Un libellé = une clé de `HyperfocaleLabels` (`src/i18n.ts`), présente en `fr` **et** en `en` (test) ; une couleur = un jeton `--hf-*` défini dans `theme/base.css` **et** documenté au README (`tests/unit/tokens.test.ts`). Chaque composant accepte `locale`, `labels`, `class`, `data-*`/`aria-*` (via `passthroughAttrs` de `components/runtime.ts`) ; locale par défaut `fr`. Les `.astro` importent `./runtime.js` — entrée tsup `components/runtime`, sans quoi `dist/components/` ne la trouverait pas. Un JSON passé à un script client va par `set:html={scriptJson(…)}` (jamais `{}` dans un `<script>`, #138). Les tests de rendu (`npm run test:components`, inclus dans `test:unit`) forcent `imageOptimization: 'disabled'`.
 
 ## CLI
 
@@ -83,6 +88,7 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 | `import hyperfocale from '@regrets/hyperfocale'` | `src/index.ts` — intégration Astro |
 | `import { ... } from '@regrets/hyperfocale/components'` | `src/components/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
+| `import { ... } from '@regrets/hyperfocale/i18n'` | `src/i18n.ts` — `HF_LABELS`, `resolveLabels`, `formatDate`, `formatFileSize`, `pluralLabel` — pur (aussi réexporté par `/components`) |
 | `import { ... } from '@regrets/hyperfocale/media'` | `src/media.ts` — `resolveSeriesMedia` et primitives de médias, purs (ni `node:*`, ni astro, ni zod) |
 | `import { ... } from '@regrets/hyperfocale/loader'` | `src/loader.ts` — `seriesLoader` (Content Layer, repli de locale, `prepare` avant `parseData`, `sections`), `fallbackField`, `stringifyTags`, `readSeriesMedia` (Node) |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |

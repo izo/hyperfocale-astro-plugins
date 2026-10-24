@@ -1,11 +1,22 @@
 ---
 import type { ImageMetadata } from '../helpers/index.js';
+import { resolveLabels, passthroughAttrs, scriptJson, type InstanceProps } from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   images: ImageMetadata[];
 }
 
-const { images } = Astro.props;
+const { images, locale = 'fr', labels: labelOverrides, class: className, ...rest } = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+// Les deux libellés lus par le script client voyagent en attributs : le
+// compteur et l'`alt` de repli changent à chaque image.
+const rootAttrs = {
+  'aria-label': labels['lightbox.label'],
+  'data-hf-label-counter': labels['lightbox.counter'],
+  'data-hf-label-alt': labels['lightbox.imageAlt'],
+  ...passthroughAttrs(rest),
+};
 
 // Données sérialisées pour le JS client. Injectées via `set:html` : dans un
 // `<script>`, Astro n'évalue pas les expressions `{}` du template — sans ça, le
@@ -17,23 +28,23 @@ const { images } = Astro.props;
 // d'origine — donc la séquence ne peut plus apparaître littéralement.
 // Un `alt` n'est pas toujours écrit à la main : `images.json` (§1.5.1) est
 // produit par des outils qui lisent les métadonnées des fichiers.
-const lightboxData = JSON.stringify(
+const lightboxData = scriptJson(
   images.map((img) => ({ src: img.src, width: img.width, height: img.height, alt: img.alt })),
-).replace(/</g, '\\u003c');
+);
 ---
 
 <div
-  class="hf-lightbox"
+  class:list={['hf-lightbox', className]}
   id="hf-lightbox"
   role="dialog"
   aria-modal="true"
-  aria-label="Visionneuse d'images"
   aria-hidden="true"
+  {...rootAttrs}
 >
   <button
     class="hf-lightbox__close"
     id="hf-lightbox-close"
-    aria-label="Fermer la visionneuse"
+    aria-label={labels['lightbox.close']}
     type="button"
   >
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -45,7 +56,7 @@ const lightboxData = JSON.stringify(
   <button
     class="hf-lightbox__nav hf-lightbox__nav--prev"
     id="hf-lightbox-prev"
-    aria-label="Image précédente"
+    aria-label={labels['lightbox.prev']}
     type="button"
   >
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -66,7 +77,7 @@ const lightboxData = JSON.stringify(
   <button
     class="hf-lightbox__nav hf-lightbox__nav--next"
     id="hf-lightbox-next"
-    aria-label="Image suivante"
+    aria-label={labels['lightbox.next']}
     type="button"
   >
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -94,6 +105,10 @@ const lightboxData = JSON.stringify(
 
     type ImageInfo = { src: string; width: number; height: number; alt?: string };
     const images: ImageInfo[] = JSON.parse(dataEl.textContent ?? '[]');
+    const fill = (template: string, n: number) =>
+      template.split('{n}').join(String(n)).split('{total}').join(String(images.length));
+    const altTemplate = lightbox.dataset.hfLabelAlt ?? '{n} / {total}';
+    const counterTemplate = lightbox.dataset.hfLabelCounter ?? '{n} / {total}';
     let current = 0;
     let previousFocus: HTMLElement | null = null;
 
@@ -102,8 +117,8 @@ const lightboxData = JSON.stringify(
       const image = images[current];
       if (!image) return;
       img!.src = image.src;
-      img!.alt = image.alt ?? `Image ${current + 1} sur ${images.length}`;
-      counter!.textContent = `${current + 1} / ${images.length}`;
+      img!.alt = image.alt ?? fill(altTemplate, current + 1);
+      counter!.textContent = fill(counterTemplate, current + 1);
       btnPrev!.style.display = images.length <= 1 ? 'none' : '';
       btnNext!.style.display = images.length <= 1 ? 'none' : '';
     }
@@ -180,7 +195,7 @@ const lightboxData = JSON.stringify(
     position: fixed;
     inset: 0;
     z-index: 1000;
-    background: var(--hf-color-overlay, rgba(0, 0, 0, 0.85));
+    background: var(--hf-color-overlay);
     align-items: center;
     justify-content: center;
     padding: 1rem;
@@ -211,7 +226,7 @@ const lightboxData = JSON.stringify(
     right: 1rem;
     background: none;
     border: none;
-    color: var(--hf-color-text-overlay, #ffffff);
+    color: var(--hf-color-text-overlay);
     cursor: pointer;
     padding: 0.5rem;
     border-radius: 50%;
@@ -223,8 +238,8 @@ const lightboxData = JSON.stringify(
 
   .hf-lightbox__close:hover,
   .hf-lightbox__close:focus-visible {
-    background: var(--hf-color-btn-overlay-hover, rgba(255, 255, 255, 0.15));
-    outline: 2px solid var(--hf-color-text-overlay, #ffffff);
+    background: var(--hf-color-btn-overlay-hover);
+    outline: 2px solid var(--hf-color-text-overlay);
     outline-offset: 2px;
   }
 
@@ -234,7 +249,7 @@ const lightboxData = JSON.stringify(
     transform: translateY(-50%);
     background: none;
     border: none;
-    color: var(--hf-color-text-overlay, #ffffff);
+    color: var(--hf-color-text-overlay);
     cursor: pointer;
     padding: 0.75rem;
     border-radius: 50%;
@@ -246,8 +261,8 @@ const lightboxData = JSON.stringify(
 
   .hf-lightbox__nav:hover,
   .hf-lightbox__nav:focus-visible {
-    background: var(--hf-color-btn-overlay-hover, rgba(255, 255, 255, 0.15));
-    outline: 2px solid var(--hf-color-text-overlay, #ffffff);
+    background: var(--hf-color-btn-overlay-hover);
+    outline: 2px solid var(--hf-color-text-overlay);
     outline-offset: 2px;
   }
 
@@ -264,7 +279,7 @@ const lightboxData = JSON.stringify(
     bottom: 1.25rem;
     left: 50%;
     transform: translateX(-50%);
-    color: var(--hf-color-text-overlay-muted, rgba(255, 255, 255, 0.75));
+    color: var(--hf-color-text-overlay-muted);
     font-size: 0.875rem;
     font-family: var(--hf-font-sans, system-ui);
   }

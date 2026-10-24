@@ -7,6 +7,47 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.23.0] — 2026-10-24
+
+Les composants ne servaient qu'un site francophone au thème du plugin : libellés et dates en français en dur, couleurs en dur en repli de chaque jeton, aucune option par instance. `mathieu-drouet.com` — anglais par défaut, cinq langues, dark mode par classe `.dark`, jetons propres — ne pouvait en rendre aucun (#136, lot P0, partie i18n + jetons + options par instance ; galop d'essai : le bouton de téléchargement ZIP avec `SeriesAttachments`). Tout est **additif** : sans `locale`, les composants rendent les mêmes libellés français qu'en 0.22.0.
+
+### Ajouté
+
+- **i18n des 9 composants** — props `locale` (BCP 47, défaut `fr`) et `labels` (`Partial<HyperfocaleLabels>`). Dictionnaires `fr` et `en` complets, exportés et gelés (`HF_LABELS`), 34 clés stables et documentées (README, *Libellés*). Résolution : `labels` → langue de la locale (`en-GB` → `en`) → `en` → `fr`. Dates par `Intl.DateTimeFormat(locale)` (lues en UTC), pluriels par `Intl.PluralRules` (formes CLDR, y compris côté client dans `SeriesFilter`), tailles de fichier par `Intl.NumberFormat` avec unités o/Ko/Mo/Go ↔ B/KB/MB/GB selon la langue.
+- **Sous-chemin `@regrets/hyperfocale/i18n`** (pur : ni `node:*`, ni astro, ni zod) — `HF_LABELS`, `HF_DEFAULT_LOCALE`, `resolveLabels`, `formatLabel`, `pluralLabel`, `formatDate`, `formatFileSize` ; types `HyperfocaleLabels`, `HyperfocaleLabelKey`, `HfPluralForms`, `HeadingLevel`. Mêmes exports depuis `/components`, avec le type `HyperfocaleInstanceProps`.
+- **Options par instance** — `class` et attributs `data-*`/`aria-*` reportés sur l'élément racine des 9 composants (un `aria-label` passé remplace celui du composant) ; `headingLevel` (`1`–`6`, défaut `2`) sur `SeriesAttachments`, `SeriesEmbeds`, `SeriesCard`, et sur `SeriesList` qui le transmet à ses cartes. `heading` reste prioritaire sur le libellé.
+- **Jetons** `--hf-color-on-accent`, `--hf-color-scrim`, `--hf-card-shadow-hover`, `--hf-embeds-gap`, `--hf-embeds-item-gap`, `--hf-embeds-radius` (les trois derniers étaient lus sans être définis). Liste complète des 36 jetons au README (*Thème → Jetons*), avec le mappage d'un site en `theme: 'none'`.
+
+### Modifié
+
+- **Plus aucune couleur en dur dans les composants** : les replis hex/`rgba()` de chaque `var(--hf-…)` sont retirés, et les quatre couleurs littérales (`#fff`, ombres, voile) passent par un jeton. Un site au thème du plugin (`auto`/`light`/`dark`) ne voit aucune différence ; un site en `theme: 'none'` qui affiche un composant sans mapper les jetons de couleur le voit désormais hériter de ses couleurs au lieu des gris du plugin — c'est l'objet du changement, mais la lightbox, sans `--hf-color-overlay`, a alors un fond transparent.
+- Dates des routes injectées : `formatDate(date, 'fr')`, lue en UTC — la date affichée ne dépend plus du fuseau de la machine de build.
+- Tailles de fichier en français : virgule décimale (`2,4 Mo`, auparavant `2.4 Mo`).
+
+### Corrigé
+
+- **`SeriesFilter` inerte** (#138) : le JSON du script client était écrit `{JSON.stringify(items)}` dans un `<script>`, où Astro n'évalue pas `{}` ; `JSON.parse` levait et aucun filtre ne s'appliquait. Injecté désormais par `set:html`, `<` échappé en `\u003c` comme dans `SeriesLightbox` (un titre contenant `</script>` ne ferme plus la balise).
+
+### Tests
+
+- `tests/components/render.test.ts` — **rendu des 9 composants** par l'API container d'Astro (`vitest.components.config.ts`, lancé par `npm run test:unit`) : rendu sans erreur en `fr` et en `en`, `class`/`data-*`/`aria-*` sur la racine et rien d'autre, `headingLevel`, libellés, dates (`fr`, `en`, `ja`), tailles, pluriels de `SeriesMap`, gabarits client de `SeriesLightbox`, et pour `SeriesFilter` un JSON présent, parseable et échappé.
+- `tests/unit/i18n.test.ts` — dictionnaires (mêmes clés, mêmes paramètres), résolution, pluriels CLDR, dates UTC, tailles par langue, outils des composants.
+- `tests/unit/tokens.test.ts` — aucune couleur littérale dans les styles des composants, chaque `--hf-*` lu est défini par `base.css`, chaque jeton de `base.css` est documenté au README.
+- `tests/unit/ingest/exports.test.ts` — `./i18n` exporté, sans dépendance externe en source comme dans `dist/`.
+
+### Rétro-compatibilité
+
+Aucun changement d'API cassant : toutes les props ajoutées sont optionnelles, la locale par défaut reste `fr`. Différences visibles, toutes voulues :
+
+- virgule décimale des tailles en français (`2,4 Mo`) ;
+- unité **Go / GB** au-delà de 1 024 Mio (tout s'affichait en Mo) ;
+- dates lues en **UTC** dans les routes **et** dans `SeriesCard` : la date ne dépend plus du fuseau de la machine de build ;
+- en `theme: 'none'` seulement, couleurs héritées du site là où les composants retombaient sur les gris du plugin ;
+- la lightbox porte des attributs `data-hf-label-*` (libellés transmis au script client) ;
+- `SeriesEmbeds` n'a plus de titre d'iframe de repli « Lecteur vidéo » : le titre vient toujours de `embeds.play` (attribut `data-hf-embed-title`, posé sur chaque façade).
+
+---
+
 ## [0.22.0] — 2026-10-24
 
 `seriesLoader` (`/loader`, 0.21.0) ne pouvait pas porter les archives de `mathieu-drouet.com` : le contrat du site exige `series_id` et `description`, que 53 et 23 séries n'ont pas encore, quelques tags sont des années (`- 2004`, un entier en YAML), et ses rubriques (`type: section`, §1.10) ne doivent pas entrer dans la collection des séries. Le site appliquait ses replis dans son propre loader ; il ne le pouvait plus avec `seriesLoader`, qui valide aussitôt (#135). Deux options **additives** ; rien ne change sans elles.

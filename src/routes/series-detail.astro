@@ -6,6 +6,7 @@ import SeriesGallery from '../components/SeriesGallery.astro';
 import SeriesAttachments from '../components/SeriesAttachments.astro';
 import SeriesEmbeds from '../components/SeriesEmbeds.astro';
 import SeriesList from '../components/SeriesList.astro';
+import { formatDate } from '../i18n.js';
 
 export async function getStaticPaths() {
   const series = await getSeriesList();
@@ -58,7 +59,7 @@ const { Content } = await render(series);
     <h1>{series.data.title}</h1>
     {series.data.date && (
       <time datetime={(series.data.date as Date).toISOString()}>
-        {(series.data.date as Date).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })}
+        {formatDate(series.data.date as Date, 'fr')}
       </time>
     )}
     {series.data.location && <p class="location">{series.data.location}</p>}
