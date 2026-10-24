@@ -41,6 +41,10 @@ La spec 2.12-draft (izo/hyperfocale-spec#35, §1.5.1) fixe la place de l'**ordre
 
 - Schéma : `images[].url` passe de `z.url()` à `z.string().min(1)`, et l'union des entrées gagne la forme courte. Une `url` vide reste refusée. Le test qui exigeait le rejet de `url: 'pas-une-url'` est remplacé : c'est désormais un chemin relatif licite.
 
+- `buildSeriesImagesManifest` et `declaresImages` vivent dans `ingest/series-manifest.ts` : lire le frontmatter tire js-yaml, et `ingest/manifest.ts` est importé par `/media`, qui doit rester sans dépendance externe.
+
+- **js-yaml 5** (#111) — `^4` → `^5` (5.5.0), qui embarque ses types. Un bloc de frontmatter vide reste `frontmatter-invalid` ; seul le libellé du message change.
+
 ### Tests
 
 - `tests/unit/media.test.ts` — les règles une à une, puis le **rejeu des corpus de la spec** : pour chacune des 29 fixtures de validation adossées à un corpus, chaque série est résolue depuis le disque, et ses diagnostics de médias doivent être exactement ceux que la fixture attend sur elle. Plus les résultats attendus des corpus valides (`minimal`, `manifest`, `nested`, `attachments`, `embeds`, `originals`).

@@ -45,14 +45,9 @@ v2.11. Les trois points que la v2.11 avait rouverts (#121, fermée) sont couvert
 Écart assumé : la collection du preset `project` est `work`, pas `projects`,
 qu'occupe `portfolio` depuis la 0.8.0.
 
-Restent ouverts par la v2.12 (§1.5.1, ordre éditorial des images) :
-
-- **Entrées locales de `images:`** — une entrée relative (`./media/01.jpg`) doit
-  se résoudre comme une entrée relative du manifeste. Le schéma refuse encore
-  une URL relative (`z.url()`) et la forme courte (chaîne), et `getSeriesImages`
-  sert l'entrée telle quelle au lieu de la chercher dans `media/` ;
-- **Manifeste dérivé** — l'ingestion ne doit pas produire d'`images.json` pour
-  une série dont l'`index.md` porte `images:` ; `buildImagesManifest` ne lit
-  pas le frontmatter.
+La v2.12 (§1.5.1, ordre éditorial des images) est couverte depuis la 0.21.0 :
+entrées locales de `images:` résolues comme celles du manifeste, et
+`buildSeriesImagesManifest` qui ne produit pas d'`images.json` pour une série
+portant `images:` — voir le CHANGELOG, section 0.21.0.
 
 Les audits datés de `docs/reports/` sont des archives.
