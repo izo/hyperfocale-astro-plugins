@@ -37,7 +37,14 @@ Les composants ne servaient qu'un site francophone au thème du plugin : libell�
 
 ### Rétro-compatibilité
 
-Aucun changement d'API cassant : toutes les props ajoutées sont optionnelles, la locale par défaut reste `fr`. Deux différences visibles, voulues : virgule décimale des tailles en français, et — en `theme: 'none'` seulement — couleurs héritées du site là où les composants retombaient sur les gris du plugin.
+Aucun changement d'API cassant : toutes les props ajoutées sont optionnelles, la locale par défaut reste `fr`. Différences visibles, toutes voulues :
+
+- virgule décimale des tailles en français (`2,4 Mo`) ;
+- unité **Go / GB** au-delà de 1 024 Mio (tout s'affichait en Mo) ;
+- dates lues en **UTC** dans les routes **et** dans `SeriesCard` : la date ne dépend plus du fuseau de la machine de build ;
+- en `theme: 'none'` seulement, couleurs héritées du site là où les composants retombaient sur les gris du plugin ;
+- la lightbox porte des attributs `data-hf-label-*` (libellés transmis au script client) ;
+- `SeriesEmbeds` n'a plus de titre d'iframe de repli « Lecteur vidéo » : le titre vient toujours de `embeds.play` (attribut `data-hf-embed-title`, posé sur chaque façade).
 
 ---
 

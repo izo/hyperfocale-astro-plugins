@@ -457,11 +457,24 @@ import type { Attachment, HyperfocaleLabels } from '@regrets/hyperfocale/compone
 
 const { locale } = Astro.props; // 'en' | 'fr' | 'es' | 'ja' | 'ko'
 
-// fr et en sont livrés ; les autres langues traduisent ce qu'elles affichent.
+// fr et en sont livrés ; une langue non livrée retombe sur `en` pour chaque clé
+// absente — y compris les unités de taille : la fournir en entier.
+const ja: Partial<HyperfocaleLabels> = {
+  'attachments.heading': 'ダウンロード',
+  'size.byte': 'B', 'size.kilobyte': 'KB', 'size.megabyte': 'MB', 'size.gigabyte': 'GB',
+};
 const labels: Partial<Record<string, Partial<HyperfocaleLabels>>> = {
   en: { 'attachments.heading': 'Download' },
   fr: { 'attachments.heading': 'Télécharger' },
-  ja: { 'attachments.heading': 'ダウンロード' },
+  es: {
+    'attachments.heading': 'Descargar',
+    'size.byte': 'B', 'size.kilobyte': 'KB', 'size.megabyte': 'MB', 'size.gigabyte': 'GB',
+  },
+  ja,
+  ko: {
+    'attachments.heading': '다운로드',
+    'size.byte': 'B', 'size.kilobyte': 'KB', 'size.megabyte': 'MB', 'size.gigabyte': 'GB',
+  },
 };
 
 const zip: Attachment = {
@@ -480,7 +493,8 @@ const zip: Attachment = {
   class="mt-8"
   data-track="series-download"
 />
-<!-- en : « Download », « 46.0 MB » · fr : « Télécharger », « 46,0 Mo » · ja : « ダウンロード », « 46.0 MB » -->
+<!-- en : « Download », « 46.0 MB » · fr : « Télécharger », « 46,0 Mo » · es : « Descargar », « 46,0 MB » · ja : « ダウンロード », « 46.0 MB » · ko : « 다운로드 », « 46.0 MB » -->
+<!-- Le nombre suit toujours la locale (Intl.NumberFormat) ; seule l'unité vient des libellés. -->
 ```
 
 Et les jetons, mappés sur ceux du site (voir *Thème* pour la liste complète) :
