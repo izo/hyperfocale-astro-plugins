@@ -149,3 +149,21 @@ describe('/media et /loader (#130)', () => {
     expect(reached).not.toContain('src/loader.ts');
   });
 });
+
+describe('/i18n (#136)', () => {
+  it('./i18n est exporté avec ses types', () => {
+    expect(pkg.exports['./i18n']).toEqual({ types: './dist/i18n.d.ts', import: './dist/i18n.js' });
+  });
+
+  it('src/i18n.ts : ni node:*, ni astro, ni zod', () => {
+    const { external } = graph(resolve(ROOT, 'src/i18n.ts'), fromSource);
+    expect([...external.keys()]).toEqual([]);
+  });
+
+  it('dist/i18n.js et dist/components/runtime.js : aucune dépendance externe (après build)', () => {
+    for (const file of ['dist/i18n.js', 'dist/components/runtime.js']) {
+      const { external } = graph(resolve(ROOT, file), fromDist);
+      expect([...external.keys()], file).toEqual([]);
+    }
+  });
+});

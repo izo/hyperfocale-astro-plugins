@@ -3,6 +3,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts'],
+    // Rendu des composants `.astro` : config dédiée (plugins Vite d'Astro),
+    // vitest.components.config.ts — lancée par `npm run test:unit`.
+    exclude: ['**/node_modules/**', 'tests/components/**'],
     environment: 'node',
     // Les tests e2e lancent un vrai build Astro — timeout plus long
     testTimeout: 180_000,

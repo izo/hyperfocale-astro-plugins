@@ -2,8 +2,9 @@
 import { Image } from 'astro:assets';
 import SeriesLightbox from './SeriesLightbox.astro';
 import type { ImageMetadata } from '../helpers/index.js';
+import { resolveLabels, formatLabel, passthroughAttrs, type InstanceProps } from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   /** Images de la page courante */
   images: ImageMetadata[];
   /** Toutes les images de la série (pour la lightbox) */
@@ -16,7 +17,20 @@ interface Props {
   baseUrl: string;
 }
 
-const { images, allImages, page, totalPages, baseUrl } = Astro.props;
+const {
+  images,
+  allImages,
+  page,
+  totalPages,
+  baseUrl,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const rootAttrs = { 'aria-label': labels['gallery.label'], ...passthroughAttrs(rest) };
 
 // Disposition : 'grid' (vignettes carrées recadrées) ou 'column' (colonne pleine
 // largeur, ratios naturels — ne recadre pas les diptyques ni les portraits).
@@ -47,16 +61,16 @@ function pageUrl(p: number): string {
 }
 ---
 
-<section class:list={['hf-gallery', `hf-gallery--${galleryLayout}`]} aria-label="Galerie photos">
+<section class:list={['hf-gallery', `hf-gallery--${galleryLayout}`, className]} {...rootAttrs}>
   <div class="hf-gallery__grid">
     {images.map((image, i) => {
       const globalIndex = safePageStartIndex + i;
-      const alt = image.alt ?? `Photo ${globalIndex + 1}`;
+      const alt = image.alt ?? formatLabel(labels['image.alt'], { n: globalIndex + 1 });
       return (
         <button
           class="hf-gallery__item"
           type="button"
-          aria-label={`Ouvrir l'image ${globalIndex + 1}`}
+          aria-label={formatLabel(labels['gallery.open'], { n: globalIndex + 1 })}
           data-lightbox-index={globalIndex}
         >
           {!optimizeImages ? (
@@ -94,9 +108,9 @@ function pageUrl(p: number): string {
   </div>
 
   {totalPages > 1 && (
-    <nav class="hf-pagination" aria-label="Pagination de la galerie">
+    <nav class="hf-pagination" aria-label={labels['pagination.label']}>
       {page > 1 ? (
-        <a href={pageUrl(page - 1)} class="hf-pagination__btn" rel="prev" aria-label="Page précédente">
+        <a href={pageUrl(page - 1)} class="hf-pagination__btn" rel="prev" aria-label={labels['pagination.prev']}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="15 18 9 12 15 6"/>
           </svg>
@@ -114,13 +128,13 @@ function pageUrl(p: number): string {
           p === page ? (
             <span class="hf-pagination__page hf-pagination__page--current" aria-current="page">{p}</span>
           ) : (
-            <a href={pageUrl(p)} class="hf-pagination__page" aria-label={`Page ${p}`}>{p}</a>
+            <a href={pageUrl(p)} class="hf-pagination__page" aria-label={formatLabel(labels['pagination.page'], { n: p })}>{p}</a>
           )
         ))}
       </div>
 
       {page < totalPages ? (
-        <a href={pageUrl(page + 1)} class="hf-pagination__btn" rel="next" aria-label="Page suivante">
+        <a href={pageUrl(page + 1)} class="hf-pagination__btn" rel="next" aria-label={labels['pagination.next']}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <polyline points="9 18 15 12 9 6"/>
           </svg>
@@ -136,7 +150,7 @@ function pageUrl(p: number): string {
   )}
 </section>
 
-<SeriesLightbox images={allImages} />
+<SeriesLightbox images={allImages} locale={locale} labels={labelOverrides} />
 
 <script>
   // Délégation d'événements sur les boutons de la galerie
@@ -161,7 +175,7 @@ function pageUrl(p: number): string {
     cursor: pointer;
     padding: 0;
     border: none;
-    background: var(--hf-color-border, #e0e0e0);
+    background: var(--hf-color-border);
     border-radius: var(--hf-card-radius, 4px);
     overflow: hidden;
     aspect-ratio: 1;
@@ -171,7 +185,7 @@ function pageUrl(p: number): string {
   .hf-gallery__item:hover,
   .hf-gallery__item:focus-visible {
     opacity: 0.85;
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
@@ -217,15 +231,15 @@ function pageUrl(p: number): string {
     width: 2.25rem;
     height: 2.25rem;
     border-radius: var(--hf-card-radius, 4px);
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     text-decoration: none;
     transition: background var(--hf-transition, 200ms ease);
   }
 
   .hf-pagination__btn:hover,
   .hf-pagination__btn:focus-visible {
-    background: var(--hf-color-surface, #f5f5f5);
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    background: var(--hf-color-surface);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
@@ -250,21 +264,21 @@ function pageUrl(p: number): string {
     border-radius: var(--hf-card-radius, 4px);
     font-size: 0.9rem;
     font-family: var(--hf-font-sans, system-ui);
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     text-decoration: none;
     transition: background var(--hf-transition, 200ms ease);
   }
 
   .hf-pagination__page:hover,
   .hf-pagination__page:focus-visible {
-    background: var(--hf-color-surface, #f5f5f5);
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    background: var(--hf-color-surface);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
   .hf-pagination__page--current {
-    background: var(--hf-color-accent, #0066ff);
-    color: #fff;
+    background: var(--hf-color-accent);
+    color: var(--hf-color-on-accent);
     font-weight: 600;
   }
 </style>

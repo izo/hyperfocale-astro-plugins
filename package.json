@@ -1,6 +1,6 @@
 {
   "name": "@regrets/hyperfocale",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
   "license": "MIT",
@@ -46,6 +46,10 @@
       "types": "./dist/media.d.ts",
       "import": "./dist/media.js"
     },
+    "./i18n": {
+      "types": "./dist/i18n.d.ts",
+      "import": "./dist/i18n.js"
+    },
     "./loader": {
       "types": "./dist/loader.d.ts",
       "import": "./dist/loader.js"
@@ -85,7 +89,8 @@
     "build": "tsup && tsc --emitDeclarationOnly",
     "typecheck": "tsc --noEmit",
     "test": "npm run test:unit && npm run test:e2e",
-    "test:unit": "vitest run tests/unit",
+    "test:unit": "vitest run tests/unit && npm run test:components",
+    "test:components": "vitest run -c vitest.components.config.ts",
     "test:e2e": "vitest run tests/e2e",
     "test:watch": "vitest",
     "fixtures:sync": "node scripts/sync-spec-fixtures.mjs",

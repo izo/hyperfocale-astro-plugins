@@ -382,13 +382,135 @@ import {
 } from '@regrets/hyperfocale/components';
 ```
 
+### Props communes — langue, libellés, options par instance
+
+Les 9 composants acceptent, en plus de leurs props propres :
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `locale` | `string` (BCP 47) | `'fr'` | Langue des libellés, des dates (`Intl.DateTimeFormat`), des nombres et tailles de fichier (`Intl.NumberFormat`) et des pluriels (`Intl.PluralRules`) |
+| `labels` | `Partial<HyperfocaleLabels>` | — | Surcharges de libellés, clé par clé (voir *Libellés*) |
+| `class` | `string` | — | Classe(s) ajoutée(s) à l'élément racine |
+| `data-*`, `aria-*` | `unknown` | — | Reportés tels quels sur l'élément racine (une valeur `false` ou `undefined` est omise) ; un `aria-label` passé remplace celui du composant |
+
+Les composants qui émettent un titre — `SeriesAttachments`, `SeriesEmbeds`, `SeriesCard` (et `SeriesList`, qui le transmet à ses cartes) — acceptent `headingLevel` (`1`–`6`, défaut `2`) pour s'insérer dans la hiérarchie de la page.
+
+Sans `locale`, tout s'affiche comme avant la 0.23.0 : en français.
+
+### Libellés — `HF_LABELS`
+
+Le plugin livre deux dictionnaires complets, `fr` et `en`, exportés et typés :
+
+```ts
+import { HF_LABELS, resolveLabels, formatDate, formatFileSize } from '@regrets/hyperfocale/i18n';
+// aussi exportés par '@regrets/hyperfocale/components'
+```
+
+Résolution d'un libellé : `labels` de l'instance → langue de la locale (`en-GB` → `en`) → `en` → `fr`. Une langue sans dictionnaire (`es`, `ja`, `ko`…) affiche donc les libellés anglais, mais ses dates, nombres et pluriels suivent bien la locale : passez `labels` pour traduire le texte. Les dates de frontmatter sont lues en UTC (une date `2024-03-01` ne recule pas d'un jour à l'ouest de Greenwich).
+
+Les clés sont **stables** — en renommer ou en retirer une est un changement cassant. Les valeurs sont des gabarits à paramètres `{nom}` ; les clés plurielles prennent un objet indexé par catégorie CLDR (`one`, `other`… — `other` obligatoire).
+
+| Clé | Composant | Paramètres | `fr` | `en` |
+|-----|-----------|-----------|------|------|
+| `card.link` | SeriesCard (`aria-label` du lien) | `{title}` | Voir la série : {title} | View series: {title} |
+| `card.coverAlt` | SeriesCard (`alt` de repli) | `{title}` | Couverture de la série {title} | Cover of the series {title} |
+| `list.empty` | SeriesList | — | Aucune série disponible pour le moment. | No series available yet. |
+| `image.alt` | SeriesGallery, SeriesMasonry (`alt` de repli) | `{n}` | Photo {n} | Photo {n} |
+| `gallery.label` | SeriesGallery | — | Galerie photos | Photo gallery |
+| `gallery.open` | SeriesGallery | `{n}` | Ouvrir l'image {n} | Open image {n} |
+| `pagination.label` | SeriesGallery | — | Pagination de la galerie | Gallery pagination |
+| `pagination.prev` | SeriesGallery | — | Page précédente | Previous page |
+| `pagination.next` | SeriesGallery | — | Page suivante | Next page |
+| `pagination.page` | SeriesGallery | `{n}` | Page {n} | Page {n} |
+| `lightbox.label` | SeriesLightbox | — | Visionneuse d'images | Image viewer |
+| `lightbox.close` | SeriesLightbox | — | Fermer la visionneuse | Close the viewer |
+| `lightbox.prev` | SeriesLightbox | — | Image précédente | Previous image |
+| `lightbox.next` | SeriesLightbox | — | Image suivante | Next image |
+| `lightbox.imageAlt` | SeriesLightbox (client) | `{n}` `{total}` | Image {n} sur {total} | Image {n} of {total} |
+| `lightbox.counter` | SeriesLightbox (client) | `{n}` `{total}` | {n} / {total} | {n} / {total} |
+| `attachments.heading` | SeriesAttachments | — | Documents | Documents |
+| `size.byte` · `size.kilobyte` · `size.megabyte` · `size.gigabyte` | SeriesAttachments | `{n}` (déjà localisé) | {n} o · Ko · Mo · Go | {n} B · KB · MB · GB |
+| `embeds.heading` | SeriesEmbeds | — | Vidéos | Videos |
+| `embeds.play` | SeriesEmbeds (lecteur d'écran) | `{label}` | Lire {label} | Play {label} |
+| `filter.tags` | SeriesFilter | — | Tags | Tags |
+| `filter.tagList` | SeriesFilter (`aria-label`) | `{tags}` | Tags : {tags} | Tags: {tags} |
+| `filter.year` | SeriesFilter | — | Année | Year |
+| `filter.allYears` | SeriesFilter | — | Toutes | All |
+| `filter.location` | SeriesFilter | — | Lieu | Location |
+| `filter.locationPlaceholder` | SeriesFilter | — | Filtrer par lieu… | Filter by location… |
+| `filter.reset` | SeriesFilter | — | Réinitialiser | Reset |
+| `filter.count` | SeriesFilter (client, pluriel sur `{shown}`) | `{shown}` `{total}` | {shown} série(s) affichée(s) sur {total} | {shown} series shown of {total} |
+| `map.label` | SeriesMap | — | Carte géographique des séries | Map of the series |
+| `map.empty` | SeriesMap | — | Aucune série avec coordonnées GPS. | No series with GPS coordinates. |
+| `map.count` | SeriesMap (pluriel sur `{count}`) | `{count}` | {count} série(s) géolocalisée(s) | {count} geotagged series |
+
+Fonctions exportées (pures, sans Astro) : `resolveLabels(locale?, overrides?)`, `formatLabel(template, params)`, `pluralLabel(forms, count, locale, params)`, `formatDate(date, locale, options?)`, `formatFileSize(bytes, locale, labels?)`. Types : `HyperfocaleLabels`, `HyperfocaleLabelKey`, `HfPluralForms`, `HeadingLevel`, `HyperfocaleInstanceProps`.
+
+### Exemple — bouton de téléchargement sur un site multilingue (mathieu-drouet.com)
+
+Un site anglais par défaut, en cinq langues (fr en es ja ko), au dark mode par classe `.dark` et à ses propres jetons, sans le thème du plugin (`theme: 'none'`). Le ZIP d'une série est produit par le site et servi depuis son bucket : c'est un `Attachment` comme un autre.
+
+```astro
+---
+import SeriesAttachments from '@regrets/hyperfocale/components/SeriesAttachments.astro';
+import type { Attachment, HyperfocaleLabels } from '@regrets/hyperfocale/components';
+
+const { locale } = Astro.props; // 'en' | 'fr' | 'es' | 'ja' | 'ko'
+
+// fr et en sont livrés ; les autres langues traduisent ce qu'elles affichent.
+const labels: Partial<Record<string, Partial<HyperfocaleLabels>>> = {
+  en: { 'attachments.heading': 'Download' },
+  fr: { 'attachments.heading': 'Télécharger' },
+  ja: { 'attachments.heading': 'ダウンロード' },
+};
+
+const zip: Attachment = {
+  src: `/media/archives/${slug}/${slug}.zip`,
+  kind: 'file',
+  title: `${title} — full series`,
+  size: 48_234_496,
+};
+---
+
+<SeriesAttachments
+  attachments={[zip]}
+  locale={locale}
+  labels={labels[locale]}
+  headingLevel={3}
+  class="mt-8"
+  data-track="series-download"
+/>
+<!-- en : « Download », « 46.0 MB » · fr : « Télécharger », « 46,0 Mo » · ja : « ダウンロード », « 46.0 MB » -->
+```
+
+Et les jetons, mappés sur ceux du site (voir *Thème* pour la liste complète) :
+
+```css
+/* Sur l'élément qui porte .dark (ici <html>) : les var() sont résolues là où
+   elles sont déclarées, donc la bascule .dark suit sans rien dupliquer. */
+:root {
+  --hf-color-text: var(--foreground);
+  --hf-color-text-muted: var(--muted-foreground);
+  --hf-color-surface: var(--card);
+  --hf-color-border: var(--border);
+  --hf-color-accent: var(--primary);
+  --hf-color-on-accent: var(--primary-foreground);
+  --hf-attachments-bg: var(--card);
+  --hf-attachments-bg-hover: var(--accent);
+  --hf-font-sans: var(--font-sans);
+  --hf-card-radius: var(--radius);
+}
+```
+
 ### `<SeriesCard series={s} />`
 
 Card d'aperçu : cover, titre, date, description.
 
-| Prop | Type | Requis |
-|------|------|--------|
-| `series` | `Series` | oui |
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `series` | `Series` | — | Série à présenter |
+| `prefix` | `string` | `/series` | Préfixe du lien |
+| `headingLevel` | `1`–`6` | `2` | Niveau du titre de la carte |
 
 ### `<SeriesList series={arr} columns={3} />`
 
@@ -398,6 +520,8 @@ Grille responsive de `SeriesCard`.
 |------|------|--------|-------------|
 | `series` | `Series[]` | — | Tableau de séries |
 | `columns` | `number` | `3` | Nombre de colonnes |
+| `prefix` | `string` | `/series` | Préfixe des liens |
+| `headingLevel` | `1`–`6` | `2` | Transmis à chaque `SeriesCard` |
 
 ### `<SeriesGallery images={imgs} page={1} totalPages={3} baseUrl="/series/slug" />`
 
@@ -427,23 +551,27 @@ Galerie en maçonnerie (colonnes de hauteurs variables), alternative à `SeriesG
 | `images` | `ImageMetadata[]` | — | Images à afficher |
 | `columns` | `number` | `3` | Nombre de colonnes |
 
-### `<SeriesAttachments attachments={att} heading="Documents" />`
+### `<SeriesAttachments attachments={att} heading="Documents" headingLevel={2} />`
 
 Liste les documents joints non-image d'une série (vidéo, audio, PDF, fichiers). Alimenté par `getSeriesAttachments()`.
 
 | Prop | Type | Défaut | Description |
 |------|------|--------|-------------|
 | `attachments` | `Attachment[]` | — | Documents joints résolus |
-| `heading` | `string` | `« Documents »` | Titre de la section |
+| `heading` | `string` | libellé `attachments.heading` | Titre de la section (prioritaire sur `labels`) |
+| `headingLevel` | `1`–`6` | `2` | Niveau du titre de section |
 
-### `<SeriesEmbeds embeds={emb} heading="Vidéos" />`
+Les tailles (`size`, en octets) s'affichent selon la locale : `2,4 Mo` en `fr`, `2.4 MB` en `en`.
+
+### `<SeriesEmbeds embeds={emb} heading="Vidéos" headingLevel={2} />`
 
 Rend les contenus embarqués d'une série (§1.11) **en façade** : le poster s'affiche, l'iframe n'est insérée qu'au clic. Alimenté par `getSeriesEmbeds()`.
 
 | Prop | Type | Défaut | Description |
 |------|------|--------|-------------|
 | `embeds` | `Embed[]` | — | Contenus embarqués résolus |
-| `heading` | `string` | `« Vidéos »` | Titre de la section |
+| `heading` | `string` | libellé `embeds.heading` | Titre de la section (prioritaire sur `labels`) |
+| `headingLevel` | `1`–`6` | `2` | Niveau du titre de section |
 
 Deux raisons à la façade : onze lecteurs montés d'emblée plombent la page, et chacun dépose ses cookies avant même qu'on ait demandé à voir la vidéo. La façade est un `<a href>` vers la page de l'hébergeur — sans JavaScript elle reste un lien fonctionnel, il n'y a jamais de bouton mort.
 
@@ -460,6 +588,8 @@ Filtres interactifs (par tags, année, lieu) sur une liste de séries.
 | `series` | `Series[]` | — | Séries à filtrer |
 | `filters` | `('tags' \| 'date' \| 'location')[]` | tous | Filtres actifs |
 | `prefix` | `string` | `/series` | Préfixe des liens générés |
+
+Les séries sont passées au script client dans un `<script type="application/json">` (avant la 0.23.0, ce JSON n'était pas rendu et le filtre restait inerte, #138). Un seul `SeriesFilter` par page : ses identifiants sont fixes.
 
 ### `<SeriesMap series={arr} height="400px" />`
 
@@ -871,6 +1001,51 @@ Surchargez les variables dans votre CSS global pour personnaliser l'apparence :
 }
 ```
 
+### Jetons
+
+Depuis la 0.23.0, **aucun composant ne porte de couleur en dur** : toute couleur passe par un jeton `--hf-*` (vérifié par `tests/unit/tokens.test.ts`). Les longueurs (rayons, espacements, durées, police) gardent un repli dans le composant ; les couleurs n'en ont pas, et un jeton de couleur non défini laisse la propriété hériter (texte) ou rester transparente (fond).
+
+| Jeton | Rôle | Défaut clair |
+|-------|------|--------------|
+| `--hf-color-bg` | Fond des champs (filtre) | `#ffffff` |
+| `--hf-color-surface` | Fond des cartes, liens de documents, façades | `#f5f5f5` |
+| `--hf-color-text` | Texte principal | `#111111` |
+| `--hf-color-text-muted` | Texte secondaire (dates, tailles, légendes) | `#666666` |
+| `--hf-color-accent` | Accent : focus, page courante, tag coché, marqueur | `#0066ff` |
+| `--hf-color-on-accent` | Texte posé sur l'accent | `#ffffff` |
+| `--hf-color-border` | Bordures, fond des vignettes en chargement | `#e0e0e0` |
+| `--hf-color-overlay` | Fond de la lightbox, pastille de lecture | `rgba(0,0,0,.85)` |
+| `--hf-color-text-overlay` | Texte et icônes sur l'overlay | `#ffffff` |
+| `--hf-color-text-overlay-muted` | Compteur de la lightbox | `rgba(255,255,255,.75)` |
+| `--hf-color-btn-overlay-hover` | Survol des boutons de la lightbox | `rgba(255,255,255,.15)` |
+| `--hf-color-scrim` | Voile au survol d'une façade d'embed | `rgba(0,0,0,.15)` |
+| `--hf-font-sans` | Police | `system-ui, …` |
+| `--hf-gallery-gap` | Gouttière des grilles | `0.5rem` |
+| `--hf-card-radius` | Rayon commun | `4px` |
+| `--hf-card-shadow` | Ombre des cartes et des entrées du filtre | `0 2px 8px rgba(0,0,0,.08)` |
+| `--hf-card-shadow-hover` | Ombre d'une carte survolée | `0 4px 16px rgba(0,0,0,.12)` |
+| `--hf-transition` | Transition commune | `200ms ease` |
+| `--hf-masonry-columns` | Colonnes de `SeriesMasonry` | `3` |
+| `--hf-masonry-gap` | Gouttière de `SeriesMasonry` | `var(--hf-gallery-gap)` |
+| `--hf-map-bg` | Fond de `SeriesMap` | `#d4dde8` |
+| `--hf-map-stroke` | Contour de `SeriesMap` | `#b0bec5` |
+| `--hf-map-marker` | Marqueur | `var(--hf-color-accent)` |
+| `--hf-map-marker-hover` | Marqueur survolé | `#004db3` |
+| `--hf-filter-bg` | Fond des contrôles du filtre | `var(--hf-color-surface)` |
+| `--hf-filter-border` | Bordure des contrôles du filtre et de la carte | `var(--hf-color-border)` |
+| `--hf-filter-radius` | Rayon des contrôles du filtre | `var(--hf-card-radius)` |
+| `--hf-attachments-gap` | Marge au-dessus des documents | `2rem` |
+| `--hf-attachments-radius` | Rayon des documents | `var(--hf-card-radius)` |
+| `--hf-attachments-bg` | Fond d'un document (et d'un embed en lien) | `var(--hf-color-surface)` |
+| `--hf-attachments-bg-hover` | Fond d'un document survolé | `var(--hf-color-border)` |
+| `--hf-embeds-gap` | Marge au-dessus des embeds | `var(--hf-attachments-gap)` |
+| `--hf-embeds-item-gap` | Écart entre deux embeds | `2rem` |
+| `--hf-embeds-radius` | Rayon des embeds | `var(--hf-card-radius)` |
+| `--hf-lineup-gap` | Écart du line-up (routes) | `3rem` |
+| `--hf-lineup-heading-size` | Titre du line-up (routes) | `1.3rem` |
+
+**Site à ses propres jetons et à son propre dark mode** (`theme: 'none'`, `.dark` par classe…) : déclarez les jetons `--hf-*` comme alias des vôtres, sur l'élément qui porte la classe de thème (`:root` si c'est `<html>`). Une `var()` se résout là où elle est déclarée : la bascule de vos jetons entraîne celle des `--hf-*` sans rien dupliquer. Exemple complet : *Composants → Exemple — bouton de téléchargement*. Rendez-vous au moins les jetons de couleur des composants que vous affichez — la lightbox, sans `--hf-color-overlay`, aurait un fond transparent.
+
 ### Couche data seule — `theme: 'none'`
 
 Le thème part sur **toutes** les pages du site, pas seulement les routes injectées.
@@ -879,7 +1054,7 @@ pages en a besoin. `injectRoutes: false` ne le coupe donc pas — les deux optio
 indépendantes, et c'est l'usage des **composants** qui commande, pas celui des routes.
 
 Un site qui n'utilise **ni les routes ni les composants** — schéma et helpers seulement,
-pages entièrement maison — ne lit aucune des 30 custom properties `--hf-*`. Elles
+pages entièrement maison — ne lit aucune des custom properties `--hf-*`. Elles
 partaient malgré tout sur chacune de ses pages : mesuré sur un site réel à **1 643 octets,
 29 % de son bundle CSS**, entièrement mort. Coupez-les :
 
@@ -890,8 +1065,8 @@ hyperfocale({
 })
 ```
 
-Gardez `theme: 'auto'` dès que vous rendez un seul composant du plugin, faute de quoi il
-s'affichera sans styles.
+Gardez `theme: 'auto'` dès que vous rendez un composant du plugin — ou, en `theme: 'none'`,
+mappez ses jetons sur les vôtres (voir *Jetons*) : sans l'un ni l'autre, il s'affichera sans couleurs.
 
 ---
 

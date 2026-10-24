@@ -1,20 +1,36 @@
 ---
 import type { Attachment } from '../helpers/index.js';
+import {
+  resolveLabels,
+  formatFileSize,
+  passthroughAttrs,
+  headingTag,
+  type InstanceProps,
+  type HeadingLevel,
+} from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   attachments: Attachment[];
-  /** Titre de la section (défaut : « Documents »). */
+  /** Titre de la section (défaut : libellé `attachments.heading`). */
   heading?: string;
+  /** Niveau du titre de section (défaut : 2). */
+  headingLevel?: HeadingLevel;
 }
 
-const { attachments, heading = 'Documents' } = Astro.props;
+const {
+  attachments,
+  heading: headingProp,
+  headingLevel,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
 
-function formatSize(bytes?: number): string | undefined {
-  if (bytes === undefined || bytes <= 0) return undefined;
-  if (bytes < 1024) return `${bytes} o`;
-  if (bytes < 1048576) return `${Math.round(bytes / 1024)} Ko`;
-  return `${(bytes / 1048576).toFixed(1)} Mo`;
-}
+const labels = resolveLabels(locale, labelOverrides);
+const heading = headingProp ?? labels['attachments.heading'];
+const Heading = headingTag(headingLevel, 2);
+const rootAttrs = { 'aria-label': heading, ...passthroughAttrs(rest) };
 
 function extensionOf(src: string): string {
   const base = src.split('?')[0]?.split('/').pop() ?? '';
@@ -24,8 +40,8 @@ function extensionOf(src: string): string {
 ---
 
 {attachments.length > 0 && (
-  <section class="hf-attachments" aria-label={heading}>
-    <h2 class="hf-attachments__heading">{heading}</h2>
+  <section class:list={['hf-attachments', className]} {...rootAttrs}>
+    <Heading class="hf-attachments__heading">{heading}</Heading>
     <ul class="hf-attachments__list">
       {attachments.map((att) => (
         <li class="hf-attachments__item">
@@ -45,7 +61,9 @@ function extensionOf(src: string): string {
               <span class="hf-attachments__kind" aria-hidden="true">{extensionOf(att.src)}</span>
               <span class="hf-attachments__title">{att.title ?? att.src.split('/').pop()}</span>
               {att.description && <span class="hf-attachments__description">{att.description}</span>}
-              {formatSize(att.size) && <span class="hf-attachments__size">{formatSize(att.size)}</span>}
+              {formatFileSize(att.size, locale, labels) && (
+                <span class="hf-attachments__size">{formatFileSize(att.size, locale, labels)}</span>
+              )}
             </a>
           )}
         </li>
@@ -63,7 +81,7 @@ function extensionOf(src: string): string {
   .hf-attachments__heading {
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     margin: 0 0 0.75rem;
   }
 
@@ -89,7 +107,7 @@ function extensionOf(src: string): string {
 
   .hf-attachments__player figcaption {
     font-size: 0.85rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     margin-top: 0.25rem;
   }
 
@@ -99,10 +117,10 @@ function extensionOf(src: string): string {
     gap: 0.75rem;
     padding: 0.6rem 0.85rem;
     text-decoration: none;
-    background: var(--hf-attachments-bg, var(--hf-color-surface, #f5f5f5));
-    border: 1px solid var(--hf-color-border, #e0e0e0);
+    background: var(--hf-attachments-bg, var(--hf-color-surface));
+    border: 1px solid var(--hf-color-border);
     border-radius: var(--hf-attachments-radius, 4px);
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     transition: background var(--hf-transition, 200ms ease);
   }
 
@@ -114,11 +132,11 @@ function extensionOf(src: string): string {
 
   .hf-attachments__link:hover,
   .hf-attachments__link:focus-visible {
-    background: var(--hf-attachments-bg-hover, var(--hf-color-border, #e0e0e0));
+    background: var(--hf-attachments-bg-hover, var(--hf-color-border));
   }
 
   .hf-attachments__link:focus-visible {
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
@@ -127,7 +145,7 @@ function extensionOf(src: string): string {
     font-size: 0.7rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 
   .hf-attachments__title {
@@ -137,13 +155,13 @@ function extensionOf(src: string): string {
 
   .hf-attachments__description {
     font-size: 0.85rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 
   .hf-attachments__size {
     margin-left: auto;
     flex: none;
     font-size: 0.8rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 </style>

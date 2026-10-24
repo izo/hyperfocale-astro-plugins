@@ -1,14 +1,37 @@
 ---
 import { Image } from 'astro:assets';
 import type { Embed } from '../helpers/index.js';
+import {
+  resolveLabels,
+  formatLabel,
+  passthroughAttrs,
+  headingTag,
+  type InstanceProps,
+  type HeadingLevel,
+} from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   embeds: Embed[];
-  /** Titre de la section (défaut : « Vidéos »). */
+  /** Titre de la section (défaut : libellé `embeds.heading`). */
   heading?: string;
+  /** Niveau du titre de section (défaut : 2). */
+  headingLevel?: HeadingLevel;
 }
 
-const { embeds, heading = 'Vidéos' } = Astro.props;
+const {
+  embeds,
+  heading: headingProp,
+  headingLevel,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const heading = headingProp ?? labels['embeds.heading'];
+const Heading = headingTag(headingLevel, 2);
+const rootAttrs = { 'aria-label': heading, ...passthroughAttrs(rest) };
 
 // Même traitement d'images que SeriesGallery : `disabled` sert le fichier
 // d'origine, et le srcset haute densité est omis en dev, où les endpoints
@@ -79,8 +102,8 @@ const items = embeds.map((embed) => ({
 ---
 
 {items.length > 0 && (
-  <section class="hf-embeds" aria-label={heading}>
-    <h2 class="hf-embeds__heading">{heading}</h2>
+  <section class:list={['hf-embeds', className]} {...rootAttrs}>
+    <Heading class="hf-embeds__heading">{heading}</Heading>
     <ul class="hf-embeds__list">
       {items.map(({ embed, player, ratio, label }) => (
         <li class="hf-embeds__item">
@@ -146,7 +169,7 @@ const items = embeds.map((embed) => ({
                     <path d="M8 5v14l11-7z" />
                   </svg>
                 </span>
-                <span class="hf-embeds__sr">Lire {label}</span>
+                <span class="hf-embeds__sr">{formatLabel(labels['embeds.play'], { label })}</span>
               </a>
             )}
             {(embed.title || embed.description) && (
@@ -177,7 +200,8 @@ const items = embeds.map((embed) => ({
 
     const iframe = document.createElement('iframe');
     iframe.src = src;
-    iframe.title = facade.dataset.hfEmbedTitle ?? 'Lecteur vidéo';
+    // `data-hf-embed-title` est toujours posé côté serveur (titre ou hôte).
+    iframe.title = facade.dataset.hfEmbedTitle ?? '';
     iframe.loading = 'lazy';
     iframe.allow = 'autoplay; fullscreen; picture-in-picture; encrypted-media';
     iframe.allowFullscreen = true;
@@ -202,7 +226,7 @@ const items = embeds.map((embed) => ({
   .hf-embeds__heading {
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     margin: 0 0 0.75rem;
   }
 
@@ -225,7 +249,7 @@ const items = embeds.map((embed) => ({
     width: 100%;
     overflow: hidden;
     border-radius: var(--hf-embeds-radius, var(--hf-card-radius, 4px));
-    background: var(--hf-color-surface, #f5f5f5);
+    background: var(--hf-color-surface);
     cursor: pointer;
   }
 
@@ -242,19 +266,19 @@ const items = embeds.map((embed) => ({
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
+    color: var(--hf-color-text-overlay);
     transition: background var(--hf-transition, 200ms ease);
   }
 
   .hf-embeds__play svg {
     padding: 0.9rem 0.9rem 0.9rem 1rem;
     border-radius: 50%;
-    background: var(--hf-color-overlay, rgba(0, 0, 0, 0.85));
+    background: var(--hf-color-overlay);
   }
 
   .hf-embeds__facade:hover .hf-embeds__play,
   .hf-embeds__facade:focus-visible .hf-embeds__play {
-    background: rgba(0, 0, 0, 0.15);
+    background: var(--hf-color-scrim);
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -264,7 +288,7 @@ const items = embeds.map((embed) => ({
   }
 
   .hf-embeds__facade:focus-visible {
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
@@ -282,14 +306,14 @@ const items = embeds.map((embed) => ({
     gap: 0.35rem;
     padding: 0.6rem 0.85rem;
     text-decoration: none;
-    background: var(--hf-attachments-bg, var(--hf-color-surface, #f5f5f5));
-    border: 1px solid var(--hf-color-border, #e0e0e0);
+    background: var(--hf-attachments-bg, var(--hf-color-surface));
+    border: 1px solid var(--hf-color-border);
     border-radius: var(--hf-embeds-radius, var(--hf-card-radius, 4px));
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
   }
 
   .hf-embeds__link:focus-visible {
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
@@ -300,7 +324,7 @@ const items = embeds.map((embed) => ({
 
   .hf-embeds__host {
     font-size: 0.8rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 
   .hf-embeds__caption {
@@ -313,12 +337,12 @@ const items = embeds.map((embed) => ({
   .hf-embeds__title {
     font-size: 0.95rem;
     font-weight: 500;
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
   }
 
   .hf-embeds__description {
     font-size: 0.85rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 
   /* Libellé réservé aux lecteurs d'écran — la façade est déjà décrite

@@ -1,6 +1,10 @@
 /**
  * Thème CSS du plugin `hyperfocale`
  *
+ * Les composants ne portent aucune couleur en dur (#136) : toute couleur passe
+ * par une custom property `--hf-*` définie ici. Un site en `theme: 'none'` les
+ * mappe sur ses propres jetons — liste complète dans le README, § Thème.
+ *
  * Custom properties surchargeables dans le CSS du site consommateur :
  *
  *   :root {
@@ -23,12 +27,16 @@
   --hf-color-text-muted: #666666;
   --hf-color-accent: #0066ff;
   --hf-color-border: #e0e0e0;
+  /* Texte posé sur l'accent (page courante, tag coché) */
+  --hf-color-on-accent: #ffffff;
 
-  /* Overlay (lightbox) */
+  /* Overlay (lightbox, façade d'embed) */
   --hf-color-overlay: rgba(0, 0, 0, 0.85);
   --hf-color-text-overlay: #ffffff;
   --hf-color-text-overlay-muted: rgba(255, 255, 255, 0.75);
   --hf-color-btn-overlay-hover: rgba(255, 255, 255, 0.15);
+  /* Voile léger au survol d'une façade d'embed */
+  --hf-color-scrim: rgba(0, 0, 0, 0.15);
 
   /* Typographie */
   --hf-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -37,6 +45,7 @@
   --hf-gallery-gap: 0.5rem;
   --hf-card-radius: 4px;
   --hf-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --hf-card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.12);
   --hf-transition: 200ms ease;
 
   /* Masonry */
@@ -60,6 +69,11 @@
   --hf-attachments-bg: var(--hf-color-surface);
   --hf-attachments-bg-hover: var(--hf-color-border);
 
+  /* Contenus embarqués (spec §1.11) */
+  --hf-embeds-gap: var(--hf-attachments-gap);
+  --hf-embeds-item-gap: 2rem;
+  --hf-embeds-radius: var(--hf-card-radius);
+
   /* Line-up des sous-séries d'un conteneur (spec §1.8) */
   --hf-lineup-gap: 3rem;
   --hf-lineup-heading-size: 1.3rem;
@@ -75,6 +89,7 @@
   --hf-color-border: #2a2a2a;
   --hf-color-overlay: rgba(0, 0, 0, 0.92);
   --hf-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --hf-card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.5);
   --hf-map-bg: #1e2a35;
   --hf-map-stroke: #2a3a45;
   --hf-map-marker-hover: #80bfff;
@@ -91,6 +106,7 @@
     --hf-color-border: #2a2a2a;
     --hf-color-overlay: rgba(0, 0, 0, 0.92);
     --hf-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --hf-card-shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.5);
     --hf-map-bg: #1e2a35;
     --hf-map-stroke: #2a3a45;
     --hf-map-marker-hover: #80bfff;

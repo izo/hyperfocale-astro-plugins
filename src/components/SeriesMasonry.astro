@@ -1,21 +1,25 @@
 ---
 import type { ImageMetadata } from '../helpers/index.js';
+import { resolveLabels, formatLabel, passthroughAttrs, type InstanceProps } from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   images: ImageMetadata[];
   /** Nombre de colonnes (défaut 3). Surchargeable via --hf-masonry-columns. */
   columns?: number;
 }
 
-const { images, columns = 3 } = Astro.props;
+const { images, columns = 3, locale = 'fr', labels: labelOverrides, class: className, ...rest } = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const rootAttrs = passthroughAttrs(rest);
 ---
 
-<div class="hf-masonry" style={`--hf-masonry-columns: ${columns}`}>
+<div class:list={['hf-masonry', className]} style={`--hf-masonry-columns: ${columns}`} {...rootAttrs}>
   {images.map((img, i) => (
     <div class="hf-masonry__item">
       <img
         src={img.src}
-        alt={img.alt ?? `Photo ${i + 1}`}
+        alt={img.alt ?? formatLabel(labels['image.alt'], { n: i + 1 })}
         width={img.width || undefined}
         height={img.height || undefined}
         loading="lazy"
