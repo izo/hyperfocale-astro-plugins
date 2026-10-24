@@ -706,7 +706,7 @@ Les helpers ci-dessus trouvent `media/` et `images.json` par `import.meta.glob`,
 
 | Import | Rôle | Runtime |
 |--------|------|---------|
-| `@regrets/hyperfocale/loader` | `seriesLoader()` — loader Content Layer, repli de locale ; `readSeriesMedia()` — lit `images.json` et la liste de `media/` d'une série | Node (build) |
+| `@regrets/hyperfocale/loader` | `seriesLoader()` — loader Content Layer, repli de locale, préparation du frontmatter, exclusion des sections ; `fallbackField()`, `stringifyTags()` — préparations prêtes à l'emploi ; `readSeriesMedia()` — lit `images.json` et la liste de `media/` d'une série | Node (build) |
 | `@regrets/hyperfocale/media` | `resolveSeriesMedia()` — galerie, couverture, documents joints, en fonction pure ; `IMAGE_EXTENSIONS`, `ORIGINAL_EXTENSIONS`, `isImagePath`, `isOriginal`, `classifyAttachment`, `parseImageManifest` | Partout : ni `node:*`, ni `astro`, ni `zod` |
 
 ### `seriesLoader(options)`
@@ -714,6 +714,8 @@ Les helpers ci-dessus trouvent `media/` et `images.json` par `import.meta.glob`,
 - **Découverte (§1.2)** : tout dossier de `base` qui porte un fichier index est une entrée, à toute profondeur — sections (§1.10), conteneurs et sous-séries (§1.8) compris. Jamais de descente dans `media/`, ni dans un dossier exclu (§4.2 : `.*`, `Thumbs.db`… plus vos règles `exclude`), ni à travers un lien symbolique. Identifiant : le chemin du dossier relatif à `base` (`music/concerts/2010/the-wombats-paris-2010`), `index` pour `base` lui-même ; `generateId` pour en décider autrement (une collision lève une erreur).
 - **Repli de locale (Annexe F, stratégie 2)** : sans `locale`, chaque dossier fournit son `index.md` ; avec `locale: 'en'`, son `index.en.md`, sinon son `index.md` (`fallback: false` pour ne pas retomber). Une collection par locale donne la stratégie 3.
 - **Frontmatter entier, validé** : tout le frontmatter passe à `parseData`, donc au schéma de la collection, sans liste blanche — un champ propre au site arrive dans `entry.data`, une entrée invalide fait échouer le build. Le frontmatter est lu par `parseFrontmatter` d'`astro/markdown`, le parseur de `glob()`.
+- **Préparation (`prepare`)** : une fonction, ou une liste appliquée dans l'ordre, qui reçoit le frontmatter brut **avant** `parseData` et rend celui qui sera validé — voir ci-dessous.
+- **Sections (§1.10)** : `sections: 'exclude'` écarte de la collection les `index.md` en `type: section`, avant `generateId`, `prepare` et `parseData`. Par défaut (`include`), elles y restent, comme avec `glob()`. Le discriminant est le seul `type` écrit dans le fichier : une série sans `date` reste une série — invalide.
 - **Body** : `entry.body`, et rendu en HTML au chargement pour que `render(entry)` fonctionne (`render: false` pour s'en passer). En développement, toute modification d'un `.md` sous `base` recharge la collection.
 
 | Option | Type | Défaut |
@@ -724,6 +726,34 @@ Les helpers ci-dessus trouvent `media/` et `images.json` par `import.meta.glob`,
 | `render` | `boolean` | `true` |
 | `exclude` | `(string \| RegExp \| (path) => boolean)[]` — règles de §4.2 | `[]` |
 | `generateId` | `({ path, file, data }) => string` | chemin du dossier |
+| `prepare` | `SeriesPrepare \| SeriesPrepare[]` — `(frontmatter, ctx) => objet` (ou `Promise`) | aucune |
+| `sections` | `'include' \| 'exclude'` | `'include'` |
+
+#### Préparer le frontmatter avant la validation — `prepare`
+
+Le schéma de la collection est le contrat du site ; il peut exiger plus que la spec (un identifiant pour des apps, une description pour le SEO). Tant que le corpus ne le respecte pas partout, `prepare` pose des replis **avant** `parseData` — et les dit, au lieu de laisser le build échouer ou les données disparaître en silence. Le jour où le corpus est corrigé, on retire le repli.
+
+`ctx` porte :
+
+| Champ | Contenu |
+|-------|---------|
+| `id` | identifiant de l'entrée (`generateId`, sinon le chemin du dossier) |
+| `path` | dossier relatif à `base`, POSIX, NFC — `''` pour `base` |
+| `slug` | dernier segment de `path` (§1.2) |
+| `file` | fichier index lu (`index.md`, `index.en.md`) |
+| `filePath` | ce fichier, relatif à la racine du projet — celui d'`entry.filePath` |
+| `locale` | locale du fichier lu : `en` pour `index.en.md`, `undefined` pour `index.md`, même quand la collection en `en` s'y est repliée |
+| `collectionLocale` | l'option `locale` de la collection |
+| `warn(message)` | signale un repli ; les signalements de même message forment **un** avertissement en fin de chargement, avec le nombre d'entrées et leurs identifiants |
+
+Une préparation qui lève, ou qui ne rend pas un objet, fait échouer l'entrée comme une entrée invalide : le chargement s'arrête sur un message qui nomme le fichier. Le cache en tient compte : une entrée est revalidée si son fichier **ou** son frontmatter préparé change.
+
+Deux préparations courantes sont fournies :
+
+| Préparation | Effet |
+|-------------|-------|
+| `fallbackField(field, value, { warn? })` | `field` absent — `undefined`, `null` ou chaîne vide — reçoit `value`, ou `value(frontmatter, ctx)` si c'est une fonction. Signalé (`warn: false` pour se taire, une chaîne pour un message propre). |
+| `stringifyTags({ field?, warn? })` | En YAML, `tags: [2004]` est un entier : les nombres et booléens d'une liste de tags deviennent des chaînes, et c'est signalé. Une date ou un objet est laissé au schéma. |
 
 ### `resolveSeriesMedia({ frontmatter, manifest?, mediaFiles?, url? })`
 
@@ -740,29 +770,46 @@ Prend le frontmatter, le texte (ou la valeur) d'`images.json` et la liste des fi
 
 C'est le cas de `mathieu-drouet.com` : `public/content` est un lien vers le dépôt de contenu, les archives existent en anglais (`index.en.md`) et en français (`index.md`, langue d'origine), et les médias sont servis par un Worker sous `/content/…` depuis R2. `images.json` y est la liste de ce que contient le bucket : il fait foi même quand `media/` est vide sur le disque du build.
 
+Son contrat exige `series_id` (la clé primaire de ses apps iOS, tvOS et Android) et `description`, que des séries anciennes n'ont pas encore ; quelques-unes portent une année en tag (`- 2004`, un entier en YAML). Ses rubriques (`archives/music/index.md`, `type: section`) ont leur propre page et n'appartiennent pas à la collection des séries.
+
 ```ts
 // src/content.config.ts
 import { defineCollection, z } from 'astro:content';
 import { baseSeriesSchema } from '@regrets/hyperfocale';
-import { seriesLoader } from '@regrets/hyperfocale/loader';
+import { fallbackField, seriesLoader, stringifyTags } from '@regrets/hyperfocale/loader';
 
 const schema = () =>
   baseSeriesSchema({ dateRequired: true }).safeExtend({
     series_id: z.string(),
+    description: z.string(),
     artist: z.string().optional(),
   });
 
+// Replis à retirer quand le corpus est corrigé à la source. Chacun produit un
+// avertissement par build : « series_id absent — repli sur le nom du dossier
+// (…) — 53 entrée(s) : music/concerts/2005/la-rumeur, … (+43) ».
+const prepare = [
+  fallbackField('series_id', (_, { slug }) => slug, {
+    warn: 'series_id absent — repli sur le nom du dossier (un renommage changerait l\'identifiant des apps)',
+  }),
+  fallbackField('description', ''),
+  stringifyTags(),
+];
+
 export const collections = {
   series: defineCollection({
-    loader: seriesLoader({ base: 'public/content/archives', locale: 'en' }), // index.en.md, sinon index.md
+    // index.en.md, sinon index.md ; rubriques écartées
+    loader: seriesLoader({ base: 'public/content/archives', locale: 'en', sections: 'exclude', prepare }),
     schema,
   }),
   series_fr: defineCollection({
-    loader: seriesLoader({ base: 'public/content/archives' }), // index.md
+    loader: seriesLoader({ base: 'public/content/archives', sections: 'exclude', prepare }), // index.md
     schema,
   }),
 };
 ```
+
+Les rubriques se lisent alors à part — une seconde collection sur la même `base`, avec `sections: 'include'` et un filtre sur `type`, ou directement depuis le disque.
 
 ```astro
 ---

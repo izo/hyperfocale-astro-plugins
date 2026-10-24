@@ -7,6 +7,29 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [0.22.0] — 2026-10-24
+
+`seriesLoader` (`/loader`, 0.21.0) ne pouvait pas porter les archives de `mathieu-drouet.com` : le contrat du site exige `series_id` et `description`, que 53 et 23 séries n'ont pas encore, quelques tags sont des années (`- 2004`, un entier en YAML), et ses rubriques (`type: section`, §1.10) ne doivent pas entrer dans la collection des séries. Le site appliquait ses replis dans son propre loader ; il ne le pouvait plus avec `seriesLoader`, qui valide aussitôt (#135). Deux options **additives** ; rien ne change sans elles.
+
+### Ajouté
+
+- **`prepare`** — option de `seriesLoader` : une fonction `(frontmatter, ctx) => Record<string, unknown>` (ou `Promise`), ou une liste appliquée dans l'ordre, appelée **avant** `parseData`. `ctx` porte `id`, `path` (dossier relatif à `base`), `slug` (dernier segment, §1.2), `file` (fichier index lu), `filePath` (relatif au projet), `locale` (celle du fichier lu, `undefined` pour `index.md`), `collectionLocale` et `warn(message)`. Les signalements de même message sont regroupés en un avertissement par chargement, avec le nombre d'entrées et leurs identifiants (dix au plus, puis `… (+n)`), émis même si une entrée échoue ensuite. Une préparation qui lève, ou qui ne rend pas un objet, fait échouer l'entrée comme une entrée invalide, sur un message qui nomme le fichier (`cause` conservée). Le cache porte aussi sur le frontmatter préparé : modifier un repli revalide l'entrée.
+- **`fallbackField(field, value, { warn? })`** — préparation : `field` absent (`undefined`, `null`, chaîne vide) reçoit `value`, ou `value(frontmatter, ctx)` ; signalé.
+- **`stringifyTags({ field?, warn? })`** — préparation : nombres et booléens d'une liste de tags convertis en chaînes ; signalé.
+- **`sections: 'include' | 'exclude'`** — option de `seriesLoader`. `exclude` écarte les `index.md` en `type: section` avant `generateId`, `prepare` et `parseData` ; le discriminant est le seul `type` écrit (§1.10), une série sans `date` reste une série invalide. Défaut `include` : le comportement de la 0.21.0.
+- Types exportés : `SeriesPrepare`, `SeriesPrepareContext`, `PrepareWarnOptions`.
+
+### Tests
+
+- `tests/unit/loader.test.ts` — contexte de `prepare` (locale, repli de locale, `generateId`, racine) ; `prepare` **avant** la validation : sur `invalid-title-missing`, que le schéma refuse, un repli rend les deux entrées valides, chaque appel à `prepare` précède le `parseData` de la même entrée (ordre d'invocation) et `parseData` reçoit l'objet préparé ; liste ordonnée, asynchrone, exception et retour non objet ; avertissements groupés ; cache.
+- Rejeu des 27 corpus de la spec : `sections: 'exclude'` retire exactement les `index.md` dont le frontmatter, lu en YAML 1.2 core, porte `type: section` — et `prepare` ne les voit jamais ; avec les replis de `mathieu-drouet.com`, un schéma qui exige `series_id` et `description` passe sur tout corpus que `baseSeriesSchema` accepte, `series_id` valant le slug.
+
+### Rétro-compatibilité
+
+Aucun changement cassant : sans `prepare` ni `sections`, `seriesLoader` lit, identifie, valide et met en cache exactement comme en 0.21.0 (même condensé).
+
+---
+
 ## [0.21.0] — 2026-10-24 — spec 2.12-draft
 
 Un corpus Hyperfocale se lit désormais hors de `src/content/`. Les helpers trouvent `media/` et `images.json` par `import.meta.glob`, donc sous `src/content/` seulement et dans le runtime Astro seulement : `mathieu-drouet.com`, qui sert son corpus depuis `public/content` et ses médias depuis R2, avait dû réimplémenter loader, résolution des images et listes d'extensions, et s'était écarté de la spec en chemin (#130). Deux sous-chemins **additifs** ; rien ne change pour un site qui ne les importe pas.

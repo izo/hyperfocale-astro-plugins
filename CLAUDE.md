@@ -84,7 +84,7 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 | `import { ... } from '@regrets/hyperfocale/components'` | `src/components/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/media'` | `src/media.ts` — `resolveSeriesMedia` et primitives de médias, purs (ni `node:*`, ni astro, ni zod) |
-| `import { ... } from '@regrets/hyperfocale/loader'` | `src/loader.ts` — `seriesLoader` (Content Layer, repli de locale), `readSeriesMedia` (Node) |
+| `import { ... } from '@regrets/hyperfocale/loader'` | `src/loader.ts` — `seriesLoader` (Content Layer, repli de locale, `prepare` avant `parseData`, `sections`), `fallbackField`, `stringifyTags`, `readSeriesMedia` (Node) |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
 | `import { ... } from '@regrets/hyperfocale/ingest'` | `src/ingest/index.ts` — contrat d'ingestion, agnostique (WebCrypto) |
 | `import { ... } from '@regrets/hyperfocale/ingest/fs'` | `src/ingest/fs.ts` — `FilesystemProvider`, `hashFile`, `materializeSnapshot` (Node) |
