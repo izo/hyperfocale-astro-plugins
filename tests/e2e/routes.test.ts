@@ -314,6 +314,34 @@ describe('série conteneur et line-up (§1.8)', () => {
 // Tests — Manifeste d'images externalisé (spec §1.5.1, #SPEC-002)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Tests — Entrées locales de `images:` (spec 2.12, §1.5.1)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('entrées locales de `images:` (§1.5.1, v2.12)', () => {
+  // `ordre-editorial-2024/` reprend les trois images de `manifeste-2024/` et
+  // le même ordre 03, 01, 02 — écrit cette fois dans `images:` du frontmatter,
+  // en entrées relatives : la seule place d'un ordre éditorial dans une source
+  // distante. Elles doivent se résoudre comme celles du manifeste.
+  const gallery = () => htmlOf('series/ordre-editorial-2024/index.html');
+
+  it('l\'ordre écrit prime sur le tri alphabétique de media/', () => {
+    const html = gallery();
+    const troisieme = html.indexOf('Troisième vue, posée en tête par le frontmatter');
+    const premiere = html.indexOf('alt="Photo 2"');
+    const deuxieme = html.indexOf('Deuxième vue, reléguée en fin de galerie');
+    expect(troisieme).toBeGreaterThan(-1);
+    expect(troisieme).toBeLessThan(premiere);
+    expect(premiere).toBeLessThan(deuxieme);
+  });
+
+  it('les entrées relatives, longues et courtes, deviennent des assets Astro optimisés', () => {
+    const html = gallery();
+    expect(html).not.toContain('./media/0');
+    expect(html.match(/<img[^>]*class="hf-gallery__img"/g) ?? []).toHaveLength(3);
+  });
+});
+
 describe('manifeste d\'images externalisé (§1.5.1)', () => {
   // `manifeste-2024/` porte trois images nommées 01/02/03 et un images.json qui
   // les ordonne 03, 01, 02 : si la galerie sortait dans l'ordre alphabétique,

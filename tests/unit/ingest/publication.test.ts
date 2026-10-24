@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { readFile } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
 import {
   buildImagesManifest,
+  buildSeriesImagesManifest,
+  declaresImages,
   diffSnapshots,
+  parseSnapshot,
   guardChangeSet,
   summarizeChangeSet,
   waitForQuiescence,
 } from '../../../src/ingest/index.js';
 import type { ContentProvider, ProviderCapabilities, ProviderDelta, SnapshotEntry } from '../../../src/ingest/index.js';
-import { entry, snapshot } from './helpers.js';
+import { entry, memoryReader, snapshot } from './helpers.js';
 
 const SERIES = '---\ntitle: S\ndate: 2024-01-01\n---\n';
 const PRIVATE = '---\ntitle: S\ndate: 2024-01-01\nprivate: true\n---\n';
@@ -233,6 +238,71 @@ describe('buildImagesManifest (§1.5.1)', () => {
     });
     expect(buildImagesManifest(snap, 's', { urlFor: (e) => `/content/${e.path}` }).images[0]).toBe('/content/s/media/02.JPG');
     expect(buildImagesManifest(snap, 'absent')).toEqual({ images: [] });
+  });
+});
+
+describe('buildSeriesImagesManifest (§1.5.1, v2.12)', () => {
+  // Une série qui porte `images:` ne reçoit jamais d'images.json dérivé : il
+  // violerait la règle d'exclusivité, et c'est dans `images:` que vit l'ordre
+  // éditorial d'une source distante.
+  const files = {
+    'a/index.md': '---\ntitle: A\ndate: 2024-01-01\nimages:\n  - ./media/02.jpg\n  - ./media/01.jpg\n---\n',
+    'b/index.md': '---\ntitle: B\ndate: 2024-01-01\nimages: []\n---\n',
+    'c/index.md': '---\ntitle: C\ndate: 2024-01-01\nimages: null\n---\n',
+    'd/index.md': '---\ntitle: D\ndate: 2024-01-01\n---\n',
+    'd/index.en.md': '---\ntitle: D\ndate: 2024-01-01\nimages: [./media/01.jpg]\n---\n',
+    'e/index.md': 'sans frontmatter\n',
+    'f/index.en.md': '---\ntitle: F\ndate: 2024-01-01\nimages: [./media/01.jpg]\n---\n',
+  };
+  const build = async () => {
+    const snap = await snapshot([
+      ...Object.entries(files).map(([path, content]) => entry(path, content)),
+      ...['a', 'b', 'c', 'd', 'e', 'f', 'g'].flatMap((s) => [entry(`${s}/media/02.jpg`), entry(`${s}/media/01.jpg`)]),
+    ]);
+    const read = memoryReader(files);
+    return (dir: string) => buildSeriesImagesManifest(snap, dir, { read });
+  };
+
+  it('aucun manifeste pour une série qui porte `images:`, même vide', async () => {
+    const manifestOf = await build();
+    expect(await manifestOf('a')).toBeNull();
+    expect(await manifestOf('b')).toBeNull();
+  });
+
+  it('`images: null` vaut absent : le manifeste est produit, en ordre canonique', async () => {
+    expect(await (await build())('c')).toEqual({ images: ['./media/01.jpg', './media/02.jpg'] });
+  });
+
+  it('c\'est le fichier index de référence qui décide (index.md, sinon le premier index.<lang>.md)', async () => {
+    const manifestOf = await build();
+    expect(await manifestOf('d')).toEqual({ images: ['./media/01.jpg', './media/02.jpg'] });
+    expect(await manifestOf('f')).toBeNull();
+  });
+
+  it('frontmatter illisible ou dossier sans fichier index : rien à écrire', async () => {
+    const manifestOf = await build();
+    expect(await manifestOf('e')).toBeNull();
+    expect(await manifestOf('g')).toBeNull();
+  });
+
+  it('declaresImages : présence de la clé, `null` valant absent', () => {
+    expect(declaresImages({ images: [] })).toBe(true);
+    expect(declaresImages({ images: null })).toBe(false);
+    expect(declaresImages({})).toBe(false);
+  });
+
+  // Corpus de la spec : `invalid-images-conflict` est exactement la série que
+  // l'outil créerait s'il régénérait son manifeste ; `manifest/salon-2022` n'a
+  // pas d'`images:`, son manifeste se régénère.
+  it.each([
+    ['invalid-images-conflict', 'series/bretagne-2024', null],
+    ['manifest', 'series/salon-2022', { images: ['./media/01.jpg', './media/02.jpg'] }],
+    ['minimal', 'series/bretagne-2024', { images: ['./media/01.jpg', './media/02.jpg'] }],
+  ])('fixtures de la spec — %s/%s', async (corpus, dir, expected) => {
+    const fixtures = resolve(__dirname, '../../fixtures/spec-ingestion');
+    const snap = parseSnapshot(JSON.parse(await readFile(join(fixtures, 'snapshots', `${corpus}.json`), 'utf-8')));
+    const read = (path: string) => readFile(join(fixtures, 'corpora', corpus, path));
+    expect(await buildSeriesImagesManifest(snap, dir, { read })).toEqual(expected);
   });
 });
 

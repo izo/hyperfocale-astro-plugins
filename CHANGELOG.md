@@ -7,9 +7,11 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [0.21.0] — non publiée
+## [0.21.0] — 2026-10-24 — spec 2.12-draft
 
 Un corpus Hyperfocale se lit désormais hors de `src/content/`. Les helpers trouvent `media/` et `images.json` par `import.meta.glob`, donc sous `src/content/` seulement et dans le runtime Astro seulement : `mathieu-drouet.com`, qui sert son corpus depuis `public/content` et ses médias depuis R2, avait dû réimplémenter loader, résolution des images et listes d'extensions, et s'était écarté de la spec en chemin (#130). Deux sous-chemins **additifs** ; rien ne change pour un site qui ne les importe pas.
+
+La spec 2.12-draft (izo/hyperfocale-spec#35, §1.5.1) fixe la place de l'**ordre éditorial** d'une galerie dans une source distante : `images:` du frontmatter, avec des entrées relatives à `index.md`, jamais un `images.json` — l'ingestion le classe `derived` et le régénère, si bien que l'ordre posé par l'auteur était perdu sans diagnostic (constaté sur Hyperfocale CMS → Dropbox → `mathieu-drouet.com`, izo/hyperfocale-spec#33).
 
 ### Ajouté
 
@@ -26,9 +28,18 @@ Un corpus Hyperfocale se lit désormais hors de `src/content/`. Les helpers trou
 
 - **`IMAGE_EXTENSIONS`** exporté par `/ingest` (la liste que `isImagePath` employait en privé).
 
+- **`buildSeriesImagesManifest(snapshot, dir, { read, urlFor? })`** (`/ingest`) — l'`images.json` dérivé d'une série, ou `null` quand l'outil NE DOIT PAS en écrire : la série porte `images:` (même `images: []` ; `images: null` vaut absent), ou son frontmatter est absent ou illisible. Le fichier index de référence décide (`index.md`, sinon `index.mdx`, sinon le premier `index.<lang>.md`). `declaresImages(frontmatter)` expose le critère. `buildImagesManifest` reste tel quel — il ne lit pas le frontmatter, sa documentation renvoie vers la nouvelle fonction.
+
+### Corrigé
+
+- **Entrées locales de `images:`** — une entrée relative (`./media/01.jpg`) se résout désormais comme une entrée relative du manifeste : `getSeriesImages` la cherche dans `media/` et rend un asset optimisé, avec ses dimensions. Elle était servie telle quelle, en URL brute sans dimensions — et le schéma la refusait de toute façon : `url` était un `z.url()`, qui n'admet qu'une URL absolue.
+- **Forme courte dans `images:`** — une chaîne équivaut à `{ url: <chaîne> }`, comme dans `images.json` ; le schéma l'accepte et `getSeriesImages` la résout.
+
 ### Modifié
 
 - Une seule implémentation des primitives : `classifyAttachment`, `isOriginal`, `parseImageManifest` et le calcul des posters vivent dans `/media`, que `/helpers` réexporte — même API, mêmes valeurs. La lecture d'`images.json` et la résolution des références relatives, jusqu'ici privées à `validateSnapshot`, sont passées dans `ingest/manifest.ts` et `ingest/paths.ts` et servent aux deux. `posterFilenames` normalise désormais en NFC et n'écarte du scan que des références relatives (un `data:` n'en est pas une).
+
+- Schéma : `images[].url` passe de `z.url()` à `z.string().min(1)`, et l'union des entrées gagne la forme courte. Une `url` vide reste refusée. Le test qui exigeait le rejet de `url: 'pas-une-url'` est remplacé : c'est désormais un chemin relatif licite.
 
 ### Tests
 
@@ -37,9 +48,15 @@ Un corpus Hyperfocale se lit désormais hors de `src/content/`. Les helpers trou
 - e2e — le demo-site déclare deux collections sur `examples/demo-site/corpus/` (hors de `src/content/`) et rend chaque entrée avec `render()` et `resolveSeriesMedia` : repli de locale, champ inconnu transmis, ordre du manifeste, original écarté, vérifiés sur le HTML produit.
 - `tests/unit/ingest/exports.test.ts` — `/media` sans aucune dépendance externe, sur la source et sur `dist/` ; `/loader` limité à Node et `astro/markdown` ; l'intégration ne charge ni l'un ni l'autre.
 
+### À faire côté consommateur d'ingestion
+
+Remplacer `buildImagesManifest(target, dir, …)` par `await buildSeriesImagesManifest(target, dir, { read, … })` là où l'on écrit `images.json`, et ne rien écrire — supprimer un manifeste dérivé existant — quand elle rend `null`.
+
 ### Rétro-compatibilité
 
 Aucun changement cassant : l'entrée racine, les composants, les helpers, les routes et `/ingest` gardent leur API et leurs résultats ; les tests existants passent sans modification.
+
+Aucun contenu valide jusqu'ici n'est refusé : le schéma s'élargit. Une série dont `images:` portait une URL absolue rend la même galerie.
 
 ---
 

@@ -45,9 +45,17 @@ const iptcSchema = z.looseObject({
   gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
 
-/** Schéma d'une image en mode distant (spec §1.5) — `url` requis. */
+/**
+ * Schéma d'une image — forme longue de §1.5 / §1.5.1, `url` requis.
+ *
+ * `url` suit la *Résolution des URLs* de §1.5.1 : URL absolue, chemin absolu au
+ * site, ou chemin relatif au fichier index (`./media/01.jpg`). La spec 2.12
+ * l'étend explicitement aux entrées de `images:` — c'est là que s'écrit un
+ * ordre éditorial dans une source distante —, d'où une chaîne non vide plutôt
+ * qu'un `z.url()`, qui refusait toute forme relative.
+ */
 const remoteImageSchema = z.object({
-  url: z.url(),
+  url: z.string().min(1),
   alt: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
@@ -84,6 +92,8 @@ const localAssetImageSchema = z.object({
  * deux extensions, discriminées par leur clé obligatoire.
  */
 const imageEntrySchema = z.union([
+  // Forme courte (§1.5.1) : une chaîne équivaut à `{ url: <chaîne> }`.
+  z.string().min(1),
   remoteImageSchema,
   localFileImageSchema,
   localAssetImageSchema,
@@ -331,11 +341,13 @@ export interface SeriesData {
   download: boolean;
   iptc?: Record<string, unknown>;
   /**
-   * Entrées de `images[]` — trois formes, cf. `imageEntrySchema` :
-   * `url` (mode distant §1.5), `file` (média local par nom), `src` (asset
-   * déjà traité par `image()`). Les deux dernières sont des extensions du plugin.
+   * Entrées de `images[]` — quatre formes, cf. `imageEntrySchema` : chaîne et
+   * `url` (§1.5, §1.5.1 — absolue, absolue au site ou relative à l'index),
+   * `file` (média local par nom), `src` (asset déjà traité par `image()`). Les
+   * deux dernières sont des extensions du plugin.
    */
   images?: Array<
+    | string
     | { url: string; alt?: string; width?: number; height?: number }
     | { file: string; alt?: string }
     | { src: { src: string; [key: string]: unknown }; alt?: string }

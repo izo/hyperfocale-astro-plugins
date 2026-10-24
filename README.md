@@ -277,16 +277,19 @@ files:
     kind: document   # video | audio | document | file (auto-détecté si absent)
 ```
 
-Le tableau `images:` accepte **trois formes**, mélangeables — la première est celle de la spec §1.5, les deux autres sont des extensions du plugin pour curer l'ordre et les `alt` d'images locales :
+Le tableau `images:` accepte **quatre formes**, mélangeables — les deux premières sont celles de la spec (§1.5, §1.5.1), les deux autres des extensions du plugin pour curer l'ordre et les `alt` d'images locales :
 
 ```yaml
 images:
-  - url: "https://cdn.exemple.com/01.jpg"   # distante (§1.5)
+  - url: "https://cdn.exemple.com/01.jpg"   # forme longue (§1.5)
     alt: "Shibuya de nuit"
+  - "./media/04.jpg"                        # forme courte, relative à index.md (§1.5.1, v2.12)
   - file: "02.jpg"                          # fichier de media/, par nom
     alt: "Ruelle de Golden Gai"
   - src: "./media/03.jpg"                   # asset traité par image() du site
 ```
+
+Une `url` — longue ou courte — est absolue, absolue au site (`/…`) ou relative à `index.md` (`./media/01.jpg`) : elle se résout comme une entrée du manifeste, une entrée relative devenant un asset optimisé de `media/` (spec 2.12). C'est la place d'un **ordre éditorial** : dans une source distante (Dropbox, WebDAV), un ordre de galerie qui n'est pas l'ordre alphabétique des noms s'écrit dans `images:`, jamais dans un `images.json` — l'ingestion le classe `derived` et le régénère, l'ordre de l'auteur serait perdu sans diagnostic (§1.5.1).
 
 Les documents joints **locaux** (tout fichier non-image dans `media/`) sont détectés automatiquement ; le bloc `attachments:` permet d'y attacher un titre/description :
 
@@ -927,7 +930,7 @@ source éditoriale ── provider ──► ContentSnapshot N+1 ── diffSnap
 
 | Import | Contenu | Runtime |
 |---|---|---|
-| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `publishable`, `isOriginalPath`, `isOriginalEntry`, `ORIGINAL_EXTENSIONS`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
+| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `publishable`, `isOriginalPath`, `isOriginalEntry`, `ORIGINAL_EXTENSIONS`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `summarizeChangeSet`, `buildImagesManifest`, `buildSeriesImagesManifest`, `declaresImages`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
 | `@regrets/hyperfocale/ingest/fs` | `FilesystemProvider`, `hashFile`, `hashBytes`, `materializeSnapshot` | Node |
 | `@regrets/hyperfocale/ingest/dropbox` | `DropboxClient`, `DropboxProvider`, `verifyDropboxSignature`, `dropboxChallenge` | agnostique — `fetch` + WebCrypto, importable dans un Worker |
 | `@regrets/hyperfocale/ingest/webdav` | `WebDAVProvider` | agnostique — `fetch` |
@@ -943,6 +946,7 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 - **Octets vérifiés** (§4.4) — tout ce qui est lu (validation, garde, matérialisation) est confronté à l'empreinte de l'entrée : un fichier qui a changé depuis le listing (`entry-hash-mismatch`) rend le snapshot impubliable. Une entrée `placeholder` (non téléchargée) ou `conflict` (copie conflictuelle) n'est jamais lue et bloque la publication.
 - **Garde** (§4.11) — `guardChangeSet(changeSet, base, target, { read, policy })` applique des seuils fournis par le site : suppressions massives, déplacements massifs, fichier trop lourd. Toujours actives : snapshot incomplet ou vide, et série privée (`private: true` sur l'un de ses fichiers index) qui ne l'est plus dans target. La garde est *fail-closed* côté base : un fichier index illisible (non matérialisé, octets divergents, frontmatter illisible) y rend la série privée par prudence.
 - **Originaux** (§1.9, §4.11, v2.11) — le snapshot d'une source garde ses RAW et sidecars ; le snapshot **publié** n'en a jamais. `publishable(target)` les retire (`id` recalculé) : c'est vers lui que va le diff de publication, c'est lui qu'on matérialise et qu'on enregistre. La validation porte sur `target` tel quel. La garde rapporte l'exclusion en `guard-originals-excluded` (`info`, champs `count` et `bytes`) et n'évalue `guard-oversize` que sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
+- **Manifeste dérivé** (§1.5.1, v2.12) — `images.json` est une donnée `derived` qu'un outil d'ingestion PEUT régénérer, mais il NE DOIT PAS en produire pour une série dont l'`index.md` porte `images:` : il violerait lui-même la règle d'exclusivité (`images-conflict`). `buildSeriesImagesManifest(snapshot, dir, { read, urlFor? })` lit le fichier index et rend `null` dans ce cas — ou quand le frontmatter est illisible ; sinon le manifeste de `buildImagesManifest`, qui, lui, ne lit pas le frontmatter.
 
 ### Providers
 
