@@ -14,6 +14,11 @@ export default defineConfig({
     // Résolveur de médias pur (aucun node:*, ni astro, ni zod) et loader Content
     // Layer (Node) : lisent un corpus rangé hors de `src/content/` (#130).
     media: 'src/media.ts',
+    // Libellés et formats des composants (#136) — pur, chargeable partout.
+    i18n: 'src/i18n.ts',
+    // Outils internes des composants, importés par les `.astro` copiés dans
+    // dist/components/ (hors champ `exports`).
+    'components/runtime': 'src/components/runtime.ts',
     loader: 'src/loader.ts',
     // Contrat d'ingestion : sous-chemins additifs, jamais importés par
     // l'intégration. `ingest/index`, `ingest/dropbox` et `ingest/webdav`

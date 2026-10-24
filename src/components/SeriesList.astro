@@ -1,22 +1,43 @@
 ---
 import SeriesCard from './SeriesCard.astro';
 import type { Series } from '../helpers/index.js';
+import { resolveLabels, passthroughAttrs, type InstanceProps, type HeadingLevel } from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   series: Series[];
   columns?: number;
   prefix?: string;
+  /** Niveau de titre des cartes, transmis à chaque `SeriesCard` (défaut : 2). */
+  headingLevel?: HeadingLevel;
 }
 
-const { series, columns = 3, prefix = '/series' } = Astro.props;
+const {
+  series,
+  columns = 3,
+  prefix = '/series',
+  headingLevel,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const rootAttrs = passthroughAttrs(rest);
 ---
 
-<section class="hf-series-list" style={`--hf-columns: ${columns}`}>
+<section class:list={['hf-series-list', className]} style={`--hf-columns: ${columns}`} {...rootAttrs}>
   {series.length === 0 ? (
-    <p class="hf-series-list__empty">Aucune série disponible pour le moment.</p>
+    <p class="hf-series-list__empty">{labels['list.empty']}</p>
   ) : (
     series.map((s) => (
-      <SeriesCard series={s} prefix={prefix} />
+      <SeriesCard
+        series={s}
+        prefix={prefix}
+        headingLevel={headingLevel}
+        locale={locale}
+        labels={labelOverrides}
+      />
     ))
   )}
 </section>
@@ -43,7 +64,7 @@ const { series, columns = 3, prefix = '/series' } = Astro.props;
   .hf-series-list__empty {
     grid-column: 1 / -1;
     text-align: center;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     font-family: var(--hf-font-sans, system-ui);
     padding: 2rem;
   }

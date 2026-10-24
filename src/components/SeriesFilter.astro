@@ -1,13 +1,25 @@
 ---
 import type { Series } from '../helpers/index.js';
+import { resolveLabels, formatLabel, passthroughAttrs, scriptJson, type InstanceProps } from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   series: Series[];
   filters?: Array<'tags' | 'date' | 'location'>;
   prefix?: string;
 }
 
-const { series, filters = ['tags', 'date', 'location'], prefix = '/series' } = Astro.props;
+const {
+  series,
+  filters = ['tags', 'date', 'location'],
+  prefix = '/series',
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const rootAttrs = passthroughAttrs(rest);
 
 const showTags = filters.includes('tags');
 const showDate = filters.includes('date');
@@ -41,15 +53,21 @@ const items: ItemData[] = series.map((s) => ({
   url: `${normalizedPrefix}/${s.id}/`,
 }));
 
+// Données du script client (#138) : injectées par `set:html` — dans un
+// `<script>`, Astro n'évalue pas `{}` et le JSON n'était pas rendu, si bien que
+// `JSON.parse` levait et que le filtre restait inerte. `scriptJson` échappe `<`
+// (un titre contenant `</script>` fermerait la balise).
+const filterData = scriptJson({ locale, count: labels['filter.count'], items });
+
 const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.length > 0) || showLocation;
 ---
 
-<div class="hf-filter" id="hf-filter">
+<div class:list={['hf-filter', className]} id="hf-filter" {...rootAttrs}>
   {hasControls && (
     <form class="hf-filter__controls" id="hf-filter-form" novalidate>
       {showTags && allTags.length > 0 && (
         <fieldset class="hf-filter__group">
-          <legend class="hf-filter__legend">Tags</legend>
+          <legend class="hf-filter__legend">{labels['filter.tags']}</legend>
           <div class="hf-filter__tag-grid">
             {allTags.map((tag) => (
               <label class="hf-filter__tag-label">
@@ -63,27 +81,27 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
       <div class="hf-filter__row">
         {showDate && allYears.length > 0 && (
           <div class="hf-filter__group hf-filter__group--inline">
-            <label class="hf-filter__legend" for="hf-filter-year">Année</label>
+            <label class="hf-filter__legend" for="hf-filter-year">{labels['filter.year']}</label>
             <select id="hf-filter-year" name="year" class="hf-filter__select">
-              <option value="">Toutes</option>
+              <option value="">{labels['filter.allYears']}</option>
               {allYears.map((y) => <option value={String(y)}>{y}</option>)}
             </select>
           </div>
         )}
         {showLocation && (
           <div class="hf-filter__group hf-filter__group--inline">
-            <label class="hf-filter__legend" for="hf-filter-location">Lieu</label>
+            <label class="hf-filter__legend" for="hf-filter-location">{labels['filter.location']}</label>
             <input
               type="search"
               id="hf-filter-location"
               name="location"
               class="hf-filter__input"
-              placeholder="Filtrer par lieu…"
+              placeholder={labels['filter.locationPlaceholder']}
               autocomplete="off"
             />
           </div>
         )}
-        <button type="reset" class="hf-filter__reset">Réinitialiser</button>
+        <button type="reset" class="hf-filter__reset">{labels['filter.reset']}</button>
       </div>
     </form>
   )}
@@ -112,7 +130,7 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
             </span>
           )}
           {item.tags.length > 0 && (
-            <span class="hf-filter__chips" aria-label={`Tags : ${item.tags.join(', ')}`}>
+            <span class="hf-filter__chips" aria-label={formatLabel(labels['filter.tagList'], { tags: item.tags.join(', ') })}>
               {item.tags.map((t) => <span class="hf-filter__chip">{t}</span>)}
             </span>
           )}
@@ -122,9 +140,7 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
   </ul>
 </div>
 
-<script type="application/json" id="hf-filter-data">
-  {JSON.stringify(items)}
-</script>
+<script type="application/json" id="hf-filter-data" is:inline set:html={filterData}></script>
 
 <script>
   (() => {
@@ -136,7 +152,20 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
     if (!list || !dataEl) return;
 
     type ItemData = { id: string; title: string; date: number | null; tags: string[]; location: string | null; url: string };
-    const allItems: ItemData[] = JSON.parse(dataEl.textContent ?? '[]');
+    type FilterData = { locale: string; count: { other: string } & Record<string, string | undefined>; items: ItemData[] };
+    const payload: FilterData = JSON.parse(dataEl.textContent ?? '{}');
+    const allItems: ItemData[] = payload.items ?? [];
+    let plural: Intl.PluralRules | null = null;
+    try {
+      plural = new Intl.PluralRules(payload.locale);
+    } catch {
+      plural = null;
+    }
+    function countText(shown: number, total: number): string {
+      const forms = payload.count ?? { other: '{shown} / {total}' };
+      const template = forms[plural?.select(shown) ?? 'other'] ?? forms.other;
+      return template.split('{shown}').join(String(shown)).split('{total}').join(String(total));
+    }
     const listItems = [...list.querySelectorAll<HTMLLIElement>('[data-id]')];
 
     function getFilters() {
@@ -169,9 +198,7 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
 
       if (countEl) {
         const total = allItems.length;
-        countEl.textContent = shown === total
-          ? ''
-          : `${shown} série${shown > 1 ? 's' : ''} affichée${shown > 1 ? 's' : ''} sur ${total}`;
+        countEl.textContent = shown === total ? '' : countText(shown, total);
       }
 
       // Événement DOM pour intégration custom (#FE-010)
@@ -195,8 +222,8 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
   }
 
   .hf-filter__controls {
-    background: var(--hf-filter-bg, var(--hf-color-surface, #f5f5f5));
-    border: 1px solid var(--hf-filter-border, var(--hf-color-border, #e0e0e0));
+    background: var(--hf-filter-bg, var(--hf-color-surface));
+    border: 1px solid var(--hf-filter-border, var(--hf-color-border));
     border-radius: var(--hf-filter-radius, var(--hf-card-radius, 4px));
     padding: 1rem;
     margin-bottom: 1rem;
@@ -218,7 +245,7 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
   .hf-filter__legend {
     font-size: 0.8rem;
     font-weight: 600;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     margin-bottom: 0.5rem;
@@ -243,18 +270,18 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
     align-items: center;
     gap: 0.35rem;
     font-size: 0.85rem;
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     cursor: pointer;
     padding: 0.25rem 0.5rem;
-    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border: 1px solid var(--hf-color-border);
     border-radius: 999px;
     transition: background var(--hf-transition, 200ms ease), border-color var(--hf-transition, 200ms ease);
   }
 
   .hf-filter__tag-label:has(.hf-filter__checkbox:checked) {
-    background: var(--hf-color-accent, #0066ff);
-    border-color: var(--hf-color-accent, #0066ff);
-    color: var(--hf-color-text-overlay, #fff);
+    background: var(--hf-color-accent);
+    border-color: var(--hf-color-accent);
+    color: var(--hf-color-on-accent);
   }
 
   .hf-filter__checkbox {
@@ -269,15 +296,15 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
     font-size: 0.875rem;
     font-family: inherit;
     padding: 0.35rem 0.6rem;
-    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border: 1px solid var(--hf-color-border);
     border-radius: var(--hf-card-radius, 4px);
-    background: var(--hf-color-bg, #fff);
-    color: var(--hf-color-text, #111);
+    background: var(--hf-color-bg);
+    color: var(--hf-color-text);
   }
 
   .hf-filter__select:focus,
   .hf-filter__input:focus {
-    outline: 2px solid var(--hf-color-accent, #0066ff);
+    outline: 2px solid var(--hf-color-accent);
     outline-offset: 2px;
   }
 
@@ -285,22 +312,22 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
     font-size: 0.8rem;
     font-family: inherit;
     padding: 0.35rem 0.75rem;
-    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border: 1px solid var(--hf-color-border);
     border-radius: var(--hf-card-radius, 4px);
     background: transparent;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     cursor: pointer;
     margin-left: auto;
     transition: background var(--hf-transition, 200ms ease);
   }
 
   .hf-filter__reset:hover {
-    background: var(--hf-color-border, #e0e0e0);
+    background: var(--hf-color-border);
   }
 
   .hf-filter__count {
     font-size: 0.85rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     margin: 0 0 0.75rem;
     min-height: 1.2em;
   }
@@ -315,14 +342,14 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
   }
 
   .hf-filter__item {
-    border: 1px solid var(--hf-color-border, #e0e0e0);
+    border: 1px solid var(--hf-color-border);
     border-radius: var(--hf-card-radius, 4px);
-    background: var(--hf-color-surface, #f5f5f5);
+    background: var(--hf-color-surface);
     transition: box-shadow var(--hf-transition, 200ms ease);
   }
 
   .hf-filter__item:hover {
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    box-shadow: var(--hf-card-shadow);
   }
 
   .hf-filter__link {
@@ -336,12 +363,12 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
 
   .hf-filter__title {
     font-weight: 600;
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
   }
 
   .hf-filter__meta {
     font-size: 0.8rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 
   .hf-filter__chips {
@@ -355,8 +382,8 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
     font-size: 0.75rem;
     padding: 0.1rem 0.45rem;
     border-radius: 999px;
-    background: var(--hf-color-border, #e0e0e0);
-    color: var(--hf-color-text-muted, #666);
+    background: var(--hf-color-border);
+    color: var(--hf-color-text-muted);
   }
 
   @media (prefers-reduced-motion: reduce) {

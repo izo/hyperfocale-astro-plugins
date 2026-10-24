@@ -2,19 +2,42 @@
 import { Image } from 'astro:assets';
 import type { Series } from '../helpers/index.js';
 import { getSeriesImages } from '../helpers/index.js';
+import {
+  resolveLabels,
+  formatLabel,
+  formatDate,
+  passthroughAttrs,
+  headingTag,
+  type InstanceProps,
+  type HeadingLevel,
+} from './runtime.js';
 
-interface Props {
+interface Props extends InstanceProps {
   series: Series;
   prefix?: string;
+  /** Niveau du titre de la carte (défaut : 2). */
+  headingLevel?: HeadingLevel;
 }
 
-const { series, prefix = '/series' } = Astro.props;
+const {
+  series,
+  prefix = '/series',
+  headingLevel,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
 const { title, date, description, cover } = series.data;
 const slug = series.id;
 
-const formattedDate = date instanceof Date
-  ? date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
-  : undefined;
+const labels = resolveLabels(locale, labelOverrides);
+const Heading = headingTag(headingLevel, 2);
+const rootAttrs = passthroughAttrs(rest);
+const linkLabel = formatLabel(labels['card.link'], { title: String(title) });
+const coverAlt = formatLabel(labels['card.coverAlt'], { title: String(title) });
+
+const formattedDate = date instanceof Date ? formatDate(date, locale) : undefined;
 
 // Cover fallback — première image si `cover` absent (spec §1.6, #MVP-004)
 const fallbackImage = !cover ? (await getSeriesImages(slug, series))[0] : undefined;
@@ -27,13 +50,13 @@ const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const seriesUrl = `${normalizedPrefix}/${slug}/`;
 ---
 
-<article class="hf-card">
-  <a href={seriesUrl} class="hf-card__link" aria-label={`Voir la série : ${title}`}>
+<article class:list={['hf-card', className]} {...rootAttrs}>
+  <a href={seriesUrl} class="hf-card__link" aria-label={linkLabel}>
     <div class="hf-card__cover">
       {cover && optimizeImages ? (
         <Image
           src={cover}
-          alt={`Couverture de la série ${title}`}
+          alt={coverAlt}
           width={600}
           height={400}
           class="hf-card__image"
@@ -42,7 +65,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
       ) : cover ? (
         <img
           src={(cover as { src: string }).src}
-          alt={`Couverture de la série ${title}`}
+          alt={coverAlt}
           width={600}
           height={400}
           class="hf-card__image"
@@ -52,7 +75,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
       ) : fallbackImage ? (
         <img
           src={fallbackImage.src}
-          alt={fallbackImage.alt ?? `Couverture de la série ${title}`}
+          alt={fallbackImage.alt ?? coverAlt}
           width={600}
           height={400}
           class="hf-card__image"
@@ -69,7 +92,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
       )}
     </div>
     <div class="hf-card__body">
-      <h2 class="hf-card__title">{title}</h2>
+      <Heading class="hf-card__title">{title}</Heading>
       {date instanceof Date && (
         <time class="hf-card__date" datetime={date.toISOString()}>{formattedDate}</time>
       )}
@@ -80,10 +103,10 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
 
 <style>
   .hf-card {
-    background: var(--hf-color-surface, #f5f5f5);
+    background: var(--hf-color-surface);
     border-radius: var(--hf-card-radius, 4px);
     overflow: hidden;
-    box-shadow: var(--hf-card-shadow, 0 2px 8px rgba(0, 0, 0, 0.08));
+    box-shadow: var(--hf-card-shadow);
     transition: transform var(--hf-transition, 200ms ease),
                 box-shadow var(--hf-transition, 200ms ease);
   }
@@ -97,7 +120,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
 
   .hf-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+    box-shadow: var(--hf-card-shadow-hover);
   }
 
   .hf-card__link {
@@ -109,7 +132,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
   .hf-card__cover {
     aspect-ratio: 3 / 2;
     overflow: hidden;
-    background: var(--hf-color-border, #e0e0e0);
+    background: var(--hf-color-border);
   }
 
   .hf-card__image {
@@ -129,7 +152,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
   }
 
   .hf-card__body {
@@ -140,14 +163,14 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     margin: 0 0 0.25rem;
     font-size: 1.1rem;
     font-weight: 600;
-    color: var(--hf-color-text, #111);
+    color: var(--hf-color-text);
     font-family: var(--hf-font-sans, system-ui);
   }
 
   .hf-card__date {
     display: block;
     font-size: 0.8rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     margin-bottom: 0.5rem;
     font-family: var(--hf-font-sans, system-ui);
   }
@@ -155,7 +178,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
   .hf-card__description {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--hf-color-text-muted, #666);
+    color: var(--hf-color-text-muted);
     line-height: 1.5;
     font-family: var(--hf-font-sans, system-ui);
     display: -webkit-box;
