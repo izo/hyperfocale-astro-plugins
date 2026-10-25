@@ -66,6 +66,13 @@ export interface HyperfocaleLabels {
   // ─── SeriesAttachments ────────────────────────────────────────────────
   /** Titre de la section (surchargeable aussi par la prop `heading`). */
   'attachments.heading': string;
+  /**
+   * Nom accessible d'un lien de téléchargement (`aria-label`), quand le format
+   * ou la taille sont connus. `{title}`, `{details}` (voir `attachments.linkDetails`)
+   */
+  'attachments.linkLabel': string;
+  /** Format et taille réunis dans `{details}`, quand les deux sont connus. `{format}`, `{size}` */
+  'attachments.linkDetails': string;
   /** Tailles de fichier. `{n}` est déjà formaté selon la locale. */
   'size.byte': string;
   'size.kilobyte': string;
@@ -118,6 +125,8 @@ const fr: HyperfocaleLabels = {
   'lightbox.imageAlt': 'Image {n} sur {total}',
   'lightbox.counter': '{n} / {total}',
   'attachments.heading': 'Documents',
+  'attachments.linkLabel': '{title} — {details}',
+  'attachments.linkDetails': '{format}, {size}',
   'size.byte': '{n} o',
   'size.kilobyte': '{n} Ko',
   'size.megabyte': '{n} Mo',
@@ -161,6 +170,8 @@ const en: HyperfocaleLabels = {
   'lightbox.imageAlt': 'Image {n} of {total}',
   'lightbox.counter': '{n} / {total}',
   'attachments.heading': 'Documents',
+  'attachments.linkLabel': '{title} — {details}',
+  'attachments.linkDetails': '{format}, {size}',
   'size.byte': '{n} B',
   'size.kilobyte': '{n} KB',
   'size.megabyte': '{n} MB',

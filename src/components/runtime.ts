@@ -6,6 +6,7 @@
  * `exports` : ce n'est pas une API publique.
  */
 import type { HeadingLevel } from '../i18n.js';
+import type { Attachment } from '../schema.js';
 
 export {
   resolveLabels,
@@ -29,6 +30,98 @@ export function passthroughAttrs(props: Record<string, unknown>): Record<string,
     if (key.startsWith('data-') || key.startsWith('aria-')) out[key] = value;
   }
   return out;
+}
+
+/**
+ * Attributs posés sur un élément **intérieur** du composant (le lien d'un
+ * document joint, #136) : `data-*`, `aria-*` et `class`. Comme pour la racine,
+ * tout le reste est écarté — `on*`, `href`, `style`, `download`… — et une
+ * valeur `undefined`, `null` ou `false` n'est pas transmise.
+ */
+export interface ElementAttrs {
+  class?: string;
+  [attr: `data-${string}`]: unknown;
+  [attr: `aria-${string}`]: unknown;
+}
+
+/** Attributs du lien d'un document joint (`SeriesAttachments`). */
+export type AttachmentLinkAttrs = ElementAttrs;
+
+/** Document joint passé à `SeriesAttachments` : un `Attachment`, plus les attributs de son lien. */
+export type SeriesAttachmentItem = Attachment & { attrs?: AttachmentLinkAttrs };
+
+/** Filtre de `ElementAttrs` : `class` (chaîne non vide) en plus de `passthroughAttrs`. */
+export function elementAttrs(attrs: unknown): { class?: string } & Record<string, unknown> {
+  if (!attrs || typeof attrs !== 'object') return {};
+  const record = attrs as Record<string, unknown>;
+  const out: { class?: string } & Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(passthroughAttrs(record))) {
+    if (value !== null) out[key] = value;
+  }
+  const cls = record['class'];
+  if (typeof cls === 'string' && cls.trim() !== '') out.class = cls;
+  return out;
+}
+
+/**
+ * Feuilles émises par les composants (`componentStyles: 'inline'`) : une seule
+ * fois par page. La clé est l'objet `Astro.request`, propre à chaque rendu de
+ * page — rien ne passe d'une page à l'autre, et la `WeakMap` ne retient rien.
+ * Rend `true` au premier appel pour `(request, name)`, `false` ensuite.
+ */
+const emittedStyles = new WeakMap<object, Set<string>>();
+export function claimStyles(request: object, name: string): boolean {
+  let names = emittedStyles.get(request);
+  if (!names) {
+    names = new Set();
+    emittedStyles.set(request, names);
+  }
+  if (names.has(name)) return false;
+  names.add(name);
+  return true;
+}
+
+/**
+ * `componentStyles` de l'intégration, lu par les composants qui portent leur
+ * feuille (`SeriesAttachments` en 0.24.0). Hors intégration (tests, rendu par
+ * l'API container) : `'inline'`.
+ */
+export function componentStylesMode(): 'inline' | 'none' {
+  return import.meta.env.HYPERFOCALE_COMPONENT_STYLES === 'none' ? 'none' : 'inline';
+}
+
+/**
+ * Feuille compactée pour l'émission inline : commentaires retirés, blancs
+ * réduits. Les commentaires de la feuille documentent le fichier publié
+ * (`/styles/*.css`) ; ils n'ont rien à faire dans chaque page.
+ */
+const compacted = new Map<string, string>();
+export function compactCss(css: string): string {
+  let out = compacted.get(css);
+  if (out === undefined) {
+    out = css
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s*([{};])\s*/g, '$1')
+      .trim();
+    compacted.set(css, out);
+  }
+  return out;
+}
+
+/**
+ * Identifiant HTML stable dérivé d'une chaîne (FNV-1a 32 bits, base 36) — pour
+ * relier deux éléments d'un même composant (`aria-describedby`) sans compteur
+ * global. Deux instances identiques sur une page partagent l'identifiant, et
+ * le texte qu'il désigne : la description reste juste.
+ */
+export function stableId(prefix: string, seed: string): string {
+  let hash = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return `${prefix}-${hash.toString(36)}`;
 }
 
 /** Balise de titre pour `headingLevel` ; une valeur hors 1–6 retombe sur `fallback`. */

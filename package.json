@@ -1,6 +1,6 @@
 {
   "name": "@regrets/hyperfocale",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "type": "module",
   "description": "Plugin Astro pour sites de photographie — gestion de séries photo",
   "license": "MIT",
@@ -38,6 +38,7 @@
     "./components/SeriesFilter.astro": "./dist/components/SeriesFilter.astro",
     "./components/SeriesMap.astro": "./dist/components/SeriesMap.astro",
     "./components/SeriesMasonry.astro": "./dist/components/SeriesMasonry.astro",
+    "./styles/attachments.css": "./dist/theme/attachments.css",
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"
@@ -83,7 +84,9 @@
   "publishConfig": {
     "access": "public"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "dev": "tsup --watch",
     "build": "tsup && tsc --emitDeclarationOnly",
@@ -107,6 +110,7 @@
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^25.6.0",
     "astro": "^7.0.0",
+    "happy-dom": "^20.14.6",
     "tsup": "^9.0.0",
     "typescript": "^7.0.0",
     "vitest": "^5.0.0",

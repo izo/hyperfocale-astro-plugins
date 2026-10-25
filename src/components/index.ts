@@ -26,4 +26,8 @@ export {
   formatFileSize,
 } from '../i18n.js';
 export type { HyperfocaleLabels, HyperfocaleLabelKey, HfPluralForms, HeadingLevel } from '../i18n.js';
-export type { InstanceProps as HyperfocaleInstanceProps } from './runtime.js';
+export type {
+  InstanceProps as HyperfocaleInstanceProps,
+  SeriesAttachmentItem,
+  AttachmentLinkAttrs,
+} from './runtime.js';

@@ -35,6 +35,29 @@ describe('package exports — composants .astro', () => {
   }
 });
 
+// ─── Feuilles des composants (`/styles/*.css`, #136) ─────────────────────────
+
+// Une feuille de composant de `src/theme/` (hors `base.css`, le thème injecté)
+// est publiée pour qu'un site l'importe dans sa propre cascade layer.
+const SHEETS = readdirSync(resolve(ROOT, 'src', 'theme')).filter((f) => f.endsWith('.css') && f !== 'base.css');
+
+describe('package exports — feuilles des composants', () => {
+  it('découvre attachments.css', () => {
+    expect(SHEETS).toContain('attachments.css');
+  });
+
+  for (const sheet of SHEETS) {
+    it(`expose ./styles/${sheet}`, () => {
+      expect(pkg.exports[`./styles/${sheet}`]).toBe(`./dist/theme/${sheet}`);
+      expect(existsSync(resolve(ROOT, 'dist', 'theme', sheet))).toBe(true);
+    });
+  }
+
+  it('les .css restent des effets de bord (pas élagués à l’import)', () => {
+    expect(pkg.sideEffects).toEqual(['**/*.css']);
+  });
+});
+
 // ─── Vocabulaires du schéma exposés à la racine ──────────────────────────────
 
 /**
