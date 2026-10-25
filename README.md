@@ -359,11 +359,12 @@ Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redime
 
 | Route | Description |
 |-------|-------------|
-| `/series/` | Liste de toutes les séries (date décroissante) |
+| `/series/` | Liste de toutes les séries (date calendaire décroissante ; à égalité, titre puis chemin ; sans date en dernier) |
 | `/series/[slug]/` | Page d'une série — body + galerie paginée |
-| `/series/[slug]/[page]/` | Pages suivantes de la galerie |
+| `/series/[slug]/page/[n]/` | Pages suivantes de la galerie, `n` ≥ 2 |
+| `/series/[slug]/[n]/` | Ancienne forme de la pagination (jusqu'à la spec 2.12) : redirigée vers `/page/[n]/`, sauf si une sous-série porte ce numéro pour slug |
 
-Le préfixe `/series` est configurable via l'option `prefix`. Les slugs hiérarchiques (`voyages/asie/tokyo-2024`) sont gérés par des routes catch-all.
+Le préfixe `/series` est configurable via l'option `prefix`. Les slugs hiérarchiques (`voyages/asie/tokyo-2024`) sont gérés par des routes catch-all. La pagination passe sous `page/` (spec §1.6) : sans cela, la page 2 de la galerie d'un conteneur et sa sous-série dont le slug est `2` auraient la même URL. Un dossier nommé `page` directement dans une série est donc réservé.
 
 ---
 

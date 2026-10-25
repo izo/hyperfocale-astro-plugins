@@ -3,6 +3,7 @@ import type { CollectionEntry, CollectionKey } from 'astro:content';
 import { EMBED_PLATFORMS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
 import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf } from '../media.js';
+import { compareNFC, compareSeriesOrder } from '../order.js';
 import type { ImageManifest, ManifestImage } from '../media.js';
 
 // Primitives pures, tenues par `/media` (importable hors runtime Astro) et
@@ -295,7 +296,9 @@ export async function getSections(collectionName?: string): Promise<Series[]> {
 }
 
 /**
- * Retourne toutes les séries publiées, triées par date décroissante.
+ * Retourne toutes les séries publiées, dans l'ordre de la spec §1.6 : date
+ * calendaire décroissante ; à date égale titre croissant puis chemin ; les séries
+ * sans date après les datées (`compareSeriesOrder`).
  * Exclut `draft: true` en production (spec §1.6), ainsi que les pages d'index
  * de section, en dev comme en prod (spec §1.10).
  *
@@ -311,39 +314,40 @@ export async function getSeriesList(collectionName?: string): Promise<Series[]> 
       const published = (entry.data as Record<string, unknown>).published ?? true;
       return !entry.data.draft && published !== false;
     })
-    .sort((a: Series, b: Series) => {
-      const dateA = (a.data.date as Date | undefined)?.getTime() ?? 0;
-      const dateB = (b.data.date as Date | undefined)?.getTime() ?? 0;
-      return dateB - dateA;
-    });
+    .sort(compareSeriesOrder);
 }
 
 /**
  * Retourne les sous-séries d'une série conteneur (spec §1.8).
  *
  * Un conteneur est une série dont un sous-dossier porte lui aussi un `index.md` —
- * un festival et ses concerts, un mariage et ses moments. À ne pas confondre avec
- * le rangement (§1.2) : `archives/music/concerts/` n'est pas un conteneur, aucun
- * des dossiers traversés ne portant d'`index.md`. C'est pourquoi ce helper ne
- * retient que les entrées situées **exactement un segment plus bas** : la spec
- * limite l'imbrication à un niveau, et une série rangée plus profond n'est pas
- * une sous-série.
+ * un festival et ses concerts, un mariage et ses moments. Le **parent** d'une série
+ * est son plus proche dossier ancêtre porteur d'un `index.md` de série (spec §1.8,
+ * 2.15) : un dossier de rangement (§1.2), sans `index.md`, peut donc s'intercaler
+ * entre le conteneur et la sous-série (`<conteneur>/lots/<sous-slug>/`), et une page
+ * d'index de section (§1.10) est transparente — comme pour `nesting-too-deep`
+ * (§4.10), qui ne compte ni l'un ni l'autre.
  *
- * Tri : `lineup_order` croissant quand il est renseigné, date décroissante sinon.
- * Les deux se mélangent — une sous-série ordonnée passe devant celles qui ne le
- * sont pas, lesquelles restent entre elles en ordre chronologique inverse.
+ * Tri : `lineup_order` croissant quand il est renseigné, puis l'ordre des séries
+ * de la spec §1.6 (`compareSeriesOrder`). Une sous-série ordonnée passe devant
+ * celles qui ne le sont pas.
  *
  * @example getSubSeries('printemps-bourges-2008') → les séries de chaque artiste
  */
 export async function getSubSeries(containerId: string, collectionName?: string): Promise<Series[]> {
-  const prefix = `${containerId}/`;
-  const all = await getAllSeriesCached(collectionName);
+  const series = (await getAllSeriesCached(collectionName)).filter((entry) => !isSection(entry));
+  const ids = new Set(series.map((entry) => entry.id));
 
-  const subs = all.filter((entry) => {
-    if (isSection(entry)) return false;
-    if (!entry.id.startsWith(prefix)) return false;
-    return !entry.id.slice(prefix.length).includes('/');
-  });
+  /** Plus proche ancêtre qui est une série, ou `null`. */
+  const parentOf = (id: string): string | null => {
+    for (let cut = id.lastIndexOf('/'); cut > 0; cut = id.lastIndexOf('/', cut - 1)) {
+      const ancestor = id.slice(0, cut);
+      if (ids.has(ancestor)) return ancestor;
+    }
+    return null;
+  };
+
+  const subs = series.filter((entry) => parentOf(entry.id) === containerId);
 
   const orderOf = (s: Series): number => {
     const raw = (s.data as Record<string, unknown>).lineup_order;
@@ -354,9 +358,7 @@ export async function getSubSeries(containerId: string, collectionName?: string)
     const oa = orderOf(a);
     const ob = orderOf(b);
     if (oa !== ob) return oa - ob;
-    const da = (a.data.date as Date | undefined)?.getTime() ?? 0;
-    const db = (b.data.date as Date | undefined)?.getTime() ?? 0;
-    return db - da;
+    return compareSeriesOrder(a, b);
   });
 }
 
@@ -465,7 +467,7 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
     .sort(([pathA], [pathB]) => {
       const fileA = pathA.split('/').pop() ?? '';
       const fileB = pathB.split('/').pop() ?? '';
-      return fileA.localeCompare(fileB);
+      return compareNFC(fileA, fileB); // spec §1.6 : ordre canonique, pas une collation locale
     })
     .map(([, module]) => module.default);
 }
@@ -532,7 +534,7 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
     .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)
     .map(([path, url]) => ({ path, url, filename: path.split('/').pop() ?? path }))
     .filter(({ filename }) => classifyAttachment(filename) !== null)
-    .sort((a, b) => a.filename.localeCompare(b.filename))
+    .sort((a, b) => compareNFC(a.filename, b.filename))
     .map(({ url, filename }) => {
       const meta = metaByFilename.get(filename);
       return {
@@ -743,9 +745,7 @@ export async function querySeries(options: QuerySeriesOptions = {}): Promise<Que
     }
     if (sort === 'title') return String(a.data.title).localeCompare(String(b.data.title));
     if (sort === 'random') return Math.random() - 0.5;
-    const dateA = (a.data.date as Date | undefined)?.getTime() ?? 0;
-    const dateB = (b.data.date as Date | undefined)?.getTime() ?? 0;
-    return dateB - dateA;
+    return compareSeriesOrder(a, b);
   });
 
   const totalItems = filtered.length;

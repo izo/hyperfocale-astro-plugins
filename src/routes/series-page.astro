@@ -12,7 +12,7 @@ export async function getStaticPaths() {
 
   const series = await getSeriesList();
 
-  const paths: Array<{ params: { slug: string; page: string }; props: { series: (typeof series)[number] } }> = [];
+  const paths: Array<{ params: { slug: string; n: string }; props: { series: (typeof series)[number] } }> = [];
 
   for (const s of series) {
     const images = await getSeriesImages(s.id, s);
@@ -21,7 +21,7 @@ export async function getStaticPaths() {
     // Génère les pages 2..N (la page 1 est gérée par series-detail.astro)
     for (let p = 2; p <= totalPages; p++) {
       paths.push({
-        params: { slug: s.id, page: String(p) },
+        params: { slug: s.id, n: String(p) },
         props: { series: s },
       });
     }
@@ -33,7 +33,7 @@ export async function getStaticPaths() {
 const prefix = import.meta.env.HYPERFOCALE_PREFIX ?? '/series';
 const pageSize = Number(import.meta.env.HYPERFOCALE_PAGE_SIZE ?? 12);
 
-const { slug, page: pageParam } = Astro.params;
+const { slug, n: pageParam } = Astro.params;
 const { series } = Astro.props;
 
 if (!slug || !pageParam || !series) {

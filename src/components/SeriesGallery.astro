@@ -57,7 +57,7 @@ const safePageStartIndex = pageStartIndex >= 0 ? pageStartIndex : 0;
 
 function pageUrl(p: number): string {
   if (p === 1) return `${base}/`;
-  return `${base}/${p}/`;
+  return `${base}/page/${p}/`; // spec §1.6 : la pagination passe sous `page/`
 }
 ---
 
