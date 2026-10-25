@@ -7,7 +7,13 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié] — alignement sur la spec 2.15
+## [0.25.0] — 2026-10-25 — alignement sur la spec 2.15, retrait du preset `project`
+
+### Retiré
+
+- **Preset `project`** (collection `work`, `/suivi`, `dateRequired: true`). Le profil Projet (G.12) est passé dans Hyperfocus à la spec 2.14 ; le plugin ne prend pas Hyperfocus en charge, et le schéma refuse déjà `type: project`. **Changement cassant pour un site qui écrit `preset: 'project'`** : l'intégration lève l'erreur « preset inconnu » listant les valeurs acceptées. Sortie : rester en 0.24.x, ou déclarer la collection soi-même (`collectionName: 'work'`, `prefix: '/suivi'`). Le bloc `project:` du schéma et `PROJECT_STATUSES` restent (rien ne les rend).
+
+### Alignement sur la spec 2.15
 
 La spec Hyperfocale a précisé en 2.13 et 2.15 trois règles de la couche 1 que le plugin n'appliquait pas ([hyperfocale-spec#38](https://github.com/izo/hyperfocale-spec/pull/38), [#43](https://github.com/izo/hyperfocale-spec/pull/43) ; ticket #143). Relevées sur `main` à la 0.24.0.
 

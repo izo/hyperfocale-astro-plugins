@@ -7,7 +7,7 @@
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
-> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.11-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) a son preset. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
+> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.11-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) avait son preset, retiré en 0.25.0. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
 
 Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
 
@@ -106,11 +106,10 @@ hyperfocale({ preset: 'portfolio' })   // → collection `projects`, routes sous
 | `book` | `books` | `/livres` | `false` | Un livre lu |
 | `place` | `places` | `/lieux` | `false` | Un lieu |
 | `screen` | `screens` | `/ecrans` | `false` | Un écran |
-| `project` | `work` | `/suivi` | `true` | Un projet photo en cours (dossier de travail) |
 
-Les douze profils de l'Annexe G sont couverts. Seuls `series`, `press`, `event` et `project` exigent une date : ailleurs le contenu est intemporel — une recette, un lieu, une démo non datée restent valides.
+Les onze profils de l'Annexe G sont couverts. Seuls `series`, `press` et `event` exigent une date : ailleurs le contenu est intemporel — une recette, un lieu, une démo non datée restent valides.
 
-`project` (G.12) décrit un dossier de travail, pas une publication : sa collection est `work` et non le `projects` de l'annexe, déjà pris par `portfolio` depuis la 0.8.0. Le schéma accepte son bloc `project:` (`status`, `stage`, `client`, `contact`, `start`, `end`, `due`, `deliverables`, `tasks`) sans jamais échouer — statut inconnu et clés inconnues conservés — mais aucun composant ne le rend : un adaptateur web ne DOIT PAS l'exposer. Statuts connus : `PROJECT_STATUSES`.
+Le profil Projet (G.12) a quitté la spec web à la 2.14 pour [Hyperfocus](https://github.com/izo/hyperfocus), que ce plugin ne prend pas en charge : le preset `project` (collection `work`, `/suivi`) est **retiré depuis la 0.25.0**. Le bloc `project:` reste accepté par le schéma (statut inconnu et clés inconnues conservés) et `PROJECT_STATUSES` reste exporté, mais aucun composant ne les rend. Un site qui utilisait le preset reste sur la 0.24.x, ou déclare la collection `work` lui-même.
 
 Toute option explicite l'emporte sur le preset : `hyperfocale({ preset: 'music', prefix: '/albums' })` garde la collection `albums` mais sert `/albums`.
 
