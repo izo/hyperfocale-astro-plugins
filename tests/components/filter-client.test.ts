@@ -12,6 +12,7 @@
  */
 import { experimental_AstroContainer as AstroContainer } from 'astro/container';
 import { Window } from 'happy-dom';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import SeriesFilter from '../../src/components/SeriesFilter.astro';
 import { initSeriesFilter } from '../../src/components/filter-client.js';
@@ -130,5 +131,14 @@ describe('SeriesFilter — script client (happy-dom)', () => {
     const window = new Window();
     window.document.body.innerHTML = '<div></div>';
     expect(initSeriesFilter(window.document as unknown as Document)).toBe(false);
+  });
+});
+
+describe('câblage de SeriesFilter.astro (régression #138)', () => {
+  it('le <script> du composant importe et appelle initSeriesFilter', () => {
+    const source = readFileSync(new URL('../../src/components/SeriesFilter.astro', import.meta.url), 'utf8');
+    const script = source.slice(source.lastIndexOf('<script'));
+    expect(script).toMatch(/import\s*\{\s*initSeriesFilter\s*\}\s*from\s*['"]\.\/filter-client\.js['"]/);
+    expect(script).toMatch(/^\s*initSeriesFilter\(\s*\)\s*;?\s*$/m);
   });
 });

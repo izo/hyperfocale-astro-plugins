@@ -98,7 +98,7 @@ const CASES: Array<[string, AnyComponent, Record<string, unknown>]> = [
 
 // ─── Extraction du texte lisible ────────────────────────────────────────────
 
-const READABLE_ATTRS = /\s(aria-label|aria-roledescription|aria-valuetext|alt|title|placeholder|data-hf-label-[\w-]+)="([^"]*)"/g;
+const READABLE_ATTRS = /\s(aria-label|aria-roledescription|aria-valuetext|aria-description|aria-placeholder|aria-braillelabel|alt|title|placeholder|data-hf-label-[\w-]+)="([^"]*)"/g;
 
 function decode(text: string): string {
   return text

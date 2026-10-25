@@ -457,6 +457,14 @@ describe('SeriesAttachments — 0.24.0', () => {
     expect(html).toContain('data-ok');
   });
 
+  it("nom d'attribut malveillant écarté : ni espace ni guillemet ne crée d'attribut (garde indépendante d'Astro)", async () => {
+    const html = await render(SeriesAttachments, {
+      attachments: [{ ...ZIP, attrs: { 'data-x onfocus=alert(1) autofocus': 'y', 'data-"><script>alert(3)</script>': 'z' } }],
+      linkAttrs: { 'aria-x onmouseover=alert(4)': 'w' },
+    });
+    expect(html).not.toMatch(/onfocus|onmouseover|autofocus|<script>alert/);
+  });
+
   it("aucun attribut data-astro-cid : le composant n'a plus de style scopé", async () => {
     for (const variant of ['list', 'inline']) {
       const html = await render(SeriesAttachments, { attachments: ATTACHMENTS, variant });
