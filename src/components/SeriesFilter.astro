@@ -143,77 +143,9 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
 <script type="application/json" id="hf-filter-data" is:inline set:html={filterData}></script>
 
 <script>
-  (() => {
-    const form = document.getElementById('hf-filter-form') as HTMLFormElement | null;
-    const list = document.getElementById('hf-filter-list') as HTMLElement | null;
-    const countEl = document.getElementById('hf-filter-count') as HTMLElement | null;
-    const dataEl = document.getElementById('hf-filter-data') as HTMLElement | null;
-
-    if (!list || !dataEl) return;
-
-    type ItemData = { id: string; title: string; date: number | null; tags: string[]; location: string | null; url: string };
-    type FilterData = { locale: string; count: { other: string } & Record<string, string | undefined>; items: ItemData[] };
-    const payload: FilterData = JSON.parse(dataEl.textContent ?? '{}');
-    const allItems: ItemData[] = payload.items ?? [];
-    let plural: Intl.PluralRules | null = null;
-    try {
-      plural = new Intl.PluralRules(payload.locale);
-    } catch {
-      plural = null;
-    }
-    function countText(shown: number, total: number): string {
-      const forms = payload.count ?? { other: '{shown} / {total}' };
-      const template = forms[plural?.select(shown) ?? 'other'] ?? forms.other;
-      return template.split('{shown}').join(String(shown)).split('{total}').join(String(total));
-    }
-    const listItems = [...list.querySelectorAll<HTMLLIElement>('[data-id]')];
-
-    function getFilters() {
-      if (!form) return { tags: [] as string[], year: '', location: '' };
-      const data = new FormData(form);
-      return {
-        tags: data.getAll('tag') as string[],
-        year: (data.get('year') as string) ?? '',
-        location: ((data.get('location') as string) ?? '').trim().toLowerCase(),
-      };
-    }
-
-    function applyFilters() {
-      const { tags, year, location } = getFilters();
-      let shown = 0;
-      const visibleIds = new Set<string>();
-
-      listItems.forEach((li) => {
-        const item = allItems.find((i) => i.id === li.dataset.id);
-        if (!item) return;
-
-        const matchTags = tags.length === 0 || tags.every((t) => item.tags.includes(t));
-        const matchYear = !year || String(item.date) === year;
-        const matchLocation = !location || (item.location?.toLowerCase().includes(location) ?? false);
-        const visible = matchTags && matchYear && matchLocation;
-
-        li.hidden = !visible;
-        if (visible) { shown++; visibleIds.add(item.id); }
-      });
-
-      if (countEl) {
-        const total = allItems.length;
-        countEl.textContent = shown === total ? '' : countText(shown, total);
-      }
-
-      // Événement DOM pour intégration custom (#FE-010)
-      list.dispatchEvent(new CustomEvent('hf:filter-change', {
-        bubbles: true,
-        detail: { series: allItems.filter((i) => visibleIds.has(i.id)) },
-      }));
-    }
-
-    form?.addEventListener('change', applyFilters);
-    form?.addEventListener('input', (e) => {
-      if ((e.target as HTMLInputElement).type === 'search') applyFilters();
-    });
-    form?.addEventListener('reset', () => setTimeout(applyFilters, 0));
-  })();
+  // Logique testée en happy-dom : tests/components/filter-client.test.ts.
+  import { initSeriesFilter } from './filter-client.js';
+  initSeriesFilter();
 </script>
 
 <style>

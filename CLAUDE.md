@@ -62,6 +62,10 @@ dist/               ← build tsup (gitignored)
 
 **Composants — i18n, jetons, options par instance** (#136) : aucun libellé ni aucune couleur en dur dans `src/components/*.astro`. Un libellé = une clé de `HyperfocaleLabels` (`src/i18n.ts`), présente en `fr` **et** en `en` (test) ; une couleur = un jeton `--hf-*` défini dans `theme/base.css` **et** documenté au README (`tests/unit/tokens.test.ts`). Chaque composant accepte `locale`, `labels`, `class`, `data-*`/`aria-*` (via `passthroughAttrs` de `components/runtime.ts`) ; locale par défaut `fr`. Les `.astro` importent `./runtime.js` — entrée tsup `components/runtime`, sans quoi `dist/components/` ne la trouverait pas. Un JSON passé à un script client va par `set:html={scriptJson(…)}` (jamais `{}` dans un `<script>`, #138). Les tests de rendu (`npm run test:components`, inclus dans `test:unit`) forcent `imageOptimization: 'disabled'`.
 
+**Feuilles émises à la demande** (#136, 0.24.0) : `SeriesAttachments` n'a pas de `<style>` scopé. Sa feuille vit dans `src/theme/attachments.css` (publiée `@regrets/hyperfocale/styles/attachments.css`, importée en `?raw` par le composant) et part dans un `<style data-hf-styles="attachments">` une fois par page (`claimStyles(Astro.request, …)` de `runtime.ts`), seulement si le composant rend quelque chose, sauf `componentStyles: 'none'` / `unstyled`. Sélecteurs d'une classe, hors couche, sans `:where()` — mesures et raison au README (*Thème → Feuilles des composants et cascade layers*) : ne pas les passer en `:where()` ni en `@layer` d'office. Une feuille de `src/theme/` (hors `base.css`) doit avoir son entrée `./styles/<nom>.css` dans `exports` (test). `vitest.components.config.ts` a `css: true`, sans quoi `?raw` d'un `.css` rend `''`. Un balisage de titre dynamique (`<Heading>`) dans un composant à `<style>` scopé reçoit `data-astro-cid-…="true"` (Astro le traite en composant) — inoffensif, encore présent sur `SeriesEmbeds`/`SeriesCard`.
+
+**Gardes des composants** : `tests/components/labels-sentinel.test.ts` rend les 9 composants avec un dictionnaire sentinelle — un texte lisible écrit en dur dans un `.astro` le fait échouer ; ajouter un composant ou une branche qui émet du texte = l'ajouter aux `CASES`. Le JS client de `SeriesFilter` vit dans `components/filter-client.ts` (entrée tsup, comme `runtime`) et se teste en happy-dom (`tests/components/filter-client.test.ts`).
+
 ## CLI
 
 ```bash
@@ -90,6 +94,7 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 | `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/i18n'` | `src/i18n.ts` — `HF_LABELS`, `resolveLabels`, `formatDate`, `formatFileSize`, `pluralLabel` — pur (aussi réexporté par `/components`) |
 | `import { ... } from '@regrets/hyperfocale/media'` | `src/media.ts` — `resolveSeriesMedia` et primitives de médias, purs (ni `node:*`, ni astro, ni zod) |
+| `@import "@regrets/hyperfocale/styles/attachments.css" layer(components);` | `src/theme/attachments.css` — feuille de `SeriesAttachments`, pour `componentStyles: 'none'` |
 | `import { ... } from '@regrets/hyperfocale/loader'` | `src/loader.ts` — `seriesLoader` (Content Layer, repli de locale, `prepare` avant `parseData`, `sections`), `fallbackField`, `stringifyTags`, `readSeriesMedia` (Node) |
 | `import { seriesCollection } from 'virtual:hyperfocale/collection'` | module virtuel Vite |
 | `import { ... } from '@regrets/hyperfocale/ingest'` | `src/ingest/index.ts` — contrat d'ingestion, agnostique (WebCrypto) |

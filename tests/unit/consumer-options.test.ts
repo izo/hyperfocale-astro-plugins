@@ -89,6 +89,29 @@ describe('options hyperfocale', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(() => hyperfocale({ imageOptimization: 'off' as any })).toThrowError(/imageOptimization/);
   });
+
+  it('rejette un componentStyles inconnu', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    expect(() => hyperfocale({ componentStyles: 'layer' as any })).toThrowError(/componentStyles/);
+  });
+
+  it.each([
+    [undefined, '"inline"'],
+    ['inline', '"inline"'],
+    ['none', '"none"'],
+  ] as const)('componentStyles %s → HYPERFOCALE_COMPONENT_STYLES = %s', (componentStyles, expected) => {
+    let define: Record<string, string> = {};
+    const setup = hyperfocale(componentStyles ? { componentStyles } : {}).hooks['astro:config:setup'];
+    setup?.({
+      injectRoute: () => {},
+      injectScript: () => {},
+      updateConfig: (c: { vite: { define: Record<string, string> } }) => void (define = c.vite.define),
+      logger: { info: () => {}, warn: () => {} },
+      config: { root: new URL('file:///tmp/hyperfocale-test/') },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
+    expect(define['import.meta.env.HYPERFOCALE_COMPONENT_STYLES']).toBe(expected);
+  });
 });
 
 // ─── Routes effectivement injectées (`listRoute`, `injectRoutes`) ────────────

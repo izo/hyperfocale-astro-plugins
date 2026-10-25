@@ -18,6 +18,7 @@ import SeriesLightbox from '../../src/components/SeriesLightbox.astro';
 import SeriesList from '../../src/components/SeriesList.astro';
 import SeriesMap from '../../src/components/SeriesMap.astro';
 import SeriesMasonry from '../../src/components/SeriesMasonry.astro';
+import TwoAttachments from './fixtures/TwoAttachments.astro';
 import { HF_LABELS } from '../../src/i18n.js';
 
 let container: AstroContainer;
@@ -318,5 +319,165 @@ describe('SeriesFilter (#138)', () => {
     expect(en).toContain('>Year<');
     expect(en).toContain('aria-label="Tags: mer, ouest"');
     expect(filterData(en).data).toMatchObject({ locale: 'en', count: HF_LABELS.en['filter.count'] });
+  });
+});
+
+// ─── SeriesAttachments : variante, titre, attributs du lien, nom accessible (#136, 0.24.0) ───
+
+describe('SeriesAttachments — 0.24.0', () => {
+  const ZIP = { src: '/content/archives/bretagne/download.zip', kind: 'file', title: 'Série complète', size: 2_516_582 };
+
+  it('variant inline : badge « ZIP » sans titre ni liste, racine en ligne', async () => {
+    const html = await render(SeriesAttachments, { attachments: [ZIP], variant: 'inline', class: 'mt-4' });
+    const root = rootTag(html);
+    expect(root).toMatch(/^<span class="hf-attachments hf-attachments--inline mt-4"/);
+    expect(root).not.toContain('aria-label');
+    expect(html).not.toMatch(/<h\d/);
+    expect(html).not.toContain('<ul');
+    expect(html).toMatch(/<a class="hf-attachments__badge" href="\/content\/archives\/bretagne\/download\.zip" download aria-label="Série complète — ZIP, 2,4 Mo">ZIP<\/a>/);
+  });
+
+  it('variant inline : un document sans extension montre son titre ; vidéo et audio deviennent des badges', async () => {
+    const html = await render(SeriesAttachments, {
+      variant: 'inline',
+      locale: 'en',
+      attachments: [
+        { src: '/dl/serie', kind: 'file', title: 'Full series' },
+        { src: '/v/clip.mp4', kind: 'video', title: 'Clip' },
+      ],
+    });
+    expect(html).toContain('>Full series</a>');
+    expect(html).toContain('aria-label="Clip — MP4">MP4</a>');
+    expect(html).not.toContain('<video');
+  });
+
+  it('variant list (défaut) : rendu inchangé, titre h2', async () => {
+    const html = await render(SeriesAttachments, { attachments: [ZIP] });
+    expect(rootTag(html)).toMatch(/^<section class="hf-attachments" aria-label="Documents"/);
+    expect(html).toMatch(/<h2 class="hf-attachments__heading">Documents<\/h2>/);
+  });
+
+  it.each([false, ''])('heading=%j : aucun titre, la section reste nommée par le libellé', async (heading) => {
+    const html = await render(SeriesAttachments, { attachments: [ZIP], heading, locale: 'en' });
+    expect(html).not.toMatch(/<h\d/);
+    expect(rootTag(html)).toContain('aria-label="Documents"');
+  });
+
+  it('nom accessible : titre, format et taille (fr / en) ; le badge reste aria-hidden', async () => {
+    const fr = await render(SeriesAttachments, { attachments: [ZIP] });
+    const en = await render(SeriesAttachments, { attachments: [ZIP], locale: 'en' });
+    expect(fr).toContain('aria-label="Série complète — ZIP, 2,4 Mo"');
+    expect(en).toContain('aria-label="Série complète — ZIP, 2.4 MB"');
+    expect(fr).toContain('<span class="hf-attachments__kind" aria-hidden="true">ZIP</span>');
+  });
+
+  it('nom accessible : format seul, taille seule, ni l’un ni l’autre', async () => {
+    const html = await render(SeriesAttachments, {
+      locale: 'en',
+      attachments: [
+        { src: '/a/notes.pdf', kind: 'document', title: 'Notes' },
+        { src: '/a/readme', kind: 'file', title: 'Read me', size: 2048 },
+        { src: '/a/bare', kind: 'file', title: 'Bare' },
+      ],
+    });
+    expect(html).toContain('aria-label="Notes — PDF"');
+    expect(html).toContain('aria-label="Read me — 2 KB"');
+    expect(html).toMatch(/<a class="hf-attachments__link" href="\/a\/bare" download><span class="hf-attachments__title">Bare<\/span><\/a>/);
+  });
+
+  it('data: URL (petit fichier inliné par Vite) : format lu sur le titre', async () => {
+    const html = await render(SeriesAttachments, {
+      locale: 'en',
+      attachments: [
+        { src: 'data:application/pdf;base64,YXRlbGllci9kZXZpcy5wZGYK', kind: 'document', title: 'devis.pdf' },
+        { src: '/a/archive.tar.gz?v=2#x', kind: 'file', title: 'Archive' },
+        { src: '/a/notes.v2', kind: 'file', title: 'Notes' },
+      ],
+    });
+    expect(html).toContain('aria-label="devis.pdf — PDF"');
+    expect(html).toContain('aria-label="Archive — GZ"');
+    expect(html).toContain('aria-label="Notes — V2"');
+  });
+
+  it('libellés attachments.linkLabel / linkDetails surchargeables', async () => {
+    const html = await render(SeriesAttachments, {
+      attachments: [ZIP],
+      locale: 'en',
+      labels: { 'attachments.linkLabel': 'Download {title} ({details})', 'attachments.linkDetails': '{format} · {size}' },
+    });
+    expect(html).toContain('aria-label="Download Série complète (ZIP · 2.4 MB)"');
+  });
+
+  it('la description, masquée par aria-label, passe par aria-describedby', async () => {
+    const html = await render(SeriesAttachments, {
+      attachments: [{ src: '/a/notes.pdf', kind: 'document', title: 'Notes', description: 'Notes de tournage' }],
+    });
+    const id = html.match(/aria-describedby="([^"]+)"/)?.[1];
+    expect(id).toMatch(/^hf-attachment-desc-[0-9a-z]+$/);
+    expect(html).toContain(`<span class="hf-attachments__description" id="${id}">Notes de tournage</span>`);
+  });
+
+  it('attributs par document sur le lien ; ceux de l’instance restent sur la racine', async () => {
+    const html = await render(SeriesAttachments, {
+      variant: 'inline',
+      'data-section': 'download',
+      attachments: [
+        { ...ZIP, attrs: { 'data-track-event': 'download_started', 'data-track-slug': 'bretagne', class: 'track' } },
+      ],
+    });
+    expect(rootTag(html)).toContain('data-section="download"');
+    expect(rootTag(html)).not.toContain('data-track-event');
+    expect(html).toMatch(/<a class="hf-attachments__badge track" [^>]*data-track-event="download_started" data-track-slug="bretagne">ZIP<\/a>/);
+  });
+
+  it('linkAttrs (objet ou fonction) sur chaque lien, attrs du document prioritaires', async () => {
+    const both = [ZIP, { src: '/a/notes.pdf', kind: 'document', attrs: { 'data-kind': 'notes' } }];
+    const obj = await render(SeriesAttachments, { attachments: both, linkAttrs: { 'data-kind': 'zip', 'data-track': 'dl' } });
+    expect(obj.match(/data-track="dl"/g)).toHaveLength(2);
+    expect(obj).toContain('data-kind="zip"');
+    expect(obj).toContain('data-kind="notes"');
+    const fn = await render(SeriesAttachments, {
+      attachments: both,
+      linkAttrs: (att: { src: string }, i: number) => ({ 'data-index': i, 'data-file': att.src.split('/').pop() }),
+    });
+    expect(fn).toContain('data-index="0" data-file="download.zip"');
+    expect(fn).toContain('data-index="1" data-file="notes.pdf"');
+  });
+
+  it('attributs du lien filtrés : ni on*, ni href, ni style, ni download', async () => {
+    const html = await render(SeriesAttachments, {
+      attachments: [{ ...ZIP, attrs: { onclick: 'alert(1)', href: 'javascript:alert(1)', style: 'color:red', download: 'x.exe', 'aria-label': 'Get it' } }],
+      linkAttrs: { onmouseover: 'alert(2)', 'data-ok': true },
+    });
+    expect(html).not.toMatch(/on(click|mouseover)/);
+    expect(html).not.toContain('javascript:');
+    expect(html).not.toContain('style="color');
+    expect(html).not.toContain('x.exe');
+    expect(html).toContain('href="/content/archives/bretagne/download.zip" download aria-label="Get it"');
+    expect(html).toContain('data-ok');
+  });
+
+  it("aucun attribut data-astro-cid : le composant n'a plus de style scopé", async () => {
+    for (const variant of ['list', 'inline']) {
+      const html = await render(SeriesAttachments, { attachments: ATTACHMENTS, variant });
+      expect(html).not.toContain('data-astro-cid');
+    }
+  });
+
+  it('feuille émise une fois, avant le composant, compactée ; rien avec unstyled ni sans document', async () => {
+    const html = await render(SeriesAttachments, { attachments: ATTACHMENTS });
+    expect(html.match(/<style data-hf-styles="attachments">/g)).toHaveLength(1);
+    expect(html.indexOf('<style')).toBeLessThan(html.indexOf('<section'));
+    expect(html).toContain('.hf-attachments__badge{');
+    expect(html).not.toContain('/*');
+    expect(await render(SeriesAttachments, { attachments: ATTACHMENTS, unstyled: true })).not.toContain('<style');
+    expect((await render(SeriesAttachments, { attachments: [] })).trim()).toBe('');
+  });
+
+  it('deux instances sur une page : une seule feuille, émise par la première qui rend', async () => {
+    const html = await render(TwoAttachments, { attachments: ATTACHMENTS });
+    expect(html.match(/<style data-hf-styles="attachments">/g)).toHaveLength(1);
+    expect(html.indexOf('<style')).toBeLessThan(html.indexOf('hf-attachments--inline'));
+    expect(html).toContain('<section class="hf-attachments"');
   });
 });

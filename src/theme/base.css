@@ -40,6 +40,8 @@
 
   /* Typographie */
   --hf-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* Chasse fixe : badges de format (SeriesAttachments en inline) */
+  --hf-font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
   /* Mise en page */
   --hf-gallery-gap: 0.5rem;
@@ -68,6 +70,16 @@
   --hf-attachments-radius: var(--hf-card-radius);
   --hf-attachments-bg: var(--hf-color-surface);
   --hf-attachments-bg-hover: var(--hf-color-border);
+  --hf-attachments-font-size-heading: 1.1rem;
+  --hf-attachments-font-size-title: 0.95rem;
+  --hf-attachments-font-size-meta: 0.85rem;
+  --hf-attachments-font-size-size: 0.8rem;
+  --hf-attachments-font-size-kind: 0.7rem;
+  /* Variante inline (badge « ↓ ZIP ») */
+  --hf-attachments-font-size-badge: 0.75rem;
+  --hf-attachments-badge-font: var(--hf-font-mono);
+  --hf-attachments-badge-padding: 0.25rem 0.5rem;
+  --hf-attachments-badge-icon: "\2193";
 
   /* Contenus embarqués (spec §1.11) */
   --hf-embeds-gap: var(--hf-attachments-gap);

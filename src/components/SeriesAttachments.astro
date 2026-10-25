@@ -2,25 +2,60 @@
 import type { Attachment } from '../helpers/index.js';
 import {
   resolveLabels,
+  formatLabel,
   formatFileSize,
   passthroughAttrs,
+  elementAttrs,
   headingTag,
+  claimStyles,
+  compactCss,
+  componentStylesMode,
+  stableId,
   type InstanceProps,
   type HeadingLevel,
+  type AttachmentLinkAttrs,
+  type SeriesAttachmentItem,
 } from './runtime.js';
+// Feuille du composant, émise à la demande (voir plus bas) — aussi publiée
+// telle quelle sous `@regrets/hyperfocale/styles/attachments.css`.
+import STYLES from '../theme/attachments.css?raw';
 
 interface Props extends InstanceProps {
-  attachments: Attachment[];
-  /** Titre de la section (défaut : libellé `attachments.heading`). */
-  heading?: string;
+  attachments: SeriesAttachmentItem[];
+  /**
+   * `list` (défaut) : section titrée, un lien par document, lecteurs pour la
+   * vidéo et l'audio. `inline` : badges compacts (« ↓ ZIP ») à poser à côté
+   * d'un titre — ni titre, ni liste, ni lecteur.
+   */
+  variant?: 'list' | 'inline';
+  /**
+   * Titre de la section (défaut : libellé `attachments.heading`). `false` ou
+   * `''` : aucun titre. Sans effet en `inline`.
+   */
+  heading?: string | false;
   /** Niveau du titre de section (défaut : 2). */
   headingLevel?: HeadingLevel;
+  /**
+   * Attributs (`data-*`, `aria-*`, `class`) posés sur **chaque lien** de
+   * téléchargement — objet, ou fonction du document. Ceux de `attachment.attrs`
+   * l'emportent, clé par clé.
+   */
+  linkAttrs?: AttachmentLinkAttrs | ((attachment: Attachment, index: number) => AttachmentLinkAttrs | undefined);
+  /**
+   * N'émet pas la feuille du composant (le site importe
+   * `@regrets/hyperfocale/styles/attachments.css`). Défaut : `true` si
+   * l'intégration est en `componentStyles: 'none'`.
+   */
+  unstyled?: boolean;
 }
 
 const {
   attachments,
+  variant = 'list',
   heading: headingProp,
   headingLevel,
+  linkAttrs,
+  unstyled = componentStylesMode() === 'none',
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -28,42 +63,106 @@ const {
 } = Astro.props;
 
 const labels = resolveLabels(locale, labelOverrides);
-const heading = headingProp ?? labels['attachments.heading'];
+const inline = variant === 'inline';
+const heading = headingProp === false || headingProp === '' ? undefined : (headingProp ?? labels['attachments.heading']);
 const Heading = headingTag(headingLevel, 2);
-const rootAttrs = { 'aria-label': heading, ...passthroughAttrs(rest) };
+const visible = attachments.length > 0;
 
-function extensionOf(src: string): string {
-  const base = src.split('?')[0]?.split('/').pop() ?? '';
+// Une page qui n'affiche aucun document ne reçoit pas la feuille ; deux
+// instances sur une page ne l'émettent qu'une fois.
+const emitStyles = visible && !unstyled && claimStyles(Astro.request, 'attachments');
+
+const rootAttrs = inline
+  ? passthroughAttrs(rest)
+  : { 'aria-label': heading ?? labels['attachments.heading'], ...passthroughAttrs(rest) };
+
+/** Extension d'un nom ou d'un chemin (`ZIP`, `PDF`…) — vide si elle n'en a pas l'air. */
+function extensionOf(path: string): string {
+  const base = path.split(/[?#]/)[0]?.split('/').pop() ?? '';
   const dot = base.lastIndexOf('.');
-  return dot > 0 ? base.slice(dot + 1).toUpperCase() : '';
+  const ext = dot > 0 ? base.slice(dot + 1) : '';
+  return /^(?=.*[a-z])[a-z0-9]{1,8}$/i.test(ext) ? ext.toUpperCase() : '';
 }
+
+/**
+ * Format affiché et annoncé. Un petit fichier local est inliné par Vite en
+ * `data:` URL, qui n'a plus d'extension : on lit alors celle du titre (le nom
+ * du fichier, pour `getSeriesAttachments()`).
+ */
+function formatOf(att: Attachment): string {
+  if (att.src.startsWith('data:')) return att.title ? extensionOf(att.title) : '';
+  return extensionOf(att.src);
+}
+
+function fileName(src: string): string {
+  return src.split(/[?#]/)[0]?.split('/').pop() || src;
+}
+
+/**
+ * Lien d'un document : nom accessible « titre — FORMAT, taille »
+ * (`attachments.linkLabel`) dès que le format ou la taille sont connus — le
+ * badge de format est `aria-hidden`, la taille noyée dans le texte du lien.
+ * La description, que `aria-label` masquerait, passe par `aria-describedby`.
+ */
+const links = attachments.map((att, index) => {
+  const format = formatOf(att);
+  const size = formatFileSize(att.size, locale, labels);
+  const title = att.title ?? fileName(att.src);
+  const details =
+    format && size ? formatLabel(labels['attachments.linkDetails'], { format, size }) : (format || size || '');
+  // Sans `aria-label`, la description fait déjà partie du nom (texte du lien).
+  const descriptionId =
+    !inline && details && att.description ? stableId('hf-attachment-desc', `${att.src}|${index}`) : undefined;
+  const instanceAttrs = typeof linkAttrs === 'function' ? linkAttrs(att, index) : linkAttrs;
+  const merged = { ...elementAttrs(instanceAttrs), ...elementAttrs(att.attrs) };
+  const { class: extraClass, ...attrs } = merged;
+  return {
+    att,
+    format,
+    size,
+    title,
+    descriptionId,
+    extraClass,
+    attrs: {
+      ...(details ? { 'aria-label': formatLabel(labels['attachments.linkLabel'], { title, details }) } : {}),
+      ...(descriptionId ? { 'aria-describedby': descriptionId } : {}),
+      ...attrs,
+    },
+  };
+});
 ---
 
-{attachments.length > 0 && (
+{emitStyles && <style is:inline data-hf-styles="attachments" set:html={compactCss(STYLES)}></style>}
+{visible && inline && (
+  <span class:list={['hf-attachments', 'hf-attachments--inline', className]} {...rootAttrs}>
+    {links.map((link) => (
+      <a class:list={['hf-attachments__badge', link.extraClass]} href={link.att.src} download {...link.attrs}>{link.format || link.title}</a>
+    ))}
+  </span>
+)}
+{visible && !inline && (
   <section class:list={['hf-attachments', className]} {...rootAttrs}>
-    <Heading class="hf-attachments__heading">{heading}</Heading>
+    {heading && <Heading class="hf-attachments__heading">{heading}</Heading>}
     <ul class="hf-attachments__list">
-      {attachments.map((att) => (
+      {links.map(({ att, format, size, title, descriptionId, extraClass, attrs }) => (
         <li class="hf-attachments__item">
           {att.kind === 'video' ? (
             <figure class="hf-attachments__player">
               {/* captions éventuelles à fournir côté site consommateur */}
-              <video controls preload="metadata" src={att.src} title={att.title} />
-              {att.title && <figcaption>{att.title}</figcaption>}
+              <video class="hf-attachments__media" controls preload="metadata" src={att.src} title={att.title} />
+              {att.title && <figcaption class="hf-attachments__caption">{att.title}</figcaption>}
             </figure>
           ) : att.kind === 'audio' ? (
             <figure class="hf-attachments__player">
-              <audio controls preload="metadata" src={att.src} title={att.title} />
-              {att.title && <figcaption>{att.title}</figcaption>}
+              <audio class="hf-attachments__media" controls preload="metadata" src={att.src} title={att.title} />
+              {att.title && <figcaption class="hf-attachments__caption">{att.title}</figcaption>}
             </figure>
           ) : (
-            <a class="hf-attachments__link" href={att.src} download>
-              <span class="hf-attachments__kind" aria-hidden="true">{extensionOf(att.src)}</span>
-              <span class="hf-attachments__title">{att.title ?? att.src.split('/').pop()}</span>
-              {att.description && <span class="hf-attachments__description">{att.description}</span>}
-              {formatFileSize(att.size, locale, labels) && (
-                <span class="hf-attachments__size">{formatFileSize(att.size, locale, labels)}</span>
-              )}
+            <a class:list={['hf-attachments__link', extraClass]} href={att.src} download {...attrs}>
+              {format && <span class="hf-attachments__kind" aria-hidden="true">{format}</span>}
+              <span class="hf-attachments__title">{title}</span>
+              {att.description && <span class="hf-attachments__description" id={descriptionId}>{att.description}</span>}
+              {size && <span class="hf-attachments__size">{size}</span>}
             </a>
           )}
         </li>
@@ -71,97 +170,3 @@ function extensionOf(src: string): string {
     </ul>
   </section>
 )}
-
-<style>
-  .hf-attachments {
-    margin-top: var(--hf-attachments-gap, 2rem);
-    font-family: var(--hf-font-sans, system-ui);
-  }
-
-  .hf-attachments__heading {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--hf-color-text);
-    margin: 0 0 0.75rem;
-  }
-
-  .hf-attachments__list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .hf-attachments__player video,
-  .hf-attachments__player audio {
-    width: 100%;
-    max-width: 100%;
-    border-radius: var(--hf-attachments-radius, 4px);
-  }
-
-  .hf-attachments__player {
-    margin: 0;
-  }
-
-  .hf-attachments__player figcaption {
-    font-size: 0.85rem;
-    color: var(--hf-color-text-muted);
-    margin-top: 0.25rem;
-  }
-
-  .hf-attachments__link {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 0.6rem 0.85rem;
-    text-decoration: none;
-    background: var(--hf-attachments-bg, var(--hf-color-surface));
-    border: 1px solid var(--hf-color-border);
-    border-radius: var(--hf-attachments-radius, 4px);
-    color: var(--hf-color-text);
-    transition: background var(--hf-transition, 200ms ease);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .hf-attachments__link {
-      transition: none;
-    }
-  }
-
-  .hf-attachments__link:hover,
-  .hf-attachments__link:focus-visible {
-    background: var(--hf-attachments-bg-hover, var(--hf-color-border));
-  }
-
-  .hf-attachments__link:focus-visible {
-    outline: 2px solid var(--hf-color-accent);
-    outline-offset: 2px;
-  }
-
-  .hf-attachments__kind {
-    flex: none;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    color: var(--hf-color-text-muted);
-  }
-
-  .hf-attachments__title {
-    font-size: 0.95rem;
-    font-weight: 500;
-  }
-
-  .hf-attachments__description {
-    font-size: 0.85rem;
-    color: var(--hf-color-text-muted);
-  }
-
-  .hf-attachments__size {
-    margin-left: auto;
-    flex: none;
-    font-size: 0.8rem;
-    color: var(--hf-color-text-muted);
-  }
-</style>

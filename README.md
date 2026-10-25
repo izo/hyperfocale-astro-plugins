@@ -83,6 +83,7 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `collectionName` | `string` | `'series'` | Nom de la content collection à enregistrer. Les helpers lisent cette collection et ses `media/` — y compris sous un autre nom (`projects` avec le preset `portfolio`). |
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
 | `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
+| `componentStyles` | `'inline' \| 'none'` | `'inline'` | Feuilles des composants qui portent la leur (`SeriesAttachments` depuis la 0.24.0). `'inline'` : émise par le composant, une fois par page, seulement s'il rend quelque chose. `'none'` : rien n'est émis, le site importe `@regrets/hyperfocale/styles/attachments.css` — voir *Thème → Feuilles des composants et cascade layers*. |
 
 ### Profils de domaine (`preset`)
 
@@ -429,6 +430,8 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 | `lightbox.imageAlt` | SeriesLightbox (client) | `{n}` `{total}` | Image {n} sur {total} | Image {n} of {total} |
 | `lightbox.counter` | SeriesLightbox (client) | `{n}` `{total}` | {n} / {total} | {n} / {total} |
 | `attachments.heading` | SeriesAttachments | — | Documents | Documents |
+| `attachments.linkLabel` | SeriesAttachments (`aria-label` d'un lien, si format ou taille connus) | `{title}` `{details}` | {title} — {details} | {title} — {details} |
+| `attachments.linkDetails` | SeriesAttachments (`{details}` quand format **et** taille sont connus ; sinon l'un des deux seul) | `{format}` `{size}` | {format}, {size} | {format}, {size} |
 | `size.byte` · `size.kilobyte` · `size.megabyte` · `size.gigabyte` | SeriesAttachments | `{n}` (déjà localisé) | {n} o · Ko · Mo · Go | {n} B · KB · MB · GB |
 | `embeds.heading` | SeriesEmbeds | — | Vidéos | Videos |
 | `embeds.play` | SeriesEmbeds (lecteur d'écran) | `{label}` | Lire {label} | Play {label} |
@@ -444,62 +447,63 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 | `map.empty` | SeriesMap | — | Aucune série avec coordonnées GPS. | No series with GPS coordinates. |
 | `map.count` | SeriesMap (pluriel sur `{count}`) | `{count}` | {count} série(s) géolocalisée(s) | {count} geotagged series |
 
-Fonctions exportées (pures, sans Astro) : `resolveLabels(locale?, overrides?)`, `formatLabel(template, params)`, `pluralLabel(forms, count, locale, params)`, `formatDate(date, locale, options?)`, `formatFileSize(bytes, locale, labels?)`. Types : `HyperfocaleLabels`, `HyperfocaleLabelKey`, `HfPluralForms`, `HeadingLevel`, `HyperfocaleInstanceProps`.
+Fonctions exportées (pures, sans Astro) : `resolveLabels(locale?, overrides?)`, `formatLabel(template, params)`, `pluralLabel(forms, count, locale, params)`, `formatDate(date, locale, options?)`, `formatFileSize(bytes, locale, labels?)`. Types : `HyperfocaleLabels`, `HyperfocaleLabelKey`, `HfPluralForms`, `HeadingLevel`, `HyperfocaleInstanceProps`, `SeriesAttachmentItem`, `AttachmentLinkAttrs`.
 
-### Exemple — bouton de téléchargement sur un site multilingue (mathieu-drouet.com)
+### Exemple — badge de téléchargement sur un site multilingue (mathieu-drouet.com)
 
-Un site anglais par défaut, en cinq langues (fr en es ja ko), au dark mode par classe `.dark` et à ses propres jetons, sans le thème du plugin (`theme: 'none'`). Le ZIP d'une série est produit par le site et servi depuis son bucket : c'est un `Attachment` comme un autre.
+Un site anglais par défaut, en cinq langues (fr en es ja ko), en Tailwind v4, au dark mode par classe `.dark` et à ses propres jetons, sans le thème du plugin (`theme: 'none'`). Le ZIP d'une série est produit par le site et servi depuis son bucket : c'est un `Attachment` comme un autre. Il s'affiche en **badge** `↓ ZIP` à droite du titre de la série (`variant="inline"`), porte les attributs de suivi du site sur **le lien**, et annonce aux lecteurs d'écran « Série complète — ZIP, 46,0 Mo ».
+
+```js
+// astro.config.mjs — le site importe lui-même la feuille du composant (voir le CSS plus bas)
+hyperfocale({ injectRoutes: false, theme: 'none', componentStyles: 'none' })
+```
 
 ```astro
 ---
 import SeriesAttachments from '@regrets/hyperfocale/components/SeriesAttachments.astro';
-import type { Attachment, HyperfocaleLabels } from '@regrets/hyperfocale/components';
+import type { HyperfocaleLabels, SeriesAttachmentItem } from '@regrets/hyperfocale/components';
 
-const { locale } = Astro.props; // 'en' | 'fr' | 'es' | 'ja' | 'ko'
+const { locale, serie } = Astro.props; // locale : 'en' | 'fr' | 'es' | 'ja' | 'ko'
 
 // fr et en sont livrés ; une langue non livrée retombe sur `en` pour chaque clé
-// absente — y compris les unités de taille : la fournir en entier.
-const ja: Partial<HyperfocaleLabels> = {
-  'attachments.heading': 'ダウンロード',
-  'size.byte': 'B', 'size.kilobyte': 'KB', 'size.megabyte': 'MB', 'size.gigabyte': 'GB',
+// absente — y compris les unités de taille : les fournir.
+const units = { 'size.byte': '{n} B', 'size.kilobyte': '{n} KB', 'size.megabyte': '{n} MB', 'size.gigabyte': '{n} GB' };
+const labels: Record<string, Partial<HyperfocaleLabels>> = {
+  en: {},
+  fr: {},
+  es: { ...units },
+  ja: { ...units, 'attachments.linkLabel': '{title}（{details}）' },
+  ko: { ...units },
 };
-const labels: Partial<Record<string, Partial<HyperfocaleLabels>>> = {
-  en: { 'attachments.heading': 'Download' },
-  fr: { 'attachments.heading': 'Télécharger' },
-  es: {
-    'attachments.heading': 'Descargar',
-    'size.byte': 'B', 'size.kilobyte': 'KB', 'size.megabyte': 'MB', 'size.gigabyte': 'GB',
-  },
-  ja,
-  ko: {
-    'attachments.heading': '다운로드',
-    'size.byte': 'B', 'size.kilobyte': 'KB', 'size.megabyte': 'MB', 'size.gigabyte': 'GB',
-  },
-};
+const titles = { en: 'Full series', fr: 'Série complète', es: 'Serie completa', ja: 'シリーズ全体', ko: '시리즈 전체' };
 
-const zip: Attachment = {
-  src: `/media/archives/${slug}/${slug}.zip`,
+const zip: SeriesAttachmentItem = {
+  src: `/content/archives/${serie.id}/download.zip`,
   kind: 'file',
-  title: `${title} — full series`,
+  title: titles[locale],
   size: 48_234_496,
+  // Posés sur le lien, pas sur la racine : le suivi du clic de téléchargement.
+  attrs: { 'data-track-event': 'download_started', 'data-track-kind': 'series_zip', 'data-track-slug': serie.id },
 };
 ---
 
-<SeriesAttachments
-  attachments={[zip]}
-  locale={locale}
-  labels={labels[locale]}
-  headingLevel={3}
-  class="mt-8"
-  data-track="series-download"
-/>
-<!-- en : « Download », « 46.0 MB » · fr : « Télécharger », « 46,0 Mo » · es : « Descargar », « 46,0 MB » · ja : « ダウンロード », « 46.0 MB » · ko : « 다운로드 », « 46.0 MB » -->
-<!-- Le nombre suit toujours la locale (Intl.NumberFormat) ; seule l'unité vient des libellés. -->
+<div class="flex items-center gap-3">
+  <h1>{serie.data.title}</h1>
+  <SeriesAttachments attachments={[zip]} variant="inline" locale={locale} labels={labels[locale]} />
+</div>
+<!-- <span class="hf-attachments hf-attachments--inline">
+       <a class="hf-attachments__badge" href="/content/archives/…/download.zip" download
+          aria-label="Série complète — ZIP, 46,0 Mo" data-track-event="download_started" …>ZIP</a>
+     </span>
+     La flèche est un ::before (--hf-attachments-badge-icon) ; le nom accessible vient de attachments.linkLabel. -->
 ```
 
-Et les jetons, mappés sur ceux du site (voir *Thème* pour la liste complète) :
+Et le CSS du site — la feuille du composant dans la couche `components` de Tailwind (ses utilitaires l'emportent, sa base ne l'écrase pas), les jetons mappés sur ceux du site :
 
 ```css
+@import "tailwindcss";
+@import "@regrets/hyperfocale/styles/attachments.css" layer(components);
+
 /* Sur l'élément qui porte .dark (ici <html>) : les var() sont résolues là où
    elles sont déclarées, donc la bascule .dark suit sans rien dupliquer. */
 :root {
@@ -512,9 +516,15 @@ Et les jetons, mappés sur ceux du site (voir *Thème* pour la liste complète) 
   --hf-attachments-bg: var(--card);
   --hf-attachments-bg-hover: var(--accent);
   --hf-font-sans: var(--font-sans);
+  --hf-font-mono: var(--font-mono);
   --hf-card-radius: var(--radius);
+  /* Le badge historique du site : mono 10 px, angles vifs — 48 × 20 px. */
+  --hf-attachments-font-size-badge: 10px;
+  --hf-attachments-radius: 0;
 }
 ```
+
+Sans `componentStyles: 'none'`, le badge s'affiche aussi — le composant émet alors sa feuille lui-même — mais hors couche : un utilitaire Tailwind posé par `class` (`mt-4`…) ne l'emporterait pas sur elle.
 
 ### `<SeriesCard series={s} />`
 
@@ -571,11 +581,27 @@ Liste les documents joints non-image d'une série (vidéo, audio, PDF, fichiers)
 
 | Prop | Type | Défaut | Description |
 |------|------|--------|-------------|
-| `attachments` | `Attachment[]` | — | Documents joints résolus |
-| `heading` | `string` | libellé `attachments.heading` | Titre de la section (prioritaire sur `labels`) |
+| `attachments` | `SeriesAttachmentItem[]` | — | Documents joints résolus (`Attachment`, plus `attrs` optionnel) |
+| `variant` | `'list' \| 'inline'` | `'list'` | `list` : section titrée, un lien par document, lecteurs pour la vidéo et l'audio. `inline` : badges compacts `↓ ZIP` à poser à côté d'un titre — racine `<span>`, ni titre, ni liste, ni lecteur (une vidéo devient un badge `MP4`) |
+| `heading` | `string \| false` | libellé `attachments.heading` | Titre de la section (prioritaire sur `labels`). `false` ou `''` : aucun titre, la section reste nommée (`aria-label`) par le libellé. Sans effet en `inline` |
 | `headingLevel` | `1`–`6` | `2` | Niveau du titre de section |
+| `linkAttrs` | `AttachmentLinkAttrs \| (attachment, index) => AttachmentLinkAttrs` | — | Attributs posés sur **chaque lien** de téléchargement |
+| `unstyled` | `boolean` | `componentStyles === 'none'` | N'émet pas la feuille du composant pour cette instance |
+
+**Attributs par document.** `class`, `data-*` et `aria-*` passés au composant vont sur sa racine ; ceux d'`attachment.attrs` et de `linkAttrs` vont sur le **lien** du document — `class` s'ajoute à `hf-attachments__link` (ou `hf-attachments__badge`), `attrs` l'emporte sur `linkAttrs` clé par clé. Tout autre attribut est écarté (`on*`, `href`, `style`, `download`…), comme sur la racine. Les lecteurs vidéo et audio de la variante `list` n'ont pas de lien : ils ne reçoivent rien.
+
+```astro
+<SeriesAttachments
+  attachments={docs}
+  linkAttrs={(doc, i) => ({ 'data-track': 'attachment', 'data-index': i })}
+/>
+```
+
+**Nom accessible.** Le badge de format est `aria-hidden` ; le lien porte un `aria-label` construit par `attachments.linkLabel` — « Notes de tournage — PDF, 1,2 Mo » — dès que le format ou la taille sont connus (sinon, le texte du lien suffit). Le format est l'extension du fichier (`ZIP`, `PDF`), celle du titre pour une `data:` URL (petit fichier inliné par Vite). La description, que l'`aria-label` masquerait, est reliée par `aria-describedby`. Un `aria-label` passé dans `attrs` remplace celui du composant.
 
 Les tailles (`size`, en octets) s'affichent selon la locale : `2,4 Mo` en `fr`, `2.4 MB` en `en`.
+
+**Styles.** Le composant n'a plus de `<style>` scopé : sa feuille (`@regrets/hyperfocale/styles/attachments.css`) est émise dans un `<style data-hf-styles="attachments">` juste avant lui, une seule fois par page, et seulement s'il rend quelque chose — une page sans document n'en reçoit rien. Avec `componentStyles: 'none'` ou `unstyled`, c'est au site de l'importer (voir *Thème → Feuilles des composants et cascade layers*). Classes stables : `hf-attachments`, `hf-attachments--inline`, `__heading`, `__list`, `__item`, `__link`, `__badge`, `__kind`, `__title`, `__description`, `__size`, `__player`, `__media`, `__caption`.
 
 ### `<SeriesEmbeds embeds={emb} heading="Vidéos" headingLevel={2} />`
 
@@ -1034,6 +1060,7 @@ Depuis la 0.23.0, **aucun composant ne porte de couleur en dur** : toute couleur
 | `--hf-color-btn-overlay-hover` | Survol des boutons de la lightbox | `rgba(255,255,255,.15)` |
 | `--hf-color-scrim` | Voile au survol d'une façade d'embed | `rgba(0,0,0,.15)` |
 | `--hf-font-sans` | Police | `system-ui, …` |
+| `--hf-font-mono` | Police à chasse fixe (badges `inline` des documents joints) | `ui-monospace, …` |
 | `--hf-gallery-gap` | Gouttière des grilles | `0.5rem` |
 | `--hf-card-radius` | Rayon commun | `4px` |
 | `--hf-card-shadow` | Ombre des cartes et des entrées du filtre | `0 2px 8px rgba(0,0,0,.08)` |
@@ -1052,6 +1079,15 @@ Depuis la 0.23.0, **aucun composant ne porte de couleur en dur** : toute couleur
 | `--hf-attachments-radius` | Rayon des documents | `var(--hf-card-radius)` |
 | `--hf-attachments-bg` | Fond d'un document (et d'un embed en lien) | `var(--hf-color-surface)` |
 | `--hf-attachments-bg-hover` | Fond d'un document survolé | `var(--hf-color-border)` |
+| `--hf-attachments-font-size-heading` | Taille du titre de section des documents | `1.1rem` |
+| `--hf-attachments-font-size-title` | Taille du titre d'un document | `0.95rem` |
+| `--hf-attachments-font-size-meta` | Taille de la description et de la légende d'un lecteur | `0.85rem` |
+| `--hf-attachments-font-size-size` | Taille de l'indication de poids (`2,4 Mo`) | `0.8rem` |
+| `--hf-attachments-font-size-kind` | Taille du badge de format (variante `list`) | `0.7rem` |
+| `--hf-attachments-font-size-badge` | Taille d'un badge (variante `inline`) | `0.75rem` |
+| `--hf-attachments-badge-font` | Police d'un badge (variante `inline`) | `var(--hf-font-mono)` |
+| `--hf-attachments-badge-padding` | Marge intérieure d'un badge | `0.25rem 0.5rem` |
+| `--hf-attachments-badge-icon` | Glyphe avant le format (`content`, `none` pour l'ôter) | `"\2193"` (↓) |
 | `--hf-embeds-gap` | Marge au-dessus des embeds | `var(--hf-attachments-gap)` |
 | `--hf-embeds-item-gap` | Écart entre deux embeds | `2rem` |
 | `--hf-embeds-radius` | Rayon des embeds | `var(--hf-card-radius)` |
@@ -1059,6 +1095,35 @@ Depuis la 0.23.0, **aucun composant ne porte de couleur en dur** : toute couleur
 | `--hf-lineup-heading-size` | Titre du line-up (routes) | `1.3rem` |
 
 **Site à ses propres jetons et à son propre dark mode** (`theme: 'none'`, `.dark` par classe…) : déclarez les jetons `--hf-*` comme alias des vôtres, sur l'élément qui porte la classe de thème (`:root` si c'est `<html>`). Une `var()` se résout là où elle est déclarée : la bascule de vos jetons entraîne celle des `--hf-*` sans rien dupliquer. Exemple complet : *Composants → Exemple — bouton de téléchargement*. Rendez-vous au moins les jetons de couleur des composants que vous affichez — la lightbox, sans `--hf-color-overlay`, aurait un fond transparent.
+
+### Feuilles des composants et cascade layers
+
+Depuis la 0.24.0, `SeriesAttachments` ne porte plus de `<style>` scopé par Astro. Sa feuille est un fichier publié, `@regrets/hyperfocale/styles/attachments.css`, et la livraison dépend de `componentStyles` :
+
+| `componentStyles` | Livraison | Qui gagne face au CSS du site |
+|---|---|---|
+| `'inline'` *(défaut)* | `<style data-hf-styles="attachments">` émis avec le composant, une fois par page, seulement s'il rend quelque chose | Feuille **hors couche**, sélecteurs d'**une classe** (0,1,0) : elle bat les règles d'élément du site (`a {}`, `h2 {}`), comme l'ancien style scopé ; un utilitaire en cascade layer (Tailwind v4) ne l'emporte **pas** |
+| `'none'` | Rien : le site importe la feuille | Ce que le site décide, à l'import |
+
+Un site en Tailwind v4 l'importe **après** Tailwind, dans la couche `components` :
+
+```css
+@import "tailwindcss";
+@import "@regrets/hyperfocale/styles/attachments.css" layer(components);
+```
+
+Mesuré dans Chrome sur la sortie réelle de Tailwind 4.3 (`@tailwindcss/node`) :
+
+| Montage | `class="mt-4"` sur la racine | Titre (preflight `h2 { font-size: inherit; margin: 0 }`) |
+|---|---|---|
+| défaut `'inline'` | ignoré (marge du composant, 32 px) | composant (17,6 px, marge 12 px) |
+| `'none'` + import `layer(components)` **après** `tailwindcss` | **appliqué** (16 px) | composant (17,6 px, marge 12 px) |
+| `'none'` + import `layer(components)` **avant** `tailwindcss` | appliqué | **preflight** (16 px, marge 0) — à éviter |
+| `'none'` + `@layer theme, base, hyperfocale, components, utilities;` puis import `layer(hyperfocale)` | appliqué | composant |
+
+Pourquoi la feuille n'est ni en `@layer` d'office ni en `:where()` : hors couche et à spécificité nulle, une règle d'élément du site (`h2 { margin: 0 }`, `ul { list-style: disc }`) battrait le composant — c'est ce que donne la même mesure sur un site sans couches, et le rendu par défaut des sites existants changerait ; mise en couche d'office, la feuille perdrait contre **tout** CSS hors couche du site, pour la même raison. Le choix de la couche revient donc au site, au moment de l'import — `@import … layer(…)` le permet sans rien changer à la feuille.
+
+Les huit autres composants gardent leur `<style>` scopé en 0.24.0.
 
 ### Couche data seule — `theme: 'none'`
 

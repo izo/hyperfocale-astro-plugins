@@ -19,6 +19,8 @@ export default defineConfig({
     // Outils internes des composants, importés par les `.astro` copiés dans
     // dist/components/ (hors champ `exports`).
     'components/runtime': 'src/components/runtime.ts',
+    // Script client de SeriesFilter, importé par son `<script>` (#136, W4).
+    'components/filter-client': 'src/components/filter-client.ts',
     loader: 'src/loader.ts',
     // Contrat d'ingestion : sous-chemins additifs, jamais importés par
     // l'intégration. `ingest/index`, `ingest/dropbox` et `ingest/webdav`

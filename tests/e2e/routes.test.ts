@@ -387,9 +387,21 @@ describe('manifeste d\'images externalisé (§1.5.1)', () => {
   it('images.json n\'est pas rendu comme document joint', () => {
     // Le nom du fichier apparaît dans la description et le body de la série —
     // ce qui compte est qu'aucune section de pièces jointes ne soit rendue.
-    // (`.hf-attachments` figure dans le CSS inline ; `class="hf-attachments`
-    // n'apparaît que si le composant a rendu quelque chose.)
+    // (`class="hf-attachments` n'apparaît que si le composant a rendu quelque chose.)
     expect(gallery()).not.toContain('class="hf-attachments');
+  });
+
+  it('une page sans document joint ne reçoit pas la feuille de SeriesAttachments (0.24.0)', () => {
+    // Avant la 0.24.0, le `<style>` scopé du composant partait sur toute page
+    // qui l'importait — ici la route de détail — même quand il ne rendait rien.
+    // Les jetons `--hf-attachments-*` du thème sont attendus ; les règles du composant, non.
+    const RULES = /\.hf-attachments(?:__|--|[\s{,:[])/;
+    expect(gallery()).not.toMatch(RULES);
+    const assets = resolve(DEMO_DIST, '_astro');
+    const css = existsSync(assets)
+      ? readdirSync(assets).filter((f) => f.endsWith('.css')).map((f) => readFileSync(resolve(assets, f), 'utf-8')).join('\n')
+      : '';
+    expect(css).not.toMatch(RULES);
   });
 });
 
@@ -572,6 +584,10 @@ describe('originaux (§1.9, v2.11)', () => {
     const html = page();
     expect(html).toContain('class="hf-attachments');
     expect(html).toContain('devis.pdf');
+    // Feuille émise une fois, avec le composant ; nom accessible avec le format (0.24.0).
+    expect(html.match(/<style data-hf-styles="attachments">/g)).toHaveLength(1);
+    expect(html).toMatch(/<a class="hf-attachments__link" href="[^"]+" download aria-label="[^"]* — PDF[^"]*"/);
+    expect(html).not.toMatch(/<h2 class="hf-attachments__heading"[^>]*data-astro-cid/);
     // Le body de la série cite les noms : on cherche des liens, pas du texte.
     expect(html).not.toMatch(/href="[^"]*DSCF000[12]\.(RAF|xmp|Raf)/);
   });

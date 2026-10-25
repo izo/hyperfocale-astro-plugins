@@ -103,6 +103,24 @@ export interface HyperfocaleOptions {
   imageOptimization?: 'auto' | 'disabled';
 
   /**
+   * Feuilles des composants qui portent la leur (`SeriesAttachments` depuis la
+   * 0.24.0).
+   *
+   * `'inline'` (défaut) : le composant émet sa feuille dans un `<style>`, une
+   * fois par page et seulement s'il rend quelque chose.
+   *
+   * `'none'` : il n'émet rien ; le site importe la feuille publiée
+   * (`@regrets/hyperfocale/styles/attachments.css`) où il l'entend — dans une
+   * cascade layer, typiquement, pour que ses utilitaires l'emportent. La prop
+   * `unstyled` du composant fait de même pour une seule instance.
+   *
+   * Indépendant de `theme`, qui ne porte que les jetons `--hf-*`.
+   *
+   * @default 'inline'
+   */
+  componentStyles?: 'inline' | 'none';
+
+  /**
    * Injecter les routes automatiques (`/{prefix}/`, `/{prefix}/[...slug]/`…).
    * À `false`, le site consommateur câble ses propres pages avec les helpers et composants.
    * @default true
@@ -132,6 +150,7 @@ export interface NormalizedHyperfocaleOptions {
   layout: string | undefined;
   galleryLayout: 'grid' | 'column';
   imageOptimization: 'auto' | 'disabled';
+  componentStyles: 'inline' | 'none';
   injectRoutes: boolean;
   listRoute: boolean;
 }
@@ -155,6 +174,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const layout = options.layout;
   const galleryLayout = options.galleryLayout ?? 'grid';
   const imageOptimization = options.imageOptimization ?? 'auto';
+  const componentStyles = options.componentStyles ?? 'inline';
   const injectRoutes = options.injectRoutes ?? true;
   const listRoute = options.listRoute ?? true;
 
@@ -178,9 +198,24 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   if (!['auto', 'disabled'].includes(imageOptimization)) {
     throw new Error(`[hyperfocale] L'option "imageOptimization" doit être 'auto' ou 'disabled'. Reçu: ${imageOptimization}`);
   }
+  if (!['inline', 'none'].includes(componentStyles)) {
+    throw new Error(`[hyperfocale] L'option "componentStyles" doit être 'inline' ou 'none'. Reçu: ${componentStyles}`);
+  }
 
   const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
-  return { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, imageOptimization, injectRoutes, listRoute };
+  return {
+    prefix,
+    pageSize,
+    theme,
+    collectionName,
+    dateRequired,
+    layout,
+    galleryLayout,
+    imageOptimization,
+    componentStyles,
+    injectRoutes,
+    listRoute,
+  };
 }
 
 /**
@@ -192,8 +227,19 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
-  const { prefix, pageSize, theme, collectionName, dateRequired, layout, galleryLayout, imageOptimization, injectRoutes, listRoute } =
-    normalizeOptions(options);
+  const {
+    prefix,
+    pageSize,
+    theme,
+    collectionName,
+    dateRequired,
+    layout,
+    galleryLayout,
+    imageOptimization,
+    componentStyles,
+    injectRoutes,
+    listRoute,
+  } = normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
   // Layout de repli interne, utilisé quand l'option `layout` n'est pas fournie.
@@ -337,6 +383,7 @@ export const seriesCollection = defineCollection({
               'import.meta.env.HYPERFOCALE_DATE_REQUIRED': JSON.stringify(dateRequired),
               'import.meta.env.HYPERFOCALE_GALLERY_LAYOUT': JSON.stringify(galleryLayout),
               'import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION': JSON.stringify(imageOptimization),
+              'import.meta.env.HYPERFOCALE_COMPONENT_STYLES': JSON.stringify(componentStyles),
               // Trace des appels à getCollection — `HYPERFOCALE_DEBUG_CACHE=1 astro build`.
               'import.meta.env.HYPERFOCALE_DEBUG_CACHE': JSON.stringify(
                 process.env['HYPERFOCALE_DEBUG_CACHE'] === '1',

@@ -1,0 +1,10 @@
+---
+// Deux instances sur une même page : la feuille ne doit partir qu'une fois.
+import SeriesAttachments from '../../../src/components/SeriesAttachments.astro';
+const { attachments } = Astro.props;
+---
+<main>
+  <SeriesAttachments attachments={[]} />
+  <SeriesAttachments attachments={attachments} variant="inline" />
+  <SeriesAttachments attachments={attachments} />
+</main>

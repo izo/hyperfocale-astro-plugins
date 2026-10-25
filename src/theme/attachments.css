@@ -1,0 +1,165 @@
+/**
+ * Feuille de `SeriesAttachments` (#136) — `@regrets/hyperfocale/styles/attachments.css`.
+ *
+ * Deux façons de la recevoir :
+ *
+ * 1. Par défaut (`componentStyles: 'inline'`), le composant l'émet lui-même
+ *    dans un `<style>`, **une fois par page et seulement s'il rend quelque
+ *    chose** : une page sans document joint n'en reçoit pas un octet.
+ * 2. Avec `componentStyles: 'none'` (option de l'intégration) ou la prop
+ *    `unstyled`, le composant n'émet rien et le site importe cette feuille où il
+ *    veut — typiquement dans une cascade layer, pour que ses utilitaires
+ *    l'emportent :
+ *
+ *      @import "tailwindcss";
+ *      @import "@regrets/hyperfocale/styles/attachments.css" layer(components);
+ *
+ * Les sélecteurs n'ont **qu'une classe** (spécificité 0,1,0 ; 0,2,0 avec un
+ * état `:hover`/`:focus-visible`) et la feuille n'est pas mise en couche : ce
+ * choix est laissé au site, au moment de l'import. Pas de `:where()` : à
+ * spécificité nulle et hors couche, une règle d'élément du site (`a { color:
+ * inherit }`, `h2 { margin: 0 }`) battrait le composant — ce qui casserait le
+ * rendu par défaut des sites sans cascade layers.
+ *
+ * Aucune couleur en dur (`tests/unit/tokens.test.ts`) : les couleurs viennent
+ * des jetons `--hf-*` ; les longueurs et polices gardent un repli.
+ */
+
+/* ─── Variante `list` (défaut) ──────────────────────────────────────────── */
+
+.hf-attachments {
+  margin-top: var(--hf-attachments-gap, 2rem);
+  font-family: var(--hf-font-sans, system-ui);
+}
+
+.hf-attachments__heading {
+  font-size: var(--hf-attachments-font-size-heading, 1.1rem);
+  font-weight: 600;
+  color: var(--hf-color-text);
+  margin: 0 0 0.75rem;
+}
+
+.hf-attachments__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.hf-attachments__player {
+  margin: 0;
+}
+
+.hf-attachments__media {
+  width: 100%;
+  max-width: 100%;
+  border-radius: var(--hf-attachments-radius, 4px);
+}
+
+.hf-attachments__caption {
+  font-size: var(--hf-attachments-font-size-meta, 0.85rem);
+  color: var(--hf-color-text-muted);
+  margin-top: 0.25rem;
+}
+
+.hf-attachments__link {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  text-decoration: none;
+  background: var(--hf-attachments-bg, var(--hf-color-surface));
+  border: 1px solid var(--hf-color-border);
+  border-radius: var(--hf-attachments-radius, 4px);
+  color: var(--hf-color-text);
+  transition: background var(--hf-transition, 200ms ease);
+}
+
+.hf-attachments__link:hover,
+.hf-attachments__link:focus-visible {
+  background: var(--hf-attachments-bg-hover, var(--hf-color-border));
+}
+
+.hf-attachments__link:focus-visible {
+  outline: 2px solid var(--hf-color-accent);
+  outline-offset: 2px;
+}
+
+.hf-attachments__kind {
+  flex: none;
+  font-size: var(--hf-attachments-font-size-kind, 0.7rem);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--hf-color-text-muted);
+}
+
+.hf-attachments__title {
+  font-size: var(--hf-attachments-font-size-title, 0.95rem);
+  font-weight: 500;
+}
+
+.hf-attachments__description {
+  font-size: var(--hf-attachments-font-size-meta, 0.85rem);
+  color: var(--hf-color-text-muted);
+}
+
+.hf-attachments__size {
+  margin-left: auto;
+  flex: none;
+  font-size: var(--hf-attachments-font-size-size, 0.8rem);
+  color: var(--hf-color-text-muted);
+}
+
+/* ─── Variante `inline` : badges à côté d'un titre ─────────────────────── */
+
+.hf-attachments--inline {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  vertical-align: middle;
+}
+
+.hf-attachments__badge {
+  display: inline-flex;
+  align-items: center;
+  /* 1ch : la chasse d'une espace en police mono — « ↓ ZIP » */
+  gap: 1ch;
+  padding: var(--hf-attachments-badge-padding, 0.25rem 0.5rem);
+  font-family: var(--hf-attachments-badge-font, var(--hf-font-mono, ui-monospace, monospace));
+  font-size: var(--hf-attachments-font-size-badge, 0.75rem);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--hf-color-text-muted);
+  border: 1px solid var(--hf-color-border);
+  border-radius: var(--hf-attachments-radius, 4px);
+  transition:
+    color var(--hf-transition, 200ms ease),
+    border-color var(--hf-transition, 200ms ease);
+}
+
+.hf-attachments__badge::before {
+  content: var(--hf-attachments-badge-icon, "\2193");
+}
+
+.hf-attachments__badge:hover,
+.hf-attachments__badge:focus-visible {
+  color: var(--hf-color-text);
+  border-color: var(--hf-color-accent);
+}
+
+.hf-attachments__badge:focus-visible {
+  outline: 2px solid var(--hf-color-accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-attachments__link,
+  .hf-attachments__badge {
+    transition: none;
+  }
+}
