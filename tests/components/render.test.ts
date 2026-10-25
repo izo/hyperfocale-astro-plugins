@@ -247,6 +247,15 @@ describe('SeriesGallery', () => {
     expect(en).toContain('aria-label="Next page"');
     expect(en).toContain('aria-label="Close the viewer"');
   });
+
+  it('pagination : la page 2 est sous `page/` (spec §1.6), la page 1 est la série', async () => {
+    const html = await render(SeriesGallery, props);
+    expect(html).toContain('href="/s/b/page/2/"');
+    expect(html).not.toContain('href="/s/b/2/"');
+    const page2 = await render(SeriesGallery, { ...props, page: 2, images: IMAGES.slice(2) });
+    expect(page2).toContain('href="/s/b/"');
+    expect(page2).not.toContain('href="/s/b/1/"');
+  });
 });
 
 describe('SeriesLightbox', () => {

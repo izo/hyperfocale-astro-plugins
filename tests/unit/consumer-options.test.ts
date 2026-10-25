@@ -142,6 +142,7 @@ describe('routes injectées', () => {
     expect(injectedPatterns()).toEqual([
       '/series/',
       '/series/[...slug]/',
+      '/series/[...slug]/page/[n]/',
       '/series/[...slug]/[page]/',
     ]);
   });
@@ -149,7 +150,11 @@ describe('routes injectées', () => {
   it("listRoute: false retire l'index et conserve les autres routes", () => {
     const patterns = injectedPatterns({ listRoute: false });
     expect(patterns).not.toContain('/series/');
-    expect(patterns).toEqual(['/series/[...slug]/', '/series/[...slug]/[page]/']);
+    expect(patterns).toEqual([
+      '/series/[...slug]/',
+      '/series/[...slug]/page/[n]/',
+      '/series/[...slug]/[page]/',
+    ]);
   });
 
   it("injectRoutes: false n'injecte aucune route", () => {
@@ -160,6 +165,7 @@ describe('routes injectées', () => {
     expect(injectedPatterns({ preset: 'recipe' })).toEqual([
       '/recettes/',
       '/recettes/[...slug]/',
+      '/recettes/[...slug]/page/[n]/',
       '/recettes/[...slug]/[page]/',
     ]);
   });
@@ -225,7 +231,7 @@ describe("thème injecté", () => {
   });
 
   it("theme: 'none' n'empêche pas l'injection des routes", () => {
-    expect(injectedPatterns({ theme: 'none' })).toHaveLength(3);
+    expect(injectedPatterns({ theme: 'none' })).toHaveLength(4);
   });
 
   it('rejette un thème inconnu', () => {

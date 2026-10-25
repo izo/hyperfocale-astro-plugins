@@ -7,6 +7,31 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié] — alignement sur la spec 2.15
+
+La spec Hyperfocale a précisé en 2.13 et 2.15 trois règles de la couche 1 que le plugin n'appliquait pas ([hyperfocale-spec#38](https://github.com/izo/hyperfocale-spec/pull/38), [#43](https://github.com/izo/hyperfocale-spec/pull/43) ; ticket #143). Relevées sur `main` à la 0.24.0.
+
+### Modifié
+
+- **Pagination sous `page/`** (spec §1.6, 2.13) — la page *n* d'une galerie est servie à `/{prefix}/{chemin}/page/{n}/` (`n` ≥ 2) et non plus à `/{prefix}/{chemin}/{n}/`, qui se confondait avec une sous-série dont le slug est un nombre : la page 2 de la galerie d'un conteneur et sa sous-série `2` produisaient la même URL. `SeriesGallery` construit ses liens sur la nouvelle forme. **Changement visible des URLs** de toute galerie de plus d'une page.
+- **Tri des séries** (spec §1.6, 2.15) — `getSeriesList()`, `getSubSeries()` et `querySeries()` (tri par date) comparent la **date calendaire** seule (l'heure éventuelle est ignorée), départagent à égalité par titre puis par chemin, et placent les séries sans date après les datées. Avant : `getTime()` complet, sans départage.
+- **Ordre des fichiers** (spec §1.6, 2.13) — images et documents joints du scan de `media/` se trient dans l'ordre canonique de §4.1 (points de code du nom en NFC, casse comprise), comme le faisait déjà `resolveSeriesMedia`, et non plus par `localeCompare` : `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg`.
+- **Sous-séries** (spec §1.8, 2.15) — `getSubSeries()` retient les séries dont le plus proche ancêtre qui est une série est le conteneur : un dossier de rangement intercalé (`conteneur/lots/sous-serie/`) ne l'écarte plus, et une page de section intercalée est transparente. Avant : seules les entrées situées exactement un segment plus bas.
+
+### Ajouté
+
+- **Redirection de l'ancienne pagination** — `/{prefix}/{chemin}/{n}/` redirige (`meta refresh` + `canonical`) vers `/page/{n}/`, sauf si une série occupe ce chemin.
+- `src/order.ts` — `compareNFC`, `calendarDay`, `compareSeriesOrder`, purs.
+- Fixtures du site de démonstration : `galerie-paginee-2024` (deux pages) et `collision-pagination-2024` (une galerie à deux pages et une sous-série `2`).
+
+### Limite connue
+
+- `calendarDay()` lit la `Date` déjà coercée par le schéma : pour une date écrite **avec** heure et fuseau, le jour UTC peut différer du jour écrit. Sans effet sur les dates sans heure.
+
+### Tests
+
+- `tests/unit/order.test.ts` ; `tests/unit/lineup.test.ts` (rangement et section intercalés) ; `tests/components/render.test.ts` (liens de pagination) ; `tests/e2e/routes.test.ts` (page 2, redirection, collision).
+
 ## [0.24.0] — 2026-10-25
 
 Le galop d'essai de `SeriesAttachments` 0.23.0 sur `mathieu-drouet.com` (izo/mdr-monorepo#329) a relevé six écarts entre le composant et le bouton « ↓ ZIP » qu'il remplaçait — badge mono de 48 × 20 px à droite du titre d'une série : pas de rendu compact, pas de moyen de retirer le titre, attributs de suivi posés sur la section et non sur le lien, format du fichier caché aux lecteurs d'écran, `<style>` scopé livré même quand rien ne s'affiche et qui battait les utilitaires Tailwind du site, pas de jeton de police mono ni de taille, et un attribut `data-astro-cid-…="true"` parasite sur le titre (#136). Tout est corrigé dans le plugin, de façon générique ; le rendu par défaut (`variant="list"`) est inchangé à la classe près. Le badge du site se reproduit au pixel près (48,1 × 20 px mesurés dans Chrome, contre 48,1 × 20 px pour l'original).

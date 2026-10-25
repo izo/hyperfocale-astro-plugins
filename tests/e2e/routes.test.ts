@@ -75,6 +75,7 @@ describe('build du plugin', () => {
     expect(existsSync(resolve(ROOT, 'dist/routes/series-list.astro'))).toBe(true);
     expect(existsSync(resolve(ROOT, 'dist/routes/series-detail.astro'))).toBe(true);
     expect(existsSync(resolve(ROOT, 'dist/routes/series-page.astro'))).toBe(true);
+    expect(existsSync(resolve(ROOT, 'dist/routes/series-page-legacy.astro'))).toBe(true);
   });
 
   it('copie dist/theme/base.css', () => {
@@ -210,6 +211,35 @@ describe('routes inexistantes', () => {
     // Le demo-site a pageSize=4 et 4 images par série -> pas de page 2
     // (même si la collection était peuplée)
     expect(fileExists('series/bretagne-2024/2/index.html')).toBe(false);
+  });
+});
+
+describe('pagination sous `page/` (spec §1.6, 2.13)', () => {
+  it('génère la page 2 sous /page/2/', () => {
+    expect(fileExists('series/galerie-paginee-2024/page/2/index.html')).toBe(true);
+    expect(htmlOf('series/galerie-paginee-2024/page/2/index.html')).toContain('Page 2');
+  });
+
+  it('la page 1 de la galerie pointe vers /page/2/, jamais vers /2/', () => {
+    const html = htmlOf('series/galerie-paginee-2024/index.html');
+    expect(html).toContain('href="/series/galerie-paginee-2024/page/2/"');
+    expect(html).not.toContain('href="/series/galerie-paginee-2024/2/"');
+  });
+
+  it('redirige l\'ancienne forme /2/ vers /page/2/', () => {
+    expect(fileExists('series/galerie-paginee-2024/2/index.html')).toBe(true);
+    const html = htmlOf('series/galerie-paginee-2024/2/index.html');
+    expect(html).toContain('http-equiv="refresh"');
+    expect(html).toContain('/series/galerie-paginee-2024/page/2/');
+  });
+
+  it('une sous-série dont le slug est 2 garde son URL : la page 2 de la galerie ne la confond pas', () => {
+    const sub = htmlOf('series/collision-pagination-2024/2/index.html');
+    expect(sub).toContain('Sous-série numéro 2');
+    expect(sub).not.toContain('http-equiv="refresh"');
+    const gallery = htmlOf('series/collision-pagination-2024/page/2/index.html');
+    expect(gallery).toContain('Page 2');
+    expect(gallery).not.toContain('Sous-série numéro 2');
   });
 });
 

@@ -1,0 +1,34 @@
+---
+/**
+ * Redirection de l'ancienne forme de pagination `/{prefix}/{chemin}/{n}/`
+ * (spec ≤ 2.12) vers `/{prefix}/{chemin}/page/{n}/` (spec §1.6, 2.13).
+ *
+ * Elle ne produit que les URLs qui ont réellement existé : une page de galerie
+ * numéro 2 ou plus. Si une série (une sous-série dont le slug est ce nombre)
+ * occupe déjà `/{chemin}/{n}/`, l'URL lui appartient et rien n'est redirigé.
+ */
+import { getSeriesList, getSeriesImages, paginateImages } from '../helpers/index.js';
+
+export async function getStaticPaths() {
+  const pageSize = Number(import.meta.env.HYPERFOCALE_PAGE_SIZE ?? 12);
+  const series = await getSeriesList();
+  const taken = new Set(series.map((s) => s.id));
+
+  const paths: Array<{ params: { slug: string; page: string } }> = [];
+  for (const s of series) {
+    const images = await getSeriesImages(s.id, s);
+    const { totalPages } = paginateImages(images, pageSize, 1);
+    for (let p = 2; p <= totalPages; p++) {
+      if (taken.has(`${s.id}/${p}`)) continue;
+      paths.push({ params: { slug: s.id, page: String(p) } });
+    }
+  }
+  return paths;
+}
+
+const prefix = import.meta.env.HYPERFOCALE_PREFIX ?? '/series';
+const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
+const { slug, page } = Astro.params;
+
+return Astro.redirect(`${normalizedPrefix}/${slug}/page/${page}/`, 301);
+---

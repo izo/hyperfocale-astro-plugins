@@ -223,7 +223,10 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
  *
  * Ajoute :
  * - La collection `series` (ou nom personnalisé via `collectionName`)
- * - Les routes `/{prefix}/`, `/{prefix}/[slug]/`, `/{prefix}/[slug]/[page]/`
+ * - Les routes `/{prefix}/`, `/{prefix}/[...chemin]/` et `/{prefix}/[...chemin]/page/[n]/`
+ *   (spec §1.6 : la pagination passe sous `page/`, pour ne pas se confondre avec une
+ *   sous-série dont le slug est un nombre) ; l'ancienne forme `/{prefix}/[...chemin]/[n]/`
+ *   est redirigée vers la nouvelle quand aucune série n'occupe ce chemin
  * - Le thème CSS configurable
  */
 export default function hyperfocale(options: HyperfocaleOptions = {}): AstroIntegration {
@@ -296,8 +299,16 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
           });
 
           injectRoute({
-            pattern: `${prefix}/[...slug]/[page]/`,
+            pattern: `${prefix}/[...slug]/page/[n]/`,
             entrypoint: resolve(routesDir, 'series-page.astro'),
+            prerender: true,
+          });
+
+          // Ancienne forme `/{prefix}/{chemin}/{n}/` (jusqu'à la spec 2.12) : redirigée
+          // vers `/page/{n}/`, sauf si une sous-série porte ce numéro pour slug.
+          injectRoute({
+            pattern: `${prefix}/[...slug]/[page]/`,
+            entrypoint: resolve(routesDir, 'series-page-legacy.astro'),
             prerender: true,
           });
         }
