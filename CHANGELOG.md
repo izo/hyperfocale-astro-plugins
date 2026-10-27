@@ -7,7 +7,7 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
-## [Non publié]
+## [0.25.1] — 2026-10-27 — composants du barrel, types du module virtuel
 
 ### Corrigé
 
