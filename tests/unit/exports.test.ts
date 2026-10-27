@@ -106,3 +106,16 @@ describe('package exports — vocabulaires du schéma', () => {
     ]);
   });
 });
+
+// Le barrel `@regrets/hyperfocale/components` doit réexporter chaque composant :
+// le README montre `import { SeriesCard } from '@regrets/hyperfocale/components'`,
+// et le barrel n'exposait jusque-là que les libellés (MISSING_EXPORT au build).
+describe('barrel @regrets/hyperfocale/components', () => {
+  const barrel = readFileSync(resolve(ROOT, 'src', 'components', 'index.ts'), 'utf-8');
+
+  for (const name of ASTRO_COMPONENTS) {
+    it(`réexporte ${name}`, () => {
+      expect(barrel).toContain(`export { default as ${name} } from './${name}.astro';`);
+    });
+  }
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import hyperfocale from '../../src/index.js';
+import hyperfocale, { VIRTUAL_COLLECTION_TYPES } from '../../src/index.js';
 import { getSeriesImages, resetSeriesCache } from '../../src/helpers/index.js';
 import type { Series } from '../../src/helpers/index.js';
 
@@ -293,5 +293,26 @@ describe('attribut data-hf-theme', () => {
     // Un site en couche data qui rend `SeriesGallery` dans ses propres pages a
     // besoin du thème demandé, pas seulement de la feuille.
     expect(themeAttrScripts({ theme: 'dark', injectRoutes: false })).toHaveLength(1);
+  });
+});
+
+// ─── Types du module virtuel ─────────────────────────────────────────────────
+
+describe('déclaration de virtual:hyperfocale/collection', () => {
+  it('est injectée par astro:config:done', () => {
+    const injected: { filename: string; content: string }[] = [];
+    const done = hyperfocale().hooks['astro:config:done'];
+    if (!done) throw new Error('hook astro:config:done absent de l’intégration');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    done({ injectTypes: (t: { filename: string; content: string }) => void injected.push(t) } as any);
+    expect(injected).toHaveLength(1);
+    expect(injected[0]?.filename).toBe('virtual-collection.d.ts');
+    expect(injected[0]?.content).toBe(VIRTUAL_COLLECTION_TYPES);
+  });
+
+  it('déclare seriesCollection avec le schéma de seriesSchema', () => {
+    expect(VIRTUAL_COLLECTION_TYPES).toContain("declare module 'virtual:hyperfocale/collection'");
+    expect(VIRTUAL_COLLECTION_TYPES).toContain('export const seriesCollection');
+    expect(VIRTUAL_COLLECTION_TYPES).toContain("typeof import('@regrets/hyperfocale').seriesSchema");
   });
 });
