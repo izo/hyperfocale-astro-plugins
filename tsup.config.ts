@@ -36,7 +36,9 @@ export default defineConfig({
   // (`useCaseSensitiveFileNames`). tsc est plus robuste et suffit ici.
   dts: false,
   clean: true,
-  external: ['astro', 'astro:content', 'astro:assets', 'zod'],
+  // `.astro` : le barrel des composants les réexporte en chemins relatifs,
+  // copiés à côté par `onSuccess` ; esbuild ne sait pas les compiler.
+  external: ['astro', 'astro:content', 'astro:assets', 'zod', /\.astro$/],
   // Copier les fichiers .astro (routes, composants, thème) dans dist/
   // car tsup ne compile que les fichiers TypeScript
   onSuccess: async () => {

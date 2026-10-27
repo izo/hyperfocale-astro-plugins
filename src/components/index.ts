@@ -1,5 +1,20 @@
 // Barrel export pour les composants Astro du plugin hyperfocale
 // Importez via : import { SeriesCard, SeriesList, SeriesGallery, SeriesLightbox } from '@regrets/hyperfocale/components'
+//
+// Les `.astro` ne sont pas compilés par tsup : ils sont copiés tels quels dans
+// dist/components/, et ces réexports restent des imports relatifs (`external`
+// dans tsup.config.ts), résolus par Vite chez le site consommateur. Avant ce
+// réexport, le barrel n'exposait que les libellés : l'import nommé que montre
+// le README échouait au build (MISSING_EXPORT).
+export { default as SeriesCard } from './SeriesCard.astro';
+export { default as SeriesList } from './SeriesList.astro';
+export { default as SeriesGallery } from './SeriesGallery.astro';
+export { default as SeriesLightbox } from './SeriesLightbox.astro';
+export { default as SeriesMasonry } from './SeriesMasonry.astro';
+export { default as SeriesAttachments } from './SeriesAttachments.astro';
+export { default as SeriesEmbeds } from './SeriesEmbeds.astro';
+export { default as SeriesFilter } from './SeriesFilter.astro';
+export { default as SeriesMap } from './SeriesMap.astro';
 
 export type {
   Series,

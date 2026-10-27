@@ -403,9 +403,31 @@ export const seriesCollection = defineCollection({
           },
         });
       },
+      // Le module virtuel n'avait aucune déclaration de type : un
+      // `import { seriesCollection } from 'virtual:hyperfocale/collection'`
+      // échouait à `astro check` (ts2307), et une déclaration maison en `any`
+      // rendait `entry.data` inconnu. Astro référence ce fichier depuis
+      // `.astro/types.d.ts`, déjà inclus par le tsconfig du site.
+      'astro:config:done': ({ injectTypes }) => {
+        injectTypes({ filename: 'virtual-collection.d.ts', content: VIRTUAL_COLLECTION_TYPES });
+      },
     },
   };
 }
+
+/**
+ * Déclaration de `virtual:hyperfocale/collection`. Le schéma est celui de
+ * `seriesSchema` : `date` y est typée requise même quand `dateRequired: false`
+ * la rend optionnelle à l'exécution (voir `SeriesDataOptionalDate`).
+ *
+ * @internal Exporté pour les tests.
+ */
+export const VIRTUAL_COLLECTION_TYPES = `declare module 'virtual:hyperfocale/collection' {
+  export const seriesCollection: import('astro/content/config').CollectionConfig<
+    ReturnType<typeof import('@regrets/hyperfocale').seriesSchema>
+  >;
+}
+`;
 
 // Surface publique du schéma. Les vocabulaires de `schema.ts` sont
 // exposés ici, et pas seulement `CONTENT_TYPES` : un consommateur qui écrit un

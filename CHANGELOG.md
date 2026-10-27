@@ -7,6 +7,13 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Corrigé
+
+- **`@regrets/hyperfocale/components` exporte enfin les composants** (#148). Le barrel ne réexportait que les libellés : `import { SeriesList } from '@regrets/hyperfocale/components'`, la forme que montre le README, échouait au build (`MISSING_EXPORT`). Les neuf `.astro` y sont réexportés, en imports relatifs laissés externes par tsup. Les imports par chemin (`…/components/SeriesList.astro`) restent valables.
+- **Déclaration de type de `virtual:hyperfocale/collection`** (#149). Le module virtuel n'en avait pas : `astro check` échouait sur `content.config.ts` (ts2307). L'intégration l'injecte désormais au hook `astro:config:done` (`injectTypes`) ; `entry.data` est typé par `seriesSchema`. Limite : `date` y reste requise même avec `dateRequired: false`.
+
 ## [0.25.0] — 2026-10-25 — alignement sur la spec 2.15, retrait du preset `project`
 
 ### Retiré
