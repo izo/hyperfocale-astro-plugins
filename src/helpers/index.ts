@@ -2,6 +2,7 @@ import { getCollection } from 'astro:content';
 import type { CollectionEntry, CollectionKey } from 'astro:content';
 import { EMBED_PLATFORMS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
+import { isSafeLinkUrl } from '../ingest/paths.js';
 import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf } from '../media.js';
 import { compareNFC, compareSeriesOrder } from '../order.js';
 import type { ImageManifest, ManifestImage } from '../media.js';
@@ -511,7 +512,7 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
   const remoteFiles = data?.files as Array<{ url: string; title?: string; kind?: AttachmentKind; size?: number }> | undefined;
   // Un original n'apparaît jamais dans `files:` (§1.9) : une entrée qui en
   // désigne un est écartée plutôt que proposée en téléchargement.
-  const notOriginal = (f: { url: string }) => !isOriginal(f.url);
+  const notOriginal = (f: { url: string }) => !isOriginal(f.url) && isSafeLinkUrl(f.url);
   if (remoteFiles && remoteFiles.length > 0) {
     return remoteFiles.filter(notOriginal).map(toAttachment);
   }
@@ -588,6 +589,8 @@ export async function getSeriesEmbeds(slug: string, series?: Series): Promise<Em
       // déjà, mais les helpers sont appelables sur des données non validées —
       // tests, contenu chargé hors Content Layer.
       if (typeof entry.url !== 'string' || entry.url === '') return null;
+      // Le `href` d'un lien ne porte jamais `javascript:` ni `data:` (#152).
+      if (!isSafeLinkUrl(entry.url)) return null;
 
       const platform = entry.platform?.toLowerCase();
       const known = platform !== undefined && (EMBED_PLATFORMS as readonly string[]).includes(platform);

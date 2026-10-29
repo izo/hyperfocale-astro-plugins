@@ -161,9 +161,15 @@ const attachmentMetaSchema = z.object({
   description: z.string().optional(),
 });
 
+/**
+ * URL absolue en `http(s)` — `embeds[].url` et `files[].url` finissent dans un
+ * `href` : `javascript:`, `data:` et les autres schémas sont refusés (#152).
+ */
+const httpUrl = z.url({ protocol: /^https?$/ });
+
 /** Schéma d'un document joint en mode distant — champ `files[]` (spec §1.9). */
 const remoteFileSchema = z.object({
-  url: z.url(),
+  url: httpUrl,
   title: z.string().optional(),
   kind: z.enum(ATTACHMENT_KINDS).optional(),
   size: z.number().optional(),
@@ -195,7 +201,7 @@ export const EMBED_PLATFORMS = [
  * défaut on se rabat sur le lien, sans erreur.
  */
 const embedSchema = z.object({
-  url: z.url(),
+  url: httpUrl,
   platform: z.string().optional(),
   id: z.string().optional(),
   title: z.string().optional(),

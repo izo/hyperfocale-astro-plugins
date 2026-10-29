@@ -5,6 +5,7 @@ import {
   resolveLabels,
   formatLabel,
   passthroughAttrs,
+  safeHref,
   headingTag,
   type InstanceProps,
   type HeadingLevel,
@@ -114,7 +115,7 @@ const items = embeds.map((embed) => ({
                * aucun lecteur n'est constructible. `url` suffit à faire un lien,
                * et c'est précisément pour ça qu'elle est le seul champ requis.
                */
-              <a class="hf-embeds__link" href={embed.url} rel="noopener noreferrer" target="_blank">
+              <a class="hf-embeds__link" href={safeHref(embed.url)} rel="noopener noreferrer" target="_blank">
                 {embed.poster !== undefined && (
                   typeof embed.poster === 'string' ? (
                     <img class="hf-embeds__poster" src={embed.poster} alt="" loading="lazy" />
@@ -144,7 +145,7 @@ const items = embeds.map((embed) => ({
                */
               <a
                 class="hf-embeds__facade"
-                href={embed.url}
+                href={safeHref(embed.url)}
                 rel="noopener noreferrer"
                 data-hf-embed={player}
                 data-hf-embed-title={label}

@@ -7,6 +7,16 @@
  */
 import type { HeadingLevel } from '../i18n.js';
 import type { Attachment } from '../schema.js';
+import { isSafeLinkUrl } from '../ingest/paths.js';
+
+/**
+ * Valeur d'un `href` : l'URL, ou `undefined` (attribut omis) si son schéma n'est
+ * ni `http(s)` ni absent (#152). `allowData` : le `data:` d'un fichier local que
+ * Vite a inliné (`SeriesAttachments`).
+ */
+export function safeHref(url: unknown, allowData = false): string | undefined {
+  return isSafeLinkUrl(url, allowData) ? url : undefined;
+}
 
 export {
   resolveLabels,

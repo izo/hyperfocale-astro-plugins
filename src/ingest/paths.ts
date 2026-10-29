@@ -9,6 +9,23 @@ export interface NormalizedPath {
   readonly reason?: string;
 }
 
+/**
+ * Une URL peut-elle finir dans un `href` ? Oui si elle n'a pas de schéma
+ * (chemin relatif ou absolu au site) ou si son schéma est `http(s)` (#152).
+ * `javascript:`, `data:`, `vbscript:` et tout autre schéma sont refusés ; avec
+ * `allowData`, une URL `data:` l'est aussi (fichier local que Vite inline).
+ *
+ * Les caractères de contrôle et espaces sont retirés avant de lire le schéma :
+ * un navigateur ignore `java\tscript:` ou ` javascript:` à l'analyse d'une URL.
+ */
+export function isSafeLinkUrl(url: unknown, allowData = false): url is string {
+  if (typeof url !== 'string' || url.trim() === '') return false;
+  const bare = url.replace(/[\u0000-\u0020\u007f]/g, '');
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(bare)?.[1]?.toLowerCase();
+  if (scheme === undefined) return true;
+  return scheme === 'http' || scheme === 'https' || (allowData && scheme === 'data');
+}
+
 // U+0000–U+001F et U+007F (§4.1).
 const CONTROL_CHAR = /[\u0000-\u001f\u007f]/;
 

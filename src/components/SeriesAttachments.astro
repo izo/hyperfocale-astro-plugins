@@ -5,6 +5,7 @@ import {
   formatLabel,
   formatFileSize,
   passthroughAttrs,
+  safeHref,
   elementAttrs,
   headingTag,
   claimStyles,
@@ -136,7 +137,7 @@ const links = attachments.map((att, index) => {
 {visible && inline && (
   <span class:list={['hf-attachments', 'hf-attachments--inline', className]} {...rootAttrs}>
     {links.map((link) => (
-      <a class:list={['hf-attachments__badge', link.extraClass]} href={link.att.src} download {...link.attrs}>{link.format || link.title}</a>
+      <a class:list={['hf-attachments__badge', link.extraClass]} href={safeHref(link.att.src, true)} download {...link.attrs}>{link.format || link.title}</a>
     ))}
   </span>
 )}
@@ -149,16 +150,16 @@ const links = attachments.map((att, index) => {
           {att.kind === 'video' ? (
             <figure class="hf-attachments__player">
               {/* captions éventuelles à fournir côté site consommateur */}
-              <video class="hf-attachments__media" controls preload="metadata" src={att.src} title={att.title} />
+              <video class="hf-attachments__media" controls preload="metadata" src={safeHref(att.src, true)} title={att.title} />
               {att.title && <figcaption class="hf-attachments__caption">{att.title}</figcaption>}
             </figure>
           ) : att.kind === 'audio' ? (
             <figure class="hf-attachments__player">
-              <audio class="hf-attachments__media" controls preload="metadata" src={att.src} title={att.title} />
+              <audio class="hf-attachments__media" controls preload="metadata" src={safeHref(att.src, true)} title={att.title} />
               {att.title && <figcaption class="hf-attachments__caption">{att.title}</figcaption>}
             </figure>
           ) : (
-            <a class:list={['hf-attachments__link', extraClass]} href={att.src} download {...attrs}>
+            <a class:list={['hf-attachments__link', extraClass]} href={safeHref(att.src, true)} download {...attrs}>
               {format && <span class="hf-attachments__kind" aria-hidden="true">{format}</span>}
               <span class="hf-attachments__title">{title}</span>
               {att.description && <span class="hf-attachments__description" id={descriptionId}>{att.description}</span>}
