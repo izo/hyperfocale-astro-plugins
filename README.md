@@ -50,6 +50,8 @@ npx hyperfocale init
 
 Le CLI crée ou met à jour `src/content.config.ts` pour enregistrer la collection `series`. Idempotent — relancez-le sans risque si le fichier existe déjà.
 
+Sur un fichier existant, `init` ne fusionne que le cas trivial (un objet `collections` sans définition imbriquée) et écrit d'abord une sauvegarde `content.config.ts.bak`. Dès que `collections` contient des `defineCollection({ … })`, des objets ou des tableaux, il laisse le fichier intact et affiche les lignes à ajouter à la main.
+
 ### 3. Activer l'intégration
 
 ```ts

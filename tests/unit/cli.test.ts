@@ -55,6 +55,89 @@ describe('CLI — init reste la commande par défaut', () => {
   });
 });
 
+describe('CLI — init sur un content.config.ts existant (#153)', () => {
+  const CONFIG = 'src/content.config.ts';
+  const read = (name = CONFIG) => readFileSync(join(work, name), 'utf-8');
+
+  it('fusion triviale : ajoute la clé et l\'import, avec sauvegarde', async () => {
+    const original = `import { other } from './other';\n\nexport const collections = {\n  other,\n};\n`;
+    tree({ [CONFIG]: original });
+    const { code, stdout } = await run('init');
+    expect(code).toBe(0);
+    expect(stdout).toContain('Collection "series" ajoutée');
+    const updated = read();
+    expect(updated).toContain(`import { seriesCollection } from 'virtual:hyperfocale/collection';`);
+    expect(updated).toMatch(/other,\n\s+series: seriesCollection,\n\};/);
+    expect(read(`${CONFIG}.bak`)).toBe(original);
+  });
+
+  it('fusion triviale sans virgule finale', async () => {
+    tree({ [CONFIG]: `export const collections = { other }\n` });
+    expect((await run('init')).code).toBe(0);
+    expect(read()).toContain('other,\n  series: seriesCollection,');
+  });
+
+  it('objet imbriqué : fichier intact, lignes à ajouter affichées', async () => {
+    const original = `import { defineCollection, z } from 'astro:content';\nexport const collections = { blog: defineCollection({ schema: z.object({ title: z.string() }) }), };\n`;
+    tree({ [CONFIG]: original });
+    const { code, stdout } = await run('init');
+    expect(code).toBe(0);
+    expect(stdout).toContain("n'a pas été modifié");
+    expect(stdout).toContain('series: seriesCollection');
+    expect(read()).toBe(original);
+    expect(existsSync(join(work, `${CONFIG}.bak`))).toBe(false);
+  });
+
+  it('variante d\'espacement `series : seriesCollection` : idempotent, pas de double injection', async () => {
+    const original = `import { seriesCollection } from 'virtual:hyperfocale/collection';\nexport const collections = {\n  series : seriesCollection,\n};\n`;
+    tree({ [CONFIG]: original });
+    const { code, stdout } = await run('init');
+    expect(code).toBe(0);
+    expect(stdout).toContain('Aucune modification nécessaire');
+    expect(read()).toBe(original);
+  });
+
+  it('clé en commentaire : ne compte pas comme présente', async () => {
+    tree({ [CONFIG]: `export const collections = {\n  // series: seriesCollection,\n  other,\n};\n` });
+    expect((await run('init')).code).toBe(0);
+    const updated = read();
+    expect(updated.match(/series: seriesCollection/g)).toHaveLength(2);
+    expect(updated).toMatch(/other,\n\s+series: seriesCollection,/);
+  });
+
+  it('accolade dans une chaîne ou un commentaire : ne perturbe pas la fusion', async () => {
+    tree({ [CONFIG]: `export const collections = {\n  other, // fin } de liste\n};\n` });
+    expect((await run('init')).code).toBe(0);
+    expect(read()).toBe(
+      `import { seriesCollection } from 'virtual:hyperfocale/collection';\nexport const collections = {\n  other,\n  series: seriesCollection, // fin } de liste\n};\n`,
+    );
+  });
+
+  it('`collections` déclaré autrement : fichier intact', async () => {
+    const original = `const collections = { other };\nexport { collections };\n`;
+    tree({ [CONFIG]: original });
+    const { code, stdout } = await run('init');
+    expect(code).toBe(0);
+    expect(stdout).toContain("n'a pas été modifié");
+    expect(read()).toBe(original);
+  });
+
+  it('sans export collections : l\'ajoute, avec sauvegarde', async () => {
+    const original = `import { z } from 'astro:content';\n`;
+    tree({ [CONFIG]: original });
+    expect((await run('init')).code).toBe(0);
+    expect(read()).toContain('export const collections = {\n  series: seriesCollection,\n};');
+    expect(read(`${CONFIG}.bak`)).toBe(original);
+  });
+
+  it('une sauvegarde existante n\'est jamais écrasée', async () => {
+    tree({ [CONFIG]: `export const collections = { other };\n`, [`${CONFIG}.bak`]: 'ancienne sauvegarde' });
+    expect((await run('init')).code).toBe(0);
+    expect(read(`${CONFIG}.bak`)).toBe('ancienne sauvegarde');
+    expect(read(`${CONFIG}.bak.1`)).toBe(`export const collections = { other };\n`);
+  });
+});
+
 describe('CLI — validate', () => {
   it('corpus conforme : 0', async () => {
     const { code, stdout } = await run('validate', join(CORPORA, 'minimal'));
