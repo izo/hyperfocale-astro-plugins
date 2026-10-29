@@ -131,14 +131,86 @@ export function matchMedia(
   return { dirSlug: m[2] as string, filename: m[3] as string };
 }
 
-/** Localise le `images.json` d'une série sans le parser. */
-function findManifest(dirSlug: string, collection: string = COLLECTION_NAME): [string, string] | null {
+// ── Index des globs (#151) ──────────────────────────────────────────────────
+//
+// Les trois globs sont des tables chemin → module, hoissées et immuables. Les
+// parcourir à chaque appel coûtait O(séries × images) — plusieurs appels par
+// série (détail, deux `getStaticPaths`, carte d'index), soit 66 s pour 2 000
+// séries. On les range une fois, à la première lecture, en tables indexées par
+// `<collection>/<dirSlug>` : chaque recherche devient O(1).
+
+type ImageModule = { default: ImageMetadata };
+interface MediaEntry<T> {
+  filename: string;
+  value: T;
+}
+
+interface MediaIndex {
+  /** Images de `media/` d'une série, déjà dans l'ordre canonique §1.6. */
+  images: Map<string, MediaEntry<ImageModule>[]>;
+  /** `<collection>/<dirSlug>/<filename>` → module (première occurrence). */
+  imageByFile: Map<string, ImageModule>;
+  /** Documents joints (non-images, hors originaux) d'une série, ordre du glob. */
+  attachments: Map<string, MediaEntry<string>[]>;
+  /** `images.json` d'une série : `[chemin, texte brut]`. */
+  manifests: Map<string, [string, string]>;
+}
+
+let _mediaIndex: MediaIndex | undefined;
+
+function mediaKey(collection: string, dirSlug: string): string {
+  return `${collection}/${dirSlug}`;
+}
+
+function mediaIndex(): MediaIndex {
+  if (_mediaIndex !== undefined) return _mediaIndex;
+
+  const images = new Map<string, MediaEntry<ImageModule>[]>();
+  const imageByFile = new Map<string, ImageModule>();
+  for (const [path, mod] of Object.entries(_imageGlob)) {
+    const m = MEDIA_PATH.exec(path);
+    if (m === null) continue;
+    const [, collection, dirSlug, filename] = m as unknown as [string, string, string, string];
+    const key = mediaKey(collection, dirSlug);
+    let list = images.get(key);
+    if (list === undefined) images.set(key, (list = []));
+    list.push({ filename, value: mod });
+    const fileKey = `${key}/${filename}`;
+    if (!imageByFile.has(fileKey)) imageByFile.set(fileKey, mod);
+  }
+  // Spec §1.6 : ordre canonique, pas une collation locale.
+  for (const list of images.values()) list.sort((a, b) => compareNFC(a.filename, b.filename));
+
+  const attachments = new Map<string, MediaEntry<string>[]>();
+  for (const [path, url] of Object.entries(_attachmentGlob)) {
+    const m = MEDIA_PATH.exec(path);
+    if (m === null) continue;
+    const [, collection, dirSlug, filename] = m as unknown as [string, string, string, string];
+    const key = mediaKey(collection, dirSlug);
+    let list = attachments.get(key);
+    if (list === undefined) attachments.set(key, (list = []));
+    list.push({ filename, value: url });
+  }
+
+  const manifests = new Map<string, [string, string]>();
   for (const [path, raw] of Object.entries(_manifestGlob)) {
     const m = MANIFEST_PATH.exec(path);
-    if (m === null || m[1] !== collection || m[2] !== dirSlug) continue;
-    return [path, raw];
+    if (m === null) continue;
+    const key = mediaKey(m[1] as string, m[2] as string);
+    if (!manifests.has(key)) manifests.set(key, [path, raw]);
   }
-  return null;
+
+  return (_mediaIndex = { images, imageByFile, attachments, manifests });
+}
+
+/** Module d'une image de `media/` désignée par son nom, ou `undefined`. */
+function findMediaImage(dirSlug: string, filename: string, collection: string = COLLECTION_NAME): ImageModule | undefined {
+  return mediaIndex().imageByFile.get(`${mediaKey(collection, dirSlug)}/${filename}`);
+}
+
+/** Localise le `images.json` d'une série sans le parser. */
+function findManifest(dirSlug: string, collection: string = COLLECTION_NAME): [string, string] | null {
+  return mediaIndex().manifests.get(mediaKey(collection, dirSlug)) ?? null;
 }
 
 /** Lit le manifeste d'une série, ou `null` s'il n'y en a pas (spec §1.5.1). */
@@ -182,11 +254,8 @@ function resolveManifestImage(entry: ManifestImage, dirSlug: string): ImageMetad
   }
 
   const filename = (img.url.replace(/^\.\//, '').split('/').pop() ?? '').trim();
-  const found = Object.entries(_imageGlob).find(([path]) => {
-    const m = matchMedia(path);
-    return m !== null && m.dirSlug === dirSlug && m.filename === filename;
-  });
-  return found ? withAlt(found[1].default) : null;
+  const found = findMediaImage(dirSlug, filename);
+  return found ? withAlt(found.default) : null;
 }
 
 // Nombre d'appels réels à `getCollection` — un par cache miss. Le cache étant
@@ -426,12 +495,9 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
         // 2) Fichier local de media/ référencé par nom (`file: '01.jpg'`)
         if (typeof img.file === 'string') {
           const fileName = img.file;
-          const found = Object.entries(_imageGlob).find(([path]) => {
-            const m = matchMedia(path);
-            return m !== null && m.dirSlug === dirSlug && m.filename === fileName;
-          });
+          const found = findMediaImage(dirSlug, fileName);
           if (!found) return null;
-          return { ...found[1].default, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
+          return { ...found.default, ...(img.alt !== undefined ? { alt: img.alt } : {}) };
         }
         // 3) `url` — absolue, absolue au site, ou relative à l'index
         if (typeof img.url === 'string') return resolveManifestImage(img, dirSlug);
@@ -460,17 +526,9 @@ export async function getSeriesImages(slug: string, series?: Series): Promise<Im
   // et §1.11 confie au lint le soin de signaler qu'une image y est aussi poster.
   const posters = posterFilenames(series);
 
-  return Object.entries(_imageGlob)
-    .filter(([path]) => {
-      const m = matchMedia(path);
-      return m !== null && m.dirSlug === dirSlug && !posters.has(m.filename);
-    })
-    .sort(([pathA], [pathB]) => {
-      const fileA = pathA.split('/').pop() ?? '';
-      const fileB = pathB.split('/').pop() ?? '';
-      return compareNFC(fileA, fileB); // spec §1.6 : ordre canonique, pas une collation locale
-    })
-    .map(([, module]) => module.default);
+  return (mediaIndex().images.get(mediaKey(COLLECTION_NAME, dirSlug)) ?? [])
+    .filter(({ filename }) => !posters.has(filename))
+    .map(({ value }) => value.default);
 }
 
 /**
@@ -531,9 +589,8 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
     if (base) metaByFilename.set(base, meta);
   }
 
-  return Object.entries(_attachmentGlob)
-    .filter(([path]) => matchMedia(path)?.dirSlug === dirSlug)
-    .map(([path, url]) => ({ path, url, filename: path.split('/').pop() ?? path }))
+  return (mediaIndex().attachments.get(mediaKey(COLLECTION_NAME, dirSlug)) ?? [])
+    .map(({ value, filename }) => ({ url: value, filename }))
     .filter(({ filename }) => classifyAttachment(filename) !== null)
     .sort((a, b) => compareNFC(a.filename, b.filename))
     .map(({ url, filename }) => {
@@ -621,11 +678,7 @@ function resolvePoster(poster: string | undefined, dirSlug: string): Embed['post
   if (/^https?:\/\//.test(poster) || poster.startsWith('/')) return poster;
 
   const filename = (poster.replace(/^\.\//, '').split('/').pop() ?? '').trim();
-  const found = Object.entries(_imageGlob).find(([path]) => {
-    const m = matchMedia(path);
-    return m !== null && m.dirSlug === dirSlug && m.filename === filename;
-  });
-  return found ? found[1].default : undefined;
+  return findMediaImage(dirSlug, filename)?.default;
 }
 
 /**
