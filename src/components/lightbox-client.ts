@@ -163,9 +163,14 @@ export function initLightbox(doc: Document = document): LightboxApi | undefined 
   return api;
 }
 
-// Un module ne s'évalue qu'une fois par page : un seul montage, même si plusieurs
-// composants l'importent.
-if (typeof document !== 'undefined') {
-  const api = initLightbox(document);
-  if (api) (window as unknown as { hfLightbox: LightboxApi }).hfLightbox = api;
+/**
+ * Monte la lightbox du document et expose `window.hfLightbox`. Appelé par le
+ * `<script>` de `SeriesLightbox` : un import sans effet serait écarté au
+ * bundle, `sideEffects` ne listant que les CSS. Un seul montage par page.
+ */
+export function mountLightbox(doc: Document = document): void {
+  const win = doc.defaultView as (Window & { hfLightbox?: LightboxApi }) | null;
+  if (!win || win.hfLightbox) return;
+  const api = initLightbox(doc);
+  if (api) win.hfLightbox = api;
 }

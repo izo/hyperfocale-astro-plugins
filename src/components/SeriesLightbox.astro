@@ -109,8 +109,8 @@ const lightboxData = scriptJson(
 <script type="application/json" id="hf-lightbox-data" is:inline set:html={lightboxData}></script>
 
 <script>
-  // Se monte à l'import et expose `window.hfLightbox` (voir lightbox-client.ts).
-  import './lightbox-client.js';
+  import { mountLightbox } from './lightbox-client.js';
+  mountLightbox();
 </script>
 
 <style>

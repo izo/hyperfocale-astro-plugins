@@ -183,7 +183,8 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
 </article>
 
 <script>
-  import './image-fallback.js';
+  import { mountImageFallback } from './image-fallback.js';
+  mountImageFallback();
 </script>
 
 <style>

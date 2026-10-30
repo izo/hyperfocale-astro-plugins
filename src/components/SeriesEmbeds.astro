@@ -224,7 +224,8 @@ const items = embeds.map((embed) => ({
 )}
 
 <script>
-  import './image-fallback.js';
+  import { mountImageFallback } from './image-fallback.js';
+  mountImageFallback();
 
   // Façade → iframe au clic. Délégation sur le document : le composant peut être
   // rendu plusieurs fois sur une page sans multiplier les écouteurs.

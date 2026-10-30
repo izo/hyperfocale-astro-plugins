@@ -167,7 +167,8 @@ const safePageStartIndex = pageStartIndex >= 0 ? pageStartIndex : 0;
 <SeriesLightbox images={allImages} locale={locale} labels={labelOverrides} />
 
 <script>
-  import './image-fallback.js';
+  import { mountImageFallback } from './image-fallback.js';
+  mountImageFallback();
 
   // Délégation d'événements sur les boutons de la galerie
   document.querySelectorAll<HTMLButtonElement>('.hf-gallery__item').forEach((btn) => {

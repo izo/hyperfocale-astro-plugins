@@ -94,7 +94,8 @@ function resolveMasonry(img: ImageMetadata | ResolvedImage) {
 </style>
 
 <script>
-  import './image-fallback.js';
+  import { mountImageFallback } from './image-fallback.js';
+  mountImageFallback();
 
   document.querySelectorAll<HTMLImageElement>('.hf-masonry__img').forEach((img) => {
     if (img.complete) {
