@@ -48,6 +48,9 @@ export interface HyperfocaleLabels {
   'route.page': string;
   /** Titre du bloc des sous-séries (line-up, §1.8). */
   'lineup.heading': string;
+  /** Titre et description des flux de syndication (Annexe E). */
+  'feed.title': string;
+  'feed.description': string;
 
   // ─── Images (SeriesGallery, SeriesMasonry) ─────────────────────────────
   /** `alt` de repli d'une image sans texte alternatif. `{n}` (1-indexé) */
@@ -138,6 +141,8 @@ const fr: HyperfocaleLabels = {
   'list.empty': 'Aucune série disponible pour le moment.',
   'route.backToList': 'Toutes les séries',
   'lineup.heading': 'Dans cette série',
+  'feed.title': 'Séries',
+  'feed.description': 'Les séries publiées',
   'route.page': 'Page {n}',
   'image.alt': 'Photo {n}',
   'gallery.label': 'Galerie photos',
@@ -197,6 +202,8 @@ const en: HyperfocaleLabels = {
   'list.empty': 'No series available yet.',
   'route.backToList': 'All series',
   'lineup.heading': 'In this series',
+  'feed.title': 'Series',
+  'feed.description': 'Published series',
   'route.page': 'Page {n}',
   'image.alt': 'Photo {n}',
   'gallery.label': 'Photo gallery',
