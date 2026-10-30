@@ -7,7 +7,7 @@
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
-> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.11-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) avait son preset, retiré en 0.25.0. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
+> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.16-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 (et la spec en suit les évolutions jusqu'à la 2.16) : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) avait son preset, retiré en 0.25.0. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
 
 Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
 
@@ -86,6 +86,41 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
 | `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
 | `componentStyles` | `'inline' \| 'none'` | `'inline'` | Feuilles des composants qui portent la leur (`SeriesAttachments` depuis la 0.24.0). `'inline'` : émise par le composant, une fois par page, seulement s'il rend quelque chose. `'none'` : rien n'est émis, le site importe `@regrets/hyperfocale/styles/attachments.css` — voir *Thème → Feuilles des composants et cascade layers*. |
+| `layout` | `string` | — | Chemin (depuis la racine du projet) d'un layout `.astro` du site qui enveloppe les routes injectées. Absent : document HTML minimal interne. Voir *Layout du site*. |
+
+### Layout du site
+
+Avec l'option `layout`, chaque route injectée (liste, détail, pages de galerie) rend son contenu dans **votre** layout, qui reçoit ces props et place le contenu avec `<slot />` :
+
+| Prop | Type | Origine |
+|------|------|---------|
+| `title` | `string` | Titre de la série (`Titre — Page N` sur les pages de galerie) ; `Séries photo` sur la liste. |
+| `description` | `string \| undefined` | `description` de la série. |
+| `ogImage` | `unknown` | `cover` de la série, telle que résolue (`ImageMetadata`, URL ou `undefined`). |
+| `lang` | `string \| undefined` | `lang` de la série. |
+| `schema` | `object \| undefined` | Objet JSON-LD (`ImageGallery`) à sérialiser **vous-même** dans la page. |
+
+```astro
+---
+// src/layouts/Site.astro
+const { title, description, lang = 'fr', schema } = Astro.props;
+
+// `schema` est un objet, pas une chaîne : le sérialiser avec `JSON.stringify`
+// seul laisse passer `<` — un titre contenant `</script>` fermerait la balise.
+// Échapper `<` en `\u003c`, que `JSON.parse` restitue tel quel.
+const schemaJson = schema && JSON.stringify(schema).replace(/</g, '\\u003c');
+---
+<html lang={lang}>
+  <head>
+    <title>{title}</title>
+    {description && <meta name="description" content={description} />}
+    {schemaJson && <script is:inline type="application/ld+json" set:html={schemaJson} />}
+  </head>
+  <body><slot /></body>
+</html>
+```
+
+Le layout interne du plugin applique cet échappement ; un layout de site qui écrirait `set:html={JSON.stringify(schema)}` rouvrirait l'injection.
 
 ### Profils de domaine (`preset`)
 
@@ -1318,7 +1353,7 @@ La réplication des médias vers un stockage objet, le déploiement et les redir
 
 ### Conformité
 
-Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift : les **109 fixtures** de `izo/hyperfocale-spec main@18f48de` — 6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 26 snapshots de corpus, 44 validations, 15 diffs, 6 gardes —, rejouées par 119 tests (les 10 autres vérifient la présence et l'épinglage de la copie). Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
+Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift : les **116 fixtures** de `izo/hyperfocale-spec` épinglées sur `51cbf73` (207 fichiers) — 6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 27 snapshots de corpus, 3 projections publiables, 46 validations, 15 diffs, 7 gardes —, rejouées par 127 tests (les 11 autres vérifient la présence et l'épinglage de la copie, et que chaque corpus a son snapshot). Le commit épinglé est lu dans `tests/fixtures/spec-ingestion/SOURCE`. Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
 
 ```bash
 npm run fixtures:sync -- --ref <ref>   # recopie les fixtures d'une ref de izo/hyperfocale-spec et l'épingle dans SOURCE

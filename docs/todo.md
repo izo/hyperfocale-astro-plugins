@@ -1,8 +1,8 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.18.2"
-updated: 2026-08-24
+version: "0.25.1"
+updated: 2026-10-30
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -28,15 +28,37 @@ prefixes:
 
 ## Backlog
 
+- [ ] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
+  Fournisseur d'image + `ResolvedImage` (reste de P0), galerie et lightbox (P1), cartes et listes (P2), filtre et recherche (P3). Détail et lots chiffrés : issue #136.
+- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
+  Suit #136, dont dépend mdr-monorepo.
+- [ ] #158 [P2] Dette P2 — audit 2026-10-29 #dette
+  Liste à cocher PERF-002 à PERF-012, SEC-006 à SEC-010, CODE-004 à CODE-013 : issue #158.
+
 ## Todo
 
 ## In Progress
 
 ## Blocked
 
+- [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
+  Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
+- [ ] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
+  Fichiers système exclus : fait. **Reste** : décision de produit sur les flux (routes par défaut ou opt-in, dépendance à `site`, multilingue).
+
 ## Review
 
 ## Done
+
+- [x] #CODE-002 #CODE-003 [P1] README remis à la spec 2.16, paragraphe fixtures, section « Layout du site » ; ce tableau régénéré #doc #effort-s
+  > ✅ **Terminé** le 2026-10-30 — issue #156
+- [x] #SEC-003 [P1] `embeds[].url` et `files[].url` refusent `javascript:`, `data:` et tout schéma autre que `http(s)` #sécurité #effort-s
+  > ✅ **Terminé** le 2026-10-30 — issue #152 (schéma, helpers, `href` des composants)
+- [x] #SEC-004 #CODE-001 [P1] `hyperfocale init` ne corrompt plus un `content.config.ts` existant #sécurité #effort-s
+  > ✅ **Terminé** le 2026-10-30 — issue #153 (fusion triviale seulement, `.bak`, lignes à ajouter sinon)
+- [x] #PERF-001 [P1] `getSeriesImages` et consorts ne balaient plus tout le glob #performance #effort-m
+  > ✅ **Terminé** le 2026-10-30 — issue #151 (index `<collection>/<dirSlug>`, 600 séries : 34,5 s → 18,0 s)
+
 
 - [x] #TEST-004 [P2] Trois helpers publics sans aucun test #tests #effort-s
   > ✅ **Terminé** le 2026-08-24 — audit `docs/reports/audit-summary-2026-08-24.md`
