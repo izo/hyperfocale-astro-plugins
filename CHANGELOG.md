@@ -28,7 +28,7 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Performance
 
-- `getSubSeries` : table des enfants construite une fois par collection (PERF-002). `guardChangeSet` lit les index de base en parallèle (PERF-009). Rafraîchissement du jeton Dropbox partagé entre requêtes simultanées (PERF-011).
+- `getSubSeries` : table des enfants construite une fois par collection (PERF-002). `guardChangeSet` lit les index de base en parallèle (PERF-009). Rafraîchissement du jeton Dropbox partagé entre requêtes simultanées (PERF-011). Le loader lit les fichiers index en parallèle (PERF-010). README : ce que les globs lisent et copient, brouillons compris (PERF-006).
 
 - **`getSeriesImages`, `getSeriesAttachments` et la lecture d'`images.json` ne balaient plus tout le glob** (#151, PERF-001) : index `<collection>/<dirSlug>` construit une fois. 600 séries × 6 images : `astro build` 34,5 s → 18,0 s.
 

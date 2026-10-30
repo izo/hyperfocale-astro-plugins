@@ -396,6 +396,8 @@ hyperfocale({ imageOptimization: 'disabled' })
 
 Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redimensionnement. Les dimensions déclarées restent transmises au HTML, ce qui préserve la réservation d'espace et évite les décalages de mise en page.
 
+**Ce que lisent les helpers.** `import.meta.glob` n'accepte qu'un motif littéral : les helpers globent donc **tout** `src/content/**/media/` — images (lues en mémoire, dimensions comprises), documents joints et `images.json` — quelle que soit la collection, puis filtrent par collection à l'exécution. Deux effets à connaître : une collection de votre site sans rapport avec le plugin voit quand même ses `media/` chargés au démarrage, en build comme en `astro dev` ; et tout document joint est copié dans `dist/`, **y compris celui d'une série `draft: true`** — `draft` masque une série, il ne protège pas ses fichiers (spec §1.6). Pour qu'un fichier ne parte pas, ne le mettez pas sous `src/content/` (voir *Corpus hors de `src/content/`*).
+
 ---
 
 ## Routes générées

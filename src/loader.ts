@@ -34,6 +34,7 @@ import { parseFrontmatter } from 'astro/markdown';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import { isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mapConcurrent } from './ingest/concurrency.js';
 import { compareCanonical, isExcluded } from './ingest/paths.js';
 import type { ExclusionRule } from './ingest/paths.js';
 import type { MediaFile } from './media.js';
@@ -233,6 +234,9 @@ function pickIndex(files: ReadonlySet<string>, locale: string | undefined, fallb
   return files.has('index.md') ? 'index.md' : null;
 }
 
+/** Lectures simultanées de fichiers index par `sync()`. */
+const READ_CONCURRENCY = 16;
+
 /**
  * Parcourt `root` : tout dossier porteur d'un fichier index pour la locale est
  * un contenu (§1.2), à toute profondeur. On ne descend ni dans `media/` (plat,
@@ -346,9 +350,15 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
         const seen = new Map<string, string>();
         const warnings = new Map<string, string[]>();
         try {
-          for (const found of await discover(base, locale, fallback, exclude)) {
+          const discovered = await discover(base, locale, fallback, exclude);
+          // Lectures en parallèle (PERF-010) : le reste de la boucle reste ordonné
+          // — détection des collisions d'identifiant, avertissements, `store.set`.
+          const files = await mapConcurrent(discovered, READ_CONCURRENCY, (found) =>
+            readFile(join(found.dir, found.file), 'utf-8'),
+          );
+          for (const [position, found] of discovered.entries()) {
             const abs = join(found.dir, found.file);
-            const contents = await readFile(abs, 'utf-8');
+            const contents = files[position] as string;
             const { frontmatter, content } = parseFrontmatter(contents);
             // §1.10 : le discriminant est `type`, tel qu'écrit dans le fichier.
             if (sections === 'exclude' && frontmatter.type === 'section') continue;
