@@ -2,7 +2,7 @@
 import { Image } from 'astro:assets';
 import type { Series } from '../helpers/index.js';
 import { getSeriesImages } from '../helpers/index.js';
-import { applyImageProvider, type ImageProvider, type ResolvedImage } from '../media.js';
+import { applyImageProvider, fallbackSrc, type ImageProvider, type ResolvedImage } from '../media.js';
 import {
   resolveLabels,
   formatLabel,
@@ -52,6 +52,7 @@ const formattedDate = date instanceof Date ? formatDate(date, locale) : undefine
 const resolvedCover = coverImage
   ? applyImageProvider(coverImage, { width: 600, height: 400 }, imageProvider)
   : undefined;
+const coverFallback = coverImage && resolvedCover ? fallbackSrc(coverImage, resolvedCover) : undefined;
 
 // Cover fallback — première image si `cover` absent (spec §1.6, #MVP-004)
 const fallbackImage = !cover && !resolvedCover ? (await getSeriesImages(slug, series))[0] : undefined;
@@ -75,6 +76,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
           alt={resolvedCover.alt ?? coverAlt}
           width={600}
           height={400}
+          data-hf-fallback={coverFallback}
           class="hf-card__image"
           loading="lazy"
           decoding="async"
@@ -126,6 +128,10 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     </div>
   </a>
 </article>
+
+<script>
+  import './image-fallback.js';
+</script>
 
 <style>
   .hf-card {

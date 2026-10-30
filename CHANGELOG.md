@@ -12,7 +12,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 ### Ajouté
 
 - **Images résolues par l'appelant** (#136, P0) : `SeriesCard` accepte `coverImage` (`ResolvedImage`, sortie de `resolveSeriesMedia`) et `SeriesGallery` accepte des `ResolvedImage` dans `images` / `allImages`. Ces images sont rendues en `<img>` simple, sans `astro:assets` ni `import.meta.glob`. `ResolvedImage` gagne `srcset` et `sizes`.
-- **Fournisseur d'image par instance** (#136, P0) : prop `imageProvider` sur `SeriesCard` et `SeriesGallery`, de type `ImageProvider` = `(image, { width, height? }) => ResolvedImage`. Il ne s'applique qu'aux images résolues ; un `ImageMetadata` d'Astro passe toujours par `astro:assets`. Helpers `isResolvedImage` et `applyImageProvider` dans `@regrets/hyperfocale/media`.
+- **Fournisseur d'image par instance** (#136, P0) : prop `imageProvider` sur `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesMasonry` et `SeriesEmbeds` (poster), de type `ImageProvider` = `(image, { width, height? }) => ResolvedImage`. Il ne s'applique qu'aux images résolues ; un `ImageMetadata` d'Astro passe toujours par `astro:assets`. Helpers `isResolvedImage`, `applyImageProvider` et `fallbackSrc` dans `@regrets/hyperfocale/media`.
+- **Repli d'erreur des images réécrites** (#136, P0) : une image dont l'URL réécrite échoue retombe, une fois, sur son URL d'origine (`data-hf-fallback`, module client `components/image-fallback`).
+- `SeriesList` accepte `coverImages` (par `series.id`) et `SeriesMasonry` et `SeriesEmbeds` acceptent des images résolues. `SeriesLightbox` accepte le type, mais affiche toujours l'URL d'origine (pas de fournisseur avant P1).
 
 ### Corrigé
 

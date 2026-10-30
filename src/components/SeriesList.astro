@@ -1,6 +1,7 @@
 ---
 import SeriesCard from './SeriesCard.astro';
 import type { Series } from '../helpers/index.js';
+import type { ImageProvider, ResolvedImage } from '../media.js';
 import { resolveLabels, passthroughAttrs, type InstanceProps, type HeadingLevel } from './runtime.js';
 
 interface Props extends InstanceProps {
@@ -9,6 +10,10 @@ interface Props extends InstanceProps {
   prefix?: string;
   /** Niveau de titre des cartes, transmis à chaque `SeriesCard` (défaut : 2). */
   headingLevel?: HeadingLevel;
+  /** Couvertures résolues par l'appelant, par identifiant de série (`series.id`). */
+  coverImages?: Record<string, ResolvedImage>;
+  /** Fournisseur d'image, transmis à chaque `SeriesCard`. */
+  imageProvider?: ImageProvider;
 }
 
 const {
@@ -16,6 +21,8 @@ const {
   columns = 3,
   prefix = '/series',
   headingLevel,
+  coverImages,
+  imageProvider,
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -35,6 +42,8 @@ const rootAttrs = passthroughAttrs(rest);
         series={s}
         prefix={prefix}
         headingLevel={headingLevel}
+        coverImage={coverImages?.[s.id]}
+        imageProvider={imageProvider}
         locale={locale}
         labels={labelOverrides}
       />

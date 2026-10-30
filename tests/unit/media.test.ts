@@ -21,7 +21,7 @@ import {
   resolveSeriesMedia,
 } from '../../src/media.js';
 import type { MediaDiagnosticCode, ResolveSeriesMediaInput } from '../../src/media.js';
-import { applyImageProvider, isResolvedImage } from '../../src/media.js';
+import { applyImageProvider, fallbackSrc, isResolvedImage } from '../../src/media.js';
 import * as helpers from '../../src/helpers/index.js';
 import { ORIGINAL_EXTENSIONS as SCHEMA_ORIGINAL_EXTENSIONS } from '../../src/schema.js';
 import { parseFrontmatter } from '../../src/ingest/frontmatter.js';
@@ -445,5 +445,13 @@ describe('image résolue et fournisseur d’image (#136, P0)', () => {
       alt: 'Phare',
       srcset: 'https://r2.example/01.jpg 600w',
     });
+  });
+
+  it('fallbackSrc : l’URL d’origine si le fournisseur l’a réécrite, sinon rien', () => {
+    const original = { src: 'https://r2.example/01.jpg' };
+    expect(fallbackSrc(original, { src: '/cdn-cgi/image/w=600/https://r2.example/01.jpg' })).toBe(
+      'https://r2.example/01.jpg',
+    );
+    expect(fallbackSrc(original, original)).toBeUndefined();
   });
 });

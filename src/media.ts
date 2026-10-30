@@ -215,6 +215,14 @@ export function applyImageProvider(
   return provider ? provider(image, request) : image;
 }
 
+/**
+ * URL de repli d'une image redimensionnée : l'URL d'origine, quand le fournisseur
+ * en a réécrit une. `undefined` si l'image sert déjà son URL d'origine.
+ */
+export function fallbackSrc(original: ResolvedImage, applied: ResolvedImage): string | undefined {
+  return applied.src === original.src ? undefined : original.src;
+}
+
 /** Codes de diagnostic de §4.10 que le résolveur peut produire. */
 export type MediaDiagnosticCode = Extract<
   DiagnosticCode,

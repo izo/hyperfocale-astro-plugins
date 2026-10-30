@@ -2,7 +2,13 @@
 import { Image } from 'astro:assets';
 import SeriesLightbox from './SeriesLightbox.astro';
 import type { ImageMetadata } from '../helpers/index.js';
-import { applyImageProvider, isResolvedImage, type ImageProvider, type ResolvedImage } from '../media.js';
+import {
+  applyImageProvider,
+  fallbackSrc,
+  isResolvedImage,
+  type ImageProvider,
+  type ResolvedImage,
+} from '../media.js';
 import { resolveLabels, formatLabel, passthroughAttrs, type InstanceProps } from './runtime.js';
 
 interface Props extends InstanceProps {
@@ -70,13 +76,15 @@ function pageUrl(p: number): string {
     {images.map((image, i) => {
       const globalIndex = safePageStartIndex + i;
       const alt = image.alt ?? formatLabel(labels['image.alt'], { n: globalIndex + 1 });
-      const resolved = isResolvedImage(image)
-        ? applyImageProvider(
-            image,
-            galleryLayout === 'column' ? { width: 1000 } : { width: 600, height: 400 },
-            imageProvider,
-          )
-        : undefined;
+      const original = isResolvedImage(image) ? image : undefined;
+      const resolved =
+        original &&
+        applyImageProvider(
+          original,
+          galleryLayout === 'column' ? { width: 1000 } : { width: 600, height: 400 },
+          imageProvider,
+        );
+      const fallback = original && resolved ? fallbackSrc(original, resolved) : undefined;
       return (
         <button
           class="hf-gallery__item"
@@ -92,6 +100,7 @@ function pageUrl(p: number): string {
               alt={alt}
               width={resolved.width || undefined}
               height={resolved.height || undefined}
+              data-hf-fallback={fallback}
               class="hf-gallery__img"
               loading={globalIndex === 0 ? 'eager' : 'lazy'}
               decoding="async"
@@ -176,6 +185,8 @@ function pageUrl(p: number): string {
 <SeriesLightbox images={allImages} locale={locale} labels={labelOverrides} />
 
 <script>
+  import './image-fallback.js';
+
   // Délégation d'événements sur les boutons de la galerie
   document.querySelectorAll<HTMLButtonElement>('.hf-gallery__item').forEach((btn) => {
     btn.addEventListener('click', () => {

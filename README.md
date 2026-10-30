@@ -582,7 +582,7 @@ Card d'aperçu : cover, titre, date, description.
 | `prefix` | `string` | `/series` | Préfixe du lien |
 | `headingLevel` | `1`–`6` | `2` | Niveau du titre de la carte |
 | `coverImage` | `ResolvedImage` | — | Couverture résolue par l'appelant (sortie de `resolveSeriesMedia`), prioritaire sur `series.data.cover`. Rendue en `<img>` simple, sans `astro:assets` |
-| `imageProvider` | `ImageProvider` | — | Fournisseur appliqué à `coverImage` : `(image, { width, height }) => ResolvedImage` |
+| `imageProvider` | `ImageProvider` | — | Fournisseur appliqué à `coverImage` : `(image, { width, height }) => ResolvedImage`. Si l'URL réécrite échoue, l'image retombe sur son URL d'origine (`data-hf-fallback`) |
 
 ### `<SeriesList series={arr} columns={3} />`
 
@@ -594,6 +594,8 @@ Grille responsive de `SeriesCard`.
 | `columns` | `number` | `3` | Nombre de colonnes |
 | `prefix` | `string` | `/series` | Préfixe des liens |
 | `headingLevel` | `1`–`6` | `2` | Transmis à chaque `SeriesCard` |
+| `coverImages` | `Record<string, ResolvedImage>` | — | Couvertures résolues, par `series.id` |
+| `imageProvider` | `ImageProvider` | — | Transmis à chaque `SeriesCard` |
 
 ### `<SeriesGallery images={imgs} page={1} totalPages={3} baseUrl="/series/slug" />`
 

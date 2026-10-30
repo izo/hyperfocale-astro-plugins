@@ -2,6 +2,13 @@
 import { Image } from 'astro:assets';
 import type { Embed } from '../helpers/index.js';
 import {
+  applyImageProvider,
+  fallbackSrc,
+  isResolvedImage,
+  type ImageProvider,
+  type ResolvedImage,
+} from '../media.js';
+import {
   resolveLabels,
   formatLabel,
   passthroughAttrs,
@@ -12,7 +19,10 @@ import {
 } from './runtime.js';
 
 interface Props extends InstanceProps {
-  embeds: Embed[];
+  /** `poster` peut aussi être une image résolue par l'appelant. */
+  embeds: Array<Omit<Embed, 'poster'> & { poster?: Embed['poster'] | ResolvedImage }>;
+  /** Fournisseur d'image appliqué aux posters résolus. */
+  imageProvider?: ImageProvider;
   /** Titre de la section (défaut : libellé `embeds.heading`). */
   heading?: string;
   /** Niveau du titre de section (défaut : 2). */
@@ -23,6 +33,7 @@ const {
   embeds,
   heading: headingProp,
   headingLevel,
+  imageProvider,
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -50,7 +61,13 @@ const densities = import.meta.env.DEV ? undefined : [1, 2];
  * Une plateforme absente de cette table n'est jamais une erreur : `playable` est
  * alors faux et l'entrée se rend en lien.
  */
-function playerUrl(embed: Embed): string | null {
+/** Poster résolu, réécrit par le fournisseur, et son repli d'origine. */
+function resolvePoster(poster: ResolvedImage) {
+  const applied = applyImageProvider(poster, { width: 640, height: 360 }, imageProvider);
+  return { applied, fallback: fallbackSrc(poster, applied) };
+}
+
+function playerUrl(embed: Pick<Embed, 'playable' | 'id' | 'platform'>): string | null {
   if (!embed.playable || embed.id === undefined) return null;
   // `id` traverse le schéma sans contrainte de format (`z.string()`), et c'est
   // voulu : figer un gabarit rejetterait au build un identifiant qu'un hébergeur
@@ -119,6 +136,16 @@ const items = embeds.map((embed) => ({
                 {embed.poster !== undefined && (
                   typeof embed.poster === 'string' ? (
                     <img class="hf-embeds__poster" src={embed.poster} alt="" loading="lazy" />
+                  ) : isResolvedImage(embed.poster) ? (
+                    <img
+                      class="hf-embeds__poster"
+                      src={resolvePoster(embed.poster).applied.src}
+                      srcset={resolvePoster(embed.poster).applied.srcset}
+                      sizes={resolvePoster(embed.poster).applied.sizes}
+                      alt=""
+                      data-hf-fallback={resolvePoster(embed.poster).fallback}
+                      loading="lazy"
+                    />
                   ) : (
                     <Image
                       class="hf-embeds__poster"
@@ -154,6 +181,16 @@ const items = embeds.map((embed) => ({
                 {embed.poster !== undefined && (
                   typeof embed.poster === 'string' ? (
                     <img class="hf-embeds__poster" src={embed.poster} alt="" loading="lazy" />
+                  ) : isResolvedImage(embed.poster) ? (
+                    <img
+                      class="hf-embeds__poster"
+                      src={resolvePoster(embed.poster).applied.src}
+                      srcset={resolvePoster(embed.poster).applied.srcset}
+                      sizes={resolvePoster(embed.poster).applied.sizes}
+                      alt=""
+                      data-hf-fallback={resolvePoster(embed.poster).fallback}
+                      loading="lazy"
+                    />
                   ) : (
                     <Image
                       class="hf-embeds__poster"
@@ -187,6 +224,8 @@ const items = embeds.map((embed) => ({
 )}
 
 <script>
+  import './image-fallback.js';
+
   // Façade → iframe au clic. Délégation sur le document : le composant peut être
   // rendu plusieurs fois sur une page sans multiplier les écouteurs.
   document.addEventListener('click', (event) => {

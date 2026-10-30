@@ -248,6 +248,26 @@ describe('SeriesCard', () => {
     });
     expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/bretagne/01.jpg"');
     expect(html).toContain(`alt="${HF_LABELS.fr['card.coverAlt'].replace('{title}', 'Bretagne')}"`);
+    expect(html).toContain('data-hf-fallback="https://r2.example/bretagne/01.jpg"');
+  });
+
+  it('sans imageProvider, pas de data-hf-fallback', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      coverImage: { src: 'https://r2.example/bretagne/01.jpg' },
+    });
+    expect(html).not.toContain('data-hf-fallback');
+  });
+
+  it('SeriesList : coverImages par identifiant de série et imageProvider transmis aux cartes', async () => {
+    const html = await render(SeriesList, {
+      series: SERIES,
+      coverImages: { bretagne: { src: 'https://r2.example/bretagne/cover.jpg' } },
+      imageProvider: (image: { src: string }) => ({ ...image, src: `/cdn-cgi/image/${image.src}` }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/https://r2.example/bretagne/cover.jpg"');
+    expect(html).toContain('data-hf-fallback="https://r2.example/bretagne/cover.jpg"');
+    expect(html.match(/data-hf-fallback=/g)).toHaveLength(1);
   });
 });
 
@@ -552,5 +572,38 @@ describe('SeriesAttachments — 0.24.0', () => {
     expect(html.match(/<style data-hf-styles="attachments">/g)).toHaveLength(1);
     expect(html.indexOf('<style')).toBeLessThan(html.indexOf('hf-attachments--inline'));
     expect(html).toContain('<section class="hf-attachments"');
+  });
+});
+
+describe('SeriesMasonry et SeriesEmbeds — images résolues (#136, P0)', () => {
+  it('SeriesMasonry : image résolue réécrite par le fournisseur, origine en repli', async () => {
+    const html = await render(SeriesMasonry, {
+      images: [{ src: 'https://r2.example/m/01.jpg', width: 800, height: 600 }],
+      imageProvider: (image: { src: string }, { width }: { width: number }) => ({
+        ...image,
+        src: `/cdn-cgi/image/width=${width}/${image.src}`,
+      }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/m/01.jpg"');
+    expect(html).toContain('data-hf-fallback="https://r2.example/m/01.jpg"');
+    expect(html).not.toContain('_astro/');
+  });
+
+  it('SeriesEmbeds : poster résolu, réécrit par le fournisseur', async () => {
+    const html = await render(SeriesEmbeds, {
+      embeds: [
+        {
+          url: 'https://vimeo.com/123',
+          playable: true,
+          platform: 'vimeo',
+          id: '123',
+          title: 'Making-of',
+          poster: { src: 'https://r2.example/p.jpg', width: 640, height: 360 },
+        },
+      ],
+      imageProvider: (image: { src: string }) => ({ ...image, src: `/cdn-cgi/image/${image.src}` }),
+    });
+    expect(html).toContain('class="hf-embeds__poster" src="/cdn-cgi/image/https://r2.example/p.jpg"');
+    expect(html).toContain('data-hf-fallback="https://r2.example/p.jpg"');
   });
 });
