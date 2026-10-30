@@ -3,7 +3,7 @@ import type { CollectionEntry, CollectionKey } from 'astro:content';
 import { EMBED_PLATFORMS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
 import { isExcluded, isSafeLinkUrl } from '../ingest/paths.js';
-import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf } from '../media.js';
+import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf, type ResolvedImage } from '../media.js';
 import { compareNFC, compareSeriesOrder } from '../order.js';
 import type { ImageManifest, ManifestImage } from '../media.js';
 
@@ -712,6 +712,36 @@ function resolvePoster(poster: string | undefined, dirSlug: string): Embed['post
 
   const filename = (poster.replace(/^\.\//, '').split('/').pop() ?? '').trim();
   return findMediaImage(dirSlug, filename)?.default;
+}
+
+/**
+ * Données structurées `ImageGallery` (schema.org) d'une série, pour la prop
+ * `schema` du layout. Avec `images`, chaque image est décrite en `ImageObject`
+ * (`contentUrl`, dimensions, légende = `alt`) ; sans, seuls le nom et la
+ * description sont émis.
+ */
+export function seriesJsonLd(
+  series: Series,
+  images: ReadonlyArray<ImageMetadata | ResolvedImage> = [],
+): Record<string, unknown> {
+  const description = series.data.description;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ImageGallery',
+    name: series.data.title,
+    ...(description ? { description } : {}),
+    ...(images.length > 0
+      ? {
+          image: images.map((img) => ({
+            '@type': 'ImageObject',
+            contentUrl: img.src,
+            ...(img.width ? { width: img.width } : {}),
+            ...(img.height ? { height: img.height } : {}),
+            ...(img.alt ? { caption: img.alt } : {}),
+          })),
+        }
+      : {}),
+  };
 }
 
 /**

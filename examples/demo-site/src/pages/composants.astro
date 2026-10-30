@@ -1,0 +1,41 @@
+---
+// Page de démonstration des composants de la 0.26 (#136) : filtre avec index
+// distant, cartes en surimpression et texte seul, maçonnerie, pagination, lineup.
+import Layout from '../layouts/Layout.astro';
+import { getSeriesList } from '@regrets/hyperfocale/helpers';
+import SeriesFilter from '@regrets/hyperfocale/components/SeriesFilter.astro';
+import SeriesList from '@regrets/hyperfocale/components/SeriesList.astro';
+import SeriesPagination from '@regrets/hyperfocale/components/SeriesPagination.astro';
+import SeriesLineup from '@regrets/hyperfocale/components/SeriesLineup.astro';
+
+const series = await getSeriesList();
+---
+
+<Layout title="Composants">
+  <h1>Composants</h1>
+
+  <h2>Filtre avec index distant</h2>
+  <p>Le filtre ne connaît que trois séries ; l'index complet se charge à la première interaction.</p>
+  <SeriesFilter series={series.slice(0, 3)} indexUrl="/filter-index.json" prefix="/series" />
+
+  <h2>Cartes en surimpression, en maçonnerie</h2>
+  <SeriesList
+    series={series.slice(0, 4)}
+    masonry
+    columns={2}
+    prefix="/series"
+    cardProps={() => ({ variant: 'overlay', coverFallback: 'none' })}
+  />
+
+  <h2>Cartes texte seul</h2>
+  <SeriesList
+    series={series.slice(0, 3)}
+    prefix="/series"
+    cardProps={() => ({ variant: 'text', fields: ['date', 'location', 'tags'] })}
+  />
+
+  <h2>Pagination compacte</h2>
+  <SeriesPagination page={10} totalPages={20} baseUrl="/series/bretagne-2024" />
+
+  <SeriesLineup series={series.slice(0, 2)} prefix="/series" />
+</Layout>

@@ -164,3 +164,23 @@ export interface InstanceProps {
   [attr: `data-${string}`]: unknown;
   [attr: `aria-${string}`]: unknown;
 }
+
+/** Élément de la pagination : numéro de page, ou trou (`'gap'`) pour les pages masquées. */
+export type PaginationItem = number | 'gap';
+
+/**
+ * Pages affichées par une pagination compacte : la première, la dernière, la
+ * courante et ses voisines, `'gap'` à la place de chaque suite de pages masquées.
+ * Jusqu'à sept pages, tout est affiché.
+ */
+export function paginationItems(page: number, totalPages: number): PaginationItem[] {
+  if (totalPages <= 7) return Array.from({ length: Math.max(totalPages, 0) }, (_, i) => i + 1);
+  const shown = new Set([1, totalPages, page - 1, page, page + 1].filter((p) => p >= 1 && p <= totalPages));
+  const pages = [...shown].sort((a, b) => a - b);
+  const out: PaginationItem[] = [];
+  pages.forEach((p, i) => {
+    if (i > 0 && p - (pages[i - 1] ?? p) > 1) out.push('gap');
+    out.push(p);
+  });
+  return out;
+}

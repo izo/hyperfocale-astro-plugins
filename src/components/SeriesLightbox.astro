@@ -1,12 +1,34 @@
 ---
 import type { ImageMetadata } from '../helpers/index.js';
+import type { ResolvedImage } from '../media.js';
 import { resolveLabels, passthroughAttrs, scriptJson, type InstanceProps } from './runtime.js';
 
 interface Props extends InstanceProps {
-  images: ImageMetadata[];
+  /** Images : `ImageMetadata` d'Astro, ou images résolues par l'appelant. */
+  images: Array<ImageMetadata | ResolvedImage>;
+  /**
+   * Boucler la navigation (image suivante après la dernière). Sans `loop`, les
+   * boutons arrivés au bout passent en `aria-disabled` et ne font rien.
+   * @default false
+   */
+  loop?: boolean;
+  /**
+   * Images purement décoratives : `alt` vide et pas de légende, pour toute la
+   * série. Sans cela, la légende reprend le texte alternatif de l'image.
+   * @default false
+   */
+  decorativeAlt?: boolean;
 }
 
-const { images, locale = 'fr', labels: labelOverrides, class: className, ...rest } = Astro.props;
+const {
+  images,
+  loop = false,
+  decorativeAlt = false,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
 
 const labels = resolveLabels(locale, labelOverrides);
 // Les deux libellés lus par le script client voyagent en attributs : le
@@ -15,6 +37,8 @@ const rootAttrs = {
   'aria-label': labels['lightbox.label'],
   'data-hf-label-counter': labels['lightbox.counter'],
   'data-hf-label-alt': labels['lightbox.imageAlt'],
+  'data-hf-loop': String(loop),
+  'data-hf-decorative-alt': String(decorativeAlt),
   ...passthroughAttrs(rest),
 };
 
@@ -24,8 +48,7 @@ const rootAttrs = {
 //
 // `set:html` n'échappe rien, et `JSON.stringify` ne touche ni `<` ni `/` : un
 // `alt` contenant `</script>` fermerait la balise, et la suite serait du HTML
-// actif. `\u003c` est un échappement JSON valide — `JSON.parse` restitue le `<`
-// d'origine — donc la séquence ne peut plus apparaître littéralement.
+// actif. `scriptJson` remplace `<` par `<`, échappement JSON valide.
 // Un `alt` n'est pas toujours écrit à la main : `images.json` (§1.5.1) est
 // produit par des outils qui lisent les métadonnées des fichiers.
 const lightboxData = scriptJson(
@@ -33,14 +56,7 @@ const lightboxData = scriptJson(
 );
 ---
 
-<div
-  class:list={['hf-lightbox', className]}
-  id="hf-lightbox"
-  role="dialog"
-  aria-modal="true"
-  aria-hidden="true"
-  {...rootAttrs}
->
+<dialog class:list={['hf-lightbox', className]} id="hf-lightbox" {...rootAttrs}>
   <button
     class="hf-lightbox__close"
     id="hf-lightbox-close"
@@ -64,7 +80,7 @@ const lightboxData = scriptJson(
     </svg>
   </button>
 
-  <div class="hf-lightbox__stage">
+  <figure class="hf-lightbox__stage">
     <img
       class="hf-lightbox__img"
       id="hf-lightbox-img"
@@ -72,7 +88,8 @@ const lightboxData = scriptJson(
       alt=""
       loading="eager"
     />
-  </div>
+    <figcaption class="hf-lightbox__caption" id="hf-lightbox-caption" hidden></figcaption>
+  </figure>
 
   <button
     class="hf-lightbox__nav hf-lightbox__nav--next"
@@ -86,129 +103,48 @@ const lightboxData = scriptJson(
   </button>
 
   <div class="hf-lightbox__counter" id="hf-lightbox-counter" aria-live="polite" aria-atomic="true"></div>
-</div>
+</dialog>
 
 <!-- Données des images sérialisées pour le JS côté client -->
 <script type="application/json" id="hf-lightbox-data" is:inline set:html={lightboxData}></script>
 
 <script>
-  (() => {
-    const lightbox = document.getElementById('hf-lightbox') as HTMLElement | null;
-    const img = document.getElementById('hf-lightbox-img') as HTMLImageElement | null;
-    const counter = document.getElementById('hf-lightbox-counter') as HTMLElement | null;
-    const btnClose = document.getElementById('hf-lightbox-close') as HTMLButtonElement | null;
-    const btnPrev = document.getElementById('hf-lightbox-prev') as HTMLButtonElement | null;
-    const btnNext = document.getElementById('hf-lightbox-next') as HTMLButtonElement | null;
-    const dataEl = document.getElementById('hf-lightbox-data') as HTMLElement | null;
-
-    if (!lightbox || !img || !counter || !btnClose || !btnPrev || !btnNext || !dataEl) return;
-
-    type ImageInfo = { src: string; width: number; height: number; alt?: string };
-    const images: ImageInfo[] = JSON.parse(dataEl.textContent ?? '[]');
-    const fill = (template: string, n: number) =>
-      template.split('{n}').join(String(n)).split('{total}').join(String(images.length));
-    const altTemplate = lightbox.dataset.hfLabelAlt ?? '{n} / {total}';
-    const counterTemplate = lightbox.dataset.hfLabelCounter ?? '{n} / {total}';
-    let current = 0;
-    let previousFocus: HTMLElement | null = null;
-
-    function show(index: number) {
-      current = ((index % images.length) + images.length) % images.length;
-      const image = images[current];
-      if (!image) return;
-      img!.src = image.src;
-      img!.alt = image.alt ?? fill(altTemplate, current + 1);
-      counter!.textContent = fill(counterTemplate, current + 1);
-      btnPrev!.style.display = images.length <= 1 ? 'none' : '';
-      btnNext!.style.display = images.length <= 1 ? 'none' : '';
-    }
-
-    function open(index: number) {
-      previousFocus = document.activeElement as HTMLElement;
-      show(index);
-      lightbox!.setAttribute('aria-hidden', 'false');
-      lightbox!.classList.add('hf-lightbox--open');
-      document.body.style.overflow = 'hidden';
-      btnClose!.focus();
-    }
-
-    function close() {
-      lightbox!.setAttribute('aria-hidden', 'true');
-      lightbox!.classList.remove('hf-lightbox--open');
-      document.body.style.overflow = '';
-      previousFocus?.focus();
-    }
-
-    // Boutons
-    btnClose.addEventListener('click', close);
-    btnPrev.addEventListener('click', () => show(current - 1));
-    btnNext.addEventListener('click', () => show(current + 1));
-
-    // Swipe tactile — { passive: true } pour ne pas bloquer le scroll natif (#FE-008)
-    let touchStartX = 0;
-    lightbox.addEventListener('touchstart', (e) => {
-      touchStartX = e.touches[0]?.clientX ?? 0;
-    }, { passive: true });
-    lightbox.addEventListener('touchend', (e) => {
-      const delta = touchStartX - (e.changedTouches[0]?.clientX ?? 0);
-      if (Math.abs(delta) < 50) return;
-      if (delta > 0) show(current + 1);
-      else show(current - 1);
-    }, { passive: true });
-
-    // Clic overlay pour fermer
-    lightbox.addEventListener('click', (e) => {
-      if (e.target === lightbox) close();
-    });
-
-    // Clavier
-    document.addEventListener('keydown', (e) => {
-      if (!lightbox.classList.contains('hf-lightbox--open')) return;
-      if (e.key === 'Escape') close();
-      if (e.key === 'ArrowLeft') show(current - 1);
-      if (e.key === 'ArrowRight') show(current + 1);
-      // Focus trap
-      if (e.key === 'Tab') {
-        const focusable = lightbox.querySelectorAll<HTMLElement>(
-          'button, [tabindex]:not([tabindex="-1"])'
-        );
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
-      }
-    });
-
-    // Exposition de l'API publique pour la galerie
-    (window as typeof window & { hfLightbox: { open: (i: number) => void } }).hfLightbox = { open };
-  })();
+  import { mountLightbox } from './lightbox-client.js';
+  mountLightbox();
 </script>
 
 <style>
   .hf-lightbox {
-    display: none;
-    position: fixed;
-    inset: 0;
-    z-index: 1000;
+    padding: 0;
+    border: none;
+    margin: 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    background: transparent;
+    color: var(--hf-color-text-overlay);
+  }
+
+  .hf-lightbox::backdrop {
     background: var(--hf-color-overlay);
+  }
+
+  .hf-lightbox[open] {
+    display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem;
   }
 
-  .hf-lightbox--open {
-    display: flex;
-  }
-
   .hf-lightbox__stage {
+    position: relative;
+    margin: 0;
     max-width: 90vw;
     max-height: 90vh;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
   }
@@ -218,6 +154,19 @@ const lightboxData = scriptJson(
     max-height: 90vh;
     object-fit: contain;
     border-radius: 2px;
+  }
+
+  .hf-lightbox__caption {
+    margin-top: 0.5rem;
+    max-width: 90vw;
+    text-align: center;
+    color: var(--hf-color-text-overlay-muted);
+    font-size: 0.875rem;
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  .hf-lightbox__caption[hidden] {
+    display: none;
   }
 
   .hf-lightbox__close {
@@ -264,6 +213,12 @@ const lightboxData = scriptJson(
     background: var(--hf-color-btn-overlay-hover);
     outline: 2px solid var(--hf-color-text-overlay);
     outline-offset: 2px;
+  }
+
+  .hf-lightbox__nav[aria-disabled='true'] {
+    opacity: 0.3;
+    cursor: default;
+    pointer-events: none;
   }
 
   .hf-lightbox__nav--prev {

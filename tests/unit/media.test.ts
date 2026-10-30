@@ -21,6 +21,7 @@ import {
   resolveSeriesMedia,
 } from '../../src/media.js';
 import type { MediaDiagnosticCode, ResolveSeriesMediaInput } from '../../src/media.js';
+import { applyImageProvider, fallbackSrc, isResolvedImage } from '../../src/media.js';
 import * as helpers from '../../src/helpers/index.js';
 import { ORIGINAL_EXTENSIONS as SCHEMA_ORIGINAL_EXTENSIONS } from '../../src/schema.js';
 import { parseFrontmatter } from '../../src/ingest/frontmatter.js';
@@ -413,5 +414,44 @@ describe('fixtures de la spec — résultats attendus des corpus valides', () =>
     expect(r.images.map((i) => i.path)).toEqual(['media/DSCF0001.JPG', 'media/DSCF0002.JPG']);
     expect(r.cover?.path).toBe('media/DSCF0002.JPG');
     expect(r.attachments.map((a) => a.title)).toEqual(['Devis signé']);
+  });
+});
+
+describe('image résolue et fournisseur d’image (#136, P0)', () => {
+  it('isResolvedImage : vrai pour une image résolue, faux pour un ImageMetadata d’Astro', () => {
+    expect(isResolvedImage({ src: 'https://r2.example/01.jpg', width: 800, height: 600 })).toBe(true);
+    expect(isResolvedImage({ src: '/_astro/01.abc.jpg', width: 800, height: 600, format: 'jpg' })).toBe(false);
+    expect(isResolvedImage('/01.jpg')).toBe(false);
+    expect(isResolvedImage(undefined)).toBe(false);
+    expect(isResolvedImage({ width: 800 })).toBe(false);
+  });
+
+  it('applyImageProvider : sans fournisseur, l’image passe telle quelle', () => {
+    const image = { src: 'https://r2.example/01.jpg', width: 800, height: 600 };
+    expect(applyImageProvider(image, { width: 600 })).toBe(image);
+  });
+
+  it('applyImageProvider : le fournisseur reçoit la taille visée et rend l’image servie', () => {
+    const image = { src: 'https://r2.example/01.jpg', alt: 'Phare' };
+    const provider = vi.fn((img: typeof image, { width }: { width: number }) => ({
+      ...img,
+      src: `/cdn-cgi/image/width=${width}/${img.src}`,
+      srcset: `${img.src} ${width}w`,
+    }));
+    const out = applyImageProvider(image, { width: 600, height: 400 }, provider);
+    expect(provider).toHaveBeenCalledWith(image, { width: 600, height: 400 });
+    expect(out).toEqual({
+      src: '/cdn-cgi/image/width=600/https://r2.example/01.jpg',
+      alt: 'Phare',
+      srcset: 'https://r2.example/01.jpg 600w',
+    });
+  });
+
+  it('fallbackSrc : l’URL d’origine si le fournisseur l’a réécrite, sinon rien', () => {
+    const original = { src: 'https://r2.example/01.jpg' };
+    expect(fallbackSrc(original, { src: '/cdn-cgi/image/w=600/https://r2.example/01.jpg' })).toBe(
+      'https://r2.example/01.jpg',
+    );
+    expect(fallbackSrc(original, original)).toBeUndefined();
   });
 });

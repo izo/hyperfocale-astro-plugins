@@ -75,17 +75,28 @@ export interface BuildImagesManifestOptions {
    * (`./media/01.jpg`), forme que tout adaptateur v2.6 résout (§1.5.1).
    */
   readonly urlFor?: (entry: SnapshotEntry) => string;
+  /**
+   * Dimensions d'une image, en pixels, quand l'appelant les connaît (lecture
+   * d'en-tête, métadonnées d'un outil). Si elle rend des dimensions, l'entrée
+   * passe en forme longue `{ url, width, height }` (§1.5.1) ; sinon elle reste
+   * une chaîne. Sans `sizeFor`, tout le manifeste reste en forme courte.
+   */
+  readonly sizeFor?: (entry: SnapshotEntry) => { readonly width: number; readonly height: number } | undefined;
 }
 
-/** `images.json`, forme courte (§1.5.1). */
+/** Entrée d'`images.json` : forme courte (chaîne) ou longue (§1.5.1). */
+export type ImagesManifestEntry = string | { readonly url: string; readonly width?: number; readonly height?: number };
+
+/** `images.json` (§1.5.1). */
 export interface ImagesManifest {
-  readonly images: string[];
+  readonly images: ImagesManifestEntry[];
 }
 
 /**
- * Construit l'`images.json` d'une série depuis un snapshot (§1.5.1, forme
- * courte) : les images du `media/` de la série — images seulement, pas les
- * documents joints (§1.9) — dans l'ordre alphabétique de leur nom.
+ * Construit l'`images.json` d'une série depuis un snapshot (§1.5.1) : les images
+ * du `media/` de la série — images seulement, pas les documents joints (§1.9) —
+ * dans l'ordre alphabétique de leur nom. Forme courte par défaut ; forme longue
+ * pour les entrées dont `sizeFor` connaît les dimensions.
  *
  * L'ordre alphabétique est l'ordre canonique du contrat (octets UTF-8, §4.1),
  * pas une collation locale : deux implémentations produisent le même fichier.
@@ -104,6 +115,10 @@ export function buildImagesManifest(
   const images = snapshot.entries
     .filter((entry) => entry.kind === 'media' && dirname(entry.path) === mediaDir && isImagePath(entry.path))
     .sort((a, b) => compareCanonical(basename(a.path), basename(b.path)))
-    .map(urlFor);
+    .map((entry): ImagesManifestEntry => {
+      const url = urlFor(entry);
+      const size = options.sizeFor?.(entry);
+      return size ? { url, width: size.width, height: size.height } : url;
+    });
   return { images };
 }

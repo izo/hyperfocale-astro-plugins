@@ -81,3 +81,27 @@ describe('jetons CSS', () => {
     expect(undocumented).toEqual([]);
   });
 });
+
+// Table « Jetons par composant » du README (#136, P0) : chaque jeton lu par un
+// composant doit figurer dans sa ligne — un site en `theme: 'none'` s'y fie.
+describe('table des jetons par composant (README)', () => {
+  const section = readme.slice(readme.indexOf('### Jetons par composant'));
+  const table = section.slice(0, section.indexOf('\n### ', 10));
+  const rowOf = (name: string) => table.split('\n').find((line) => line.startsWith(`| \`${name}\``)) ?? '';
+  // Variables que le composant pose lui-même : elles ne sont pas des jetons de thème.
+  const inlineSet = (src: string) =>
+    new Set([...src.matchAll(/(--hf-[\w-]+):\s*\$\{/g)].map((m) => m[1]).concat([...src.matchAll(/style=\{`(--hf-[\w-]+):/g)].map((m) => m[1])));
+
+  for (const file of COMPONENTS) {
+    it(`${file} : chaque --hf-* lu est dans sa ligne de la table`, () => {
+      const src = read(`src/components/${file}`);
+      const extra = file === 'SeriesAttachments.astro' ? read('src/theme/attachments.css') : '';
+      const used = new Set([...(styleOf(src) + extra).matchAll(/var\((--hf-[\w-]+)/g)].map((m) => m[1]));
+      const own = inlineSet(src);
+      const row = rowOf(file.slice(0, -'.astro'.length));
+      expect(row, `ligne absente pour ${file}`).not.toBe('');
+      const missing = [...used].filter((t) => !own.has(t) && !row.includes(`\`${t}\``));
+      expect(missing).toEqual([]);
+    });
+  }
+});

@@ -1,0 +1,54 @@
+---
+import SeriesList from './SeriesList.astro';
+import type { Series } from '../helpers/index.js';
+import { resolveLabels, passthroughAttrs, headingTag, stableId, type InstanceProps, type HeadingLevel } from './runtime.js';
+
+interface Props extends InstanceProps {
+  /** Sous-séries d'un conteneur (spec §1.8). Rien ne s'affiche sans sous-série. */
+  series: Series[];
+  prefix?: string;
+  /** Niveau du titre du bloc (défaut : 2). */
+  headingLevel?: HeadingLevel;
+  /** Colonnes de la liste (défaut : 3). */
+  columns?: number;
+  /** Options par carte, par série — voir `SeriesList`. */
+  cardProps?: (series: Series, index: number) => Record<string, unknown>;
+}
+
+const {
+  series,
+  prefix = '/series',
+  headingLevel,
+  columns = 3,
+  cardProps,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const Heading = headingTag(headingLevel, 2);
+const headingId = stableId('hf-lineup', series.map((s) => s.id).join('|'));
+const rootAttrs = passthroughAttrs(rest);
+---
+
+{series.length > 0 && (
+  <section class:list={['hf-lineup', className]} aria-labelledby={headingId} {...rootAttrs}>
+    <Heading id={headingId} class="hf-lineup__heading">{labels['lineup.heading']}</Heading>
+    <SeriesList series={series} prefix={prefix} columns={columns} headingLevel={headingLevel} locale={locale} labels={labelOverrides} cardProps={cardProps} />
+  </section>
+)}
+
+<style>
+  .hf-lineup {
+    margin-top: var(--hf-lineup-gap, 3rem);
+  }
+
+  .hf-lineup__heading {
+    margin: 0 0 1rem;
+    font-size: var(--hf-lineup-heading-size, 1.3rem);
+    font-weight: 600;
+    color: var(--hf-color-text);
+  }
+</style>

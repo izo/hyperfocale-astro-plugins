@@ -2,16 +2,28 @@
 import type { Series } from '../helpers/index.js';
 import { resolveLabels, formatLabel, passthroughAttrs, scriptJson, type InstanceProps } from './runtime.js';
 
+/** Filtres proposés : recherche, tags, année, lieu, collection, visibilité. */
+type FilterName = 'search' | 'tags' | 'date' | 'location' | 'collection' | 'visibility';
+
 interface Props extends InstanceProps {
+  /** Séries rendues au serveur. Les facettes se calculent sur elles. */
   series: Series[];
-  filters?: Array<'tags' | 'date' | 'location'>;
+  /** @default ['search', 'tags', 'date', 'location'] */
+  filters?: FilterName[];
   prefix?: string;
+  /**
+   * Index distant (JSON, tableau de séries au format du filtre), chargé à la
+   * première interaction. Une fois chargé, il remplace la liste rendue au
+   * serveur : seules les séries de `series` sont dans la page.
+   */
+  indexUrl?: string;
 }
 
 const {
   series,
-  filters = ['tags', 'date', 'location'],
+  filters = ['search', 'tags', 'date', 'location'],
   prefix = '/series',
+  indexUrl,
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -21,9 +33,12 @@ const {
 const labels = resolveLabels(locale, labelOverrides);
 const rootAttrs = passthroughAttrs(rest);
 
+const showSearch = filters.includes('search');
 const showTags = filters.includes('tags');
 const showDate = filters.includes('date');
 const showLocation = filters.includes('location');
+const showCollection = filters.includes('collection');
+const showVisibility = filters.includes('visibility');
 
 const d = (s: Series) => s.data as Record<string, unknown>;
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
@@ -34,37 +49,72 @@ const allYears = [...new Set(
     .map((s) => (d(s).date instanceof Date ? (d(s).date as Date).getFullYear() : null))
     .filter((y): y is number => y !== null),
 )].sort((a, b) => b - a);
+const allCollections = [...new Set(series.map((s) => s.collection).filter((c): c is string => !!c))].sort();
+const hasPrivate = series.some((s) => d(s).private === true);
 
 type ItemData = {
   id: string;
   title: string;
+  description: string | null;
   date: number | null;
   tags: string[];
   location: string | null;
   url: string;
+  collection: string;
+  private: boolean;
 };
 
 const items: ItemData[] = series.map((s) => ({
   id: s.id,
   title: String(s.data.title),
+  description: typeof d(s).description === 'string' ? (d(s).description as string) : null,
   date: d(s).date instanceof Date ? (d(s).date as Date).getFullYear() : null,
   tags: (d(s).tags as string[] | undefined) ?? [],
   location: (d(s).location as string | undefined) ?? null,
   url: `${normalizedPrefix}/${s.id}/`,
+  collection: s.collection,
+  private: d(s).private === true,
 }));
 
 // Données du script client (#138) : injectées par `set:html` — dans un
 // `<script>`, Astro n'évalue pas `{}` et le JSON n'était pas rendu, si bien que
 // `JSON.parse` levait et que le filtre restait inerte. `scriptJson` échappe `<`
 // (un titre contenant `</script>` fermerait la balise).
-const filterData = scriptJson({ locale, count: labels['filter.count'], items });
+const filterData = scriptJson({
+  locale,
+  count: labels['filter.count'],
+  tagList: labels['filter.tagList'],
+  items,
+  ...(indexUrl ? { indexUrl } : {}),
+});
 
-const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.length > 0) || showLocation;
+const showCollectionControl = showCollection && allCollections.length > 1;
+const showVisibilityControl = showVisibility && hasPrivate;
+const hasControls =
+  showSearch ||
+  (showTags && allTags.length > 0) ||
+  (showDate && allYears.length > 0) ||
+  showLocation ||
+  showCollectionControl ||
+  showVisibilityControl;
 ---
 
 <div class:list={['hf-filter', className]} id="hf-filter" {...rootAttrs}>
   {hasControls && (
     <form class="hf-filter__controls" id="hf-filter-form" novalidate>
+      {showSearch && (
+        <div class="hf-filter__group">
+          <label class="hf-filter__legend" for="hf-filter-search">{labels['filter.search']}</label>
+          <input
+            type="search"
+            id="hf-filter-search"
+            name="q"
+            class="hf-filter__input"
+            placeholder={labels['filter.searchPlaceholder']}
+            autocomplete="off"
+          />
+        </div>
+      )}
       {showTags && allTags.length > 0 && (
         <fieldset class="hf-filter__group">
           <legend class="hf-filter__legend">{labels['filter.tags']}</legend>
@@ -85,6 +135,25 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
             <select id="hf-filter-year" name="year" class="hf-filter__select">
               <option value="">{labels['filter.allYears']}</option>
               {allYears.map((y) => <option value={String(y)}>{y}</option>)}
+            </select>
+          </div>
+        )}
+        {showCollectionControl && (
+          <div class="hf-filter__group hf-filter__group--inline">
+            <label class="hf-filter__legend" for="hf-filter-collection">{labels['filter.collection']}</label>
+            <select id="hf-filter-collection" name="collection" class="hf-filter__select">
+              <option value="">{labels['filter.allCollections']}</option>
+              {allCollections.map((c) => <option value={c}>{c}</option>)}
+            </select>
+          </div>
+        )}
+        {showVisibilityControl && (
+          <div class="hf-filter__group hf-filter__group--inline">
+            <label class="hf-filter__legend" for="hf-filter-visibility">{labels['filter.visibility']}</label>
+            <select id="hf-filter-visibility" name="visibility" class="hf-filter__select">
+              <option value="">{labels['filter.visibilityAll']}</option>
+              <option value="public">{labels['filter.visibilityPublic']}</option>
+              <option value="private">{labels['filter.visibilityPrivate']}</option>
             </select>
           </div>
         )}
@@ -121,6 +190,7 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
         data-tags={item.tags.join(',')}
         data-year={item.date ?? ''}
         data-location={(item.location ?? '').toLowerCase()}
+        data-collection={item.collection}
       >
         <a href={item.url} class="hf-filter__link">
           <span class="hf-filter__title">{item.title}</span>
@@ -139,6 +209,16 @@ const hasControls = (showTags && allTags.length > 0) || (showDate && allYears.le
     ))}
   </ul>
 </div>
+
+<template id="hf-filter-item">
+  <li class="hf-filter__item">
+    <a class="hf-filter__link">
+      <span class="hf-filter__title"></span>
+      <span class="hf-filter__meta"></span>
+      <span class="hf-filter__chips"></span>
+    </a>
+  </li>
+</template>
 
 <script type="application/json" id="hf-filter-data" is:inline set:html={filterData}></script>
 

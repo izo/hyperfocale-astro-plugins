@@ -32,10 +32,22 @@ export interface HyperfocaleLabels {
   'card.link': string;
   /** `alt` de la couverture quand l'image n'en porte pas. `{title}` */
   'card.coverAlt': string;
+  /** Badge d'une série privée (`private: true`). */
+  'card.locked': string;
+  /** Libellé de la liste de mots-clés d'une carte. */
+  'card.tags': string;
 
   // ─── SeriesList ───────────────────────────────────────────────────────
   /** Liste vide. */
   'list.empty': string;
+
+  // ─── Routes injectées (series-detail, series-page) ─────────────────────
+  /** Lien de retour vers la liste des séries. */
+  'route.backToList': string;
+  /** Numéro de page d'une série paginée. `{n}` */
+  'route.page': string;
+  /** Titre du bloc des sous-séries (line-up, §1.8). */
+  'lineup.heading': string;
 
   // ─── Images (SeriesGallery, SeriesMasonry) ─────────────────────────────
   /** `alt` de repli d'une image sans texte alternatif. `{n}` (1-indexé) */
@@ -52,6 +64,8 @@ export interface HyperfocaleLabels {
   'pagination.next': string;
   /** `aria-label` d'un lien de page. `{n}` */
   'pagination.page': string;
+  /** Trou dans la pagination (pages masquées). */
+  'pagination.ellipsis': string;
 
   // ─── SeriesLightbox ───────────────────────────────────────────────────
   'lightbox.label': string;
@@ -94,6 +108,15 @@ export interface HyperfocaleLabels {
   'filter.location': string;
   'filter.locationPlaceholder': string;
   'filter.reset': string;
+  /** Recherche plein texte (titre, description, lieu, mots-clés). */
+  'filter.search': string;
+  'filter.searchPlaceholder': string;
+  'filter.collection': string;
+  'filter.allCollections': string;
+  'filter.visibility': string;
+  'filter.visibilityAll': string;
+  'filter.visibilityPublic': string;
+  'filter.visibilityPrivate': string;
   /** Compteur, pluriel sur `{shown}`. `{shown}`, `{total}` */
   'filter.count': HfPluralForms;
 
@@ -110,7 +133,12 @@ export type HyperfocaleLabelKey = keyof HyperfocaleLabels;
 const fr: HyperfocaleLabels = {
   'card.link': 'Voir la série : {title}',
   'card.coverAlt': 'Couverture de la série {title}',
+  'card.locked': 'Série privée',
+  'card.tags': 'Mots-clés',
   'list.empty': 'Aucune série disponible pour le moment.',
+  'route.backToList': 'Toutes les séries',
+  'lineup.heading': 'Dans cette série',
+  'route.page': 'Page {n}',
   'image.alt': 'Photo {n}',
   'gallery.label': 'Galerie photos',
   'gallery.open': "Ouvrir l'image {n}",
@@ -118,6 +146,7 @@ const fr: HyperfocaleLabels = {
   'pagination.prev': 'Page précédente',
   'pagination.next': 'Page suivante',
   'pagination.page': 'Page {n}',
+  'pagination.ellipsis': '…',
   'lightbox.label': "Visionneuse d'images",
   'lightbox.close': 'Fermer la visionneuse',
   'lightbox.prev': 'Image précédente',
@@ -140,6 +169,14 @@ const fr: HyperfocaleLabels = {
   'filter.location': 'Lieu',
   'filter.locationPlaceholder': 'Filtrer par lieu…',
   'filter.reset': 'Réinitialiser',
+  'filter.search': 'Rechercher',
+  'filter.searchPlaceholder': 'Titre, texte, lieu, mot-clé…',
+  'filter.collection': 'Collection',
+  'filter.allCollections': 'Toutes',
+  'filter.visibility': 'Visibilité',
+  'filter.visibilityAll': 'Toutes',
+  'filter.visibilityPublic': 'Publiques',
+  'filter.visibilityPrivate': 'Privées',
   'filter.count': {
     one: '{shown} série affichée sur {total}',
     other: '{shown} séries affichées sur {total}',
@@ -155,7 +192,12 @@ const fr: HyperfocaleLabels = {
 const en: HyperfocaleLabels = {
   'card.link': 'View series: {title}',
   'card.coverAlt': 'Cover of the series {title}',
+  'card.locked': 'Private series',
+  'card.tags': 'Keywords',
   'list.empty': 'No series available yet.',
+  'route.backToList': 'All series',
+  'lineup.heading': 'In this series',
+  'route.page': 'Page {n}',
   'image.alt': 'Photo {n}',
   'gallery.label': 'Photo gallery',
   'gallery.open': 'Open image {n}',
@@ -163,6 +205,7 @@ const en: HyperfocaleLabels = {
   'pagination.prev': 'Previous page',
   'pagination.next': 'Next page',
   'pagination.page': 'Page {n}',
+  'pagination.ellipsis': '…',
   'lightbox.label': 'Image viewer',
   'lightbox.close': 'Close the viewer',
   'lightbox.prev': 'Previous image',
@@ -185,6 +228,14 @@ const en: HyperfocaleLabels = {
   'filter.location': 'Location',
   'filter.locationPlaceholder': 'Filter by location…',
   'filter.reset': 'Reset',
+  'filter.search': 'Search',
+  'filter.searchPlaceholder': 'Title, text, place, keyword…',
+  'filter.collection': 'Collection',
+  'filter.allCollections': 'All',
+  'filter.visibility': 'Visibility',
+  'filter.visibilityAll': 'All',
+  'filter.visibilityPublic': 'Public',
+  'filter.visibilityPrivate': 'Private',
   'filter.count': {
     one: '{shown} series shown of {total}',
     other: '{shown} series shown of {total}',

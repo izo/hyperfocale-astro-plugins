@@ -1,33 +1,64 @@
 ---
 import type { ImageMetadata } from '../helpers/index.js';
+import {
+  applyImageProvider,
+  fallbackSrc,
+  isResolvedImage,
+  type ImageProvider,
+  type ResolvedImage,
+} from '../media.js';
 import { resolveLabels, formatLabel, passthroughAttrs, type InstanceProps } from './runtime.js';
 
 interface Props extends InstanceProps {
-  images: ImageMetadata[];
+  /** Images `ImageMetadata` d'Astro, ou images résolues par l'appelant. */
+  images: Array<ImageMetadata | ResolvedImage>;
   /** Nombre de colonnes (défaut 3). Surchargeable via --hf-masonry-columns. */
   columns?: number;
+  /** Fournisseur d'image appliqué aux images résolues (redimensionnement, CDN). */
+  imageProvider?: ImageProvider;
 }
 
-const { images, columns = 3, locale = 'fr', labels: labelOverrides, class: className, ...rest } = Astro.props;
+const {
+  images,
+  columns = 3,
+  imageProvider,
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
 
 const labels = resolveLabels(locale, labelOverrides);
 const rootAttrs = passthroughAttrs(rest);
+
+/** Image résolue, réécrite par le fournisseur, et son repli d'origine. */
+function resolveMasonry(img: ImageMetadata | ResolvedImage) {
+  if (!isResolvedImage(img)) return undefined;
+  const applied = applyImageProvider(img, { width: 600 }, imageProvider);
+  return { applied, fallback: fallbackSrc(img, applied) };
+}
 ---
 
 <div class:list={['hf-masonry', className]} style={`--hf-masonry-columns: ${columns}`} {...rootAttrs}>
-  {images.map((img, i) => (
-    <div class="hf-masonry__item">
-      <img
-        src={img.src}
-        alt={img.alt ?? formatLabel(labels['image.alt'], { n: i + 1 })}
-        width={img.width || undefined}
-        height={img.height || undefined}
-        loading="lazy"
-        decoding="async"
-        class="hf-masonry__img"
-      />
-    </div>
-  ))}
+  {images.map((img, i) => {
+    const resolved = resolveMasonry(img);
+    return (
+      <div class="hf-masonry__item">
+        <img
+          src={resolved ? resolved.applied.src : img.src}
+          srcset={resolved?.applied.srcset}
+          sizes={resolved?.applied.sizes}
+          alt={img.alt ?? formatLabel(labels['image.alt'], { n: i + 1 })}
+          width={img.width || undefined}
+          height={img.height || undefined}
+          data-hf-fallback={resolved?.fallback}
+          loading="lazy"
+          decoding="async"
+          class="hf-masonry__img"
+        />
+      </div>
+    );
+  })}
 </div>
 
 <style>
@@ -63,6 +94,9 @@ const rootAttrs = passthroughAttrs(rest);
 </style>
 
 <script>
+  import { mountImageFallback } from './image-fallback.js';
+  mountImageFallback();
+
   document.querySelectorAll<HTMLImageElement>('.hf-masonry__img').forEach((img) => {
     if (img.complete) {
       img.classList.add('hf-loaded');

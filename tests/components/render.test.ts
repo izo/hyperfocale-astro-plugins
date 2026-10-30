@@ -18,6 +18,8 @@ import SeriesLightbox from '../../src/components/SeriesLightbox.astro';
 import SeriesList from '../../src/components/SeriesList.astro';
 import SeriesMap from '../../src/components/SeriesMap.astro';
 import SeriesMasonry from '../../src/components/SeriesMasonry.astro';
+import SeriesPagination from '../../src/components/SeriesPagination.astro';
+import SeriesLineup from '../../src/components/SeriesLineup.astro';
 import TwoAttachments from './fixtures/TwoAttachments.astro';
 import { HF_LABELS } from '../../src/i18n.js';
 
@@ -90,11 +92,13 @@ const CASES: Array<[string, AnyComponent, Record<string, unknown>]> = [
   ['SeriesList', SeriesList, { series: SERIES }],
   ['SeriesMap', SeriesMap, { series: SERIES }],
   ['SeriesMasonry', SeriesMasonry, { images: IMAGES }],
+  ['SeriesPagination', SeriesPagination, { page: 2, totalPages: 5, baseUrl: '/s/b' }],
+  ['SeriesLineup', SeriesLineup, { series: SERIES }],
 ];
 
-describe('options par instance — les 9 composants', () => {
-  it('couvre les 9 composants', () => {
-    expect(CASES).toHaveLength(9);
+describe('options par instance — les 11 composants', () => {
+  it('couvre les 11 composants', () => {
+    expect(CASES).toHaveLength(11);
   });
 
   for (const [name, component, props] of CASES) {
@@ -217,6 +221,58 @@ describe('SeriesCard', () => {
     const html = await render(SeriesCard, { series: SERIES[0], headingLevel: 3 });
     expect(html).toMatch(/<h3[^>]*>Bretagne<\/h3>/);
   });
+
+  it('coverImage résolu : <img> simple, srcset et sizes repris, alt de l’image', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      coverImage: {
+        src: 'https://r2.example/bretagne/01.jpg',
+        width: 1200,
+        height: 800,
+        alt: 'Phare',
+        srcset: 'https://r2.example/bretagne/01-600.jpg 600w, https://r2.example/bretagne/01-1200.jpg 1200w',
+        sizes: '(min-width: 40rem) 600px, 100vw',
+      },
+    });
+    expect(html).toContain('src="https://r2.example/bretagne/01.jpg"');
+    expect(html).toContain('srcset="https://r2.example/bretagne/01-600.jpg 600w, https://r2.example/bretagne/01-1200.jpg 1200w"');
+    expect(html).toContain('sizes="(min-width: 40rem) 600px, 100vw"');
+    expect(html).toContain('alt="Phare"');
+    expect(html).not.toContain('_astro/');
+  });
+
+  it('imageProvider réécrit l’URL de coverImage, sans toucher aux autres champs', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      coverImage: { src: 'https://r2.example/bretagne/01.jpg', width: 1200, height: 800 },
+      imageProvider: (image: { src: string }, { width }: { width: number }) => ({
+        ...image,
+        src: `/cdn-cgi/image/width=${width}/${image.src}`,
+      }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/bretagne/01.jpg"');
+    expect(html).toContain(`alt="${HF_LABELS.fr['card.coverAlt'].replace('{title}', 'Bretagne')}"`);
+    expect(html).toContain('data-hf-fallback="https://r2.example/bretagne/01.jpg"');
+  });
+
+  it('sans imageProvider, pas de data-hf-fallback', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      coverImage: { src: 'https://r2.example/bretagne/01.jpg' },
+    });
+    expect(html).not.toContain('data-hf-fallback');
+  });
+
+  it('SeriesList : coverImages par identifiant de série et imageProvider transmis aux cartes', async () => {
+    const html = await render(SeriesList, {
+      series: SERIES,
+      coverImages: { bretagne: { src: 'https://r2.example/bretagne/cover.jpg' } },
+      imageProvider: (image: { src: string }) => ({ ...image, src: `/cdn-cgi/image/${image.src}` }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/https://r2.example/bretagne/cover.jpg"');
+    expect(html).toContain('data-hf-fallback="https://r2.example/bretagne/cover.jpg"');
+    expect(html.match(/data-hf-fallback=/g)).toHaveLength(1);
+  });
 });
 
 describe('SeriesList', () => {
@@ -255,6 +311,30 @@ describe('SeriesGallery', () => {
     const page2 = await render(SeriesGallery, { ...props, page: 2, images: IMAGES.slice(2) });
     expect(page2).toContain('href="/s/b/"');
     expect(page2).not.toContain('href="/s/b/1/"');
+  });
+
+  it('images résolues : <img> simple aux dimensions fournies, sans passer par astro:assets', async () => {
+    const resolved = [{ src: 'https://r2.example/b/01.jpg', width: 800, height: 600, alt: 'Phare' }];
+    const html = await render(SeriesGallery, { ...props, images: resolved, allImages: resolved });
+    expect(html).toContain('src="https://r2.example/b/01.jpg"');
+    expect(html).toContain('width="800"');
+    expect(html).toContain('height="600"');
+    expect(html).toContain('alt="Phare"');
+    expect(html).not.toContain('_astro/');
+  });
+
+  it('imageProvider s’applique aux images résolues', async () => {
+    const resolved = [{ src: 'https://r2.example/b/01.jpg', width: 800, height: 600 }];
+    const html = await render(SeriesGallery, {
+      ...props,
+      images: resolved,
+      allImages: resolved,
+      imageProvider: (image: { src: string }, { width }: { width: number }) => ({
+        ...image,
+        src: `/cdn-cgi/image/width=${width}/${image.src}`,
+      }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/b/01.jpg"');
   });
 });
 
@@ -498,3 +578,202 @@ describe('SeriesAttachments — 0.24.0', () => {
     expect(html).toContain('<section class="hf-attachments"');
   });
 });
+
+describe('SeriesMasonry et SeriesEmbeds — images résolues (#136, P0)', () => {
+  it('SeriesMasonry : image résolue réécrite par le fournisseur, origine en repli', async () => {
+    const html = await render(SeriesMasonry, {
+      images: [{ src: 'https://r2.example/m/01.jpg', width: 800, height: 600 }],
+      imageProvider: (image: { src: string }, { width }: { width: number }) => ({
+        ...image,
+        src: `/cdn-cgi/image/width=${width}/${image.src}`,
+      }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/m/01.jpg"');
+    expect(html).toContain('data-hf-fallback="https://r2.example/m/01.jpg"');
+    expect(html).not.toContain('_astro/');
+  });
+
+  it('SeriesEmbeds : poster résolu, réécrit par le fournisseur', async () => {
+    const html = await render(SeriesEmbeds, {
+      embeds: [
+        {
+          url: 'https://vimeo.com/123',
+          playable: true,
+          platform: 'vimeo',
+          id: '123',
+          title: 'Making-of',
+          poster: { src: 'https://r2.example/p.jpg', width: 640, height: 360 },
+        },
+      ],
+      imageProvider: (image: { src: string }) => ({ ...image, src: `/cdn-cgi/image/${image.src}` }),
+    });
+    expect(html).toContain('class="hf-embeds__poster" src="/cdn-cgi/image/https://r2.example/p.jpg"');
+    expect(html).toContain('data-hf-fallback="https://r2.example/p.jpg"');
+  });
+});
+
+describe('SeriesGallery — colonnes, maçonnerie, eagerCount, sizes (#136, P1)', () => {
+  const images = [
+    { src: '/m/01.jpg', width: 800, height: 600, format: 'jpg' },
+    { src: '/m/02.jpg', width: 800, height: 600, format: 'jpg' },
+    { src: '/m/03.jpg', width: 800, height: 600, format: 'jpg' },
+  ];
+  const base = { images, allImages: images, page: 1, totalPages: 1, baseUrl: '/s/b' };
+
+  it('columns : variable CSS et classe de grille fixe', async () => {
+    const html = await render(SeriesGallery, { ...base, columns: 4 });
+    expect(html).toContain('--hf-gallery-columns: 4');
+    expect(html).toContain('hf-gallery--columns');
+    expect(html).not.toContain('hf-gallery--masonry');
+  });
+
+  it('masonry : classe de maçonnerie', async () => {
+    const html = await render(SeriesGallery, { ...base, masonry: true });
+    expect(html).toContain('hf-gallery--masonry');
+  });
+
+  it('eagerCount : les premières images seules sont eager', async () => {
+    const html = await render(SeriesGallery, { ...base, eagerCount: 2 });
+    // La lightbox rendue avec la galerie porte aussi un `eager` : on ne compte que les vignettes.
+    const thumbs = html.match(/<img[^>]*class="hf-gallery__img"[^>]*>/g) ?? [];
+    expect(thumbs.map((t) => t.match(/loading="(\w+)"/)?.[1])).toEqual(['eager', 'eager', 'lazy']);
+  });
+
+  it('sizes : repris sur les images', async () => {
+    const html = await render(SeriesGallery, { ...base, sizes: '(min-width: 40rem) 33vw, 100vw' });
+    expect(html).toContain('sizes="(min-width: 40rem) 33vw, 100vw"');
+  });
+});
+
+
+describe('SeriesCard — variantes, champs, état privé, attributs du lien (#136, P2)', () => {
+  const tagged = series('tagged', {
+    title: 'Tagged',
+    description: 'Avec mots-clés',
+    location: 'Brest',
+    tags: ['a', 'b', 'c', 'd'],
+  });
+
+  it('variant text : pas de couverture', async () => {
+    const html = await render(SeriesCard, { series: SERIES[0], variant: 'text' });
+    expect(html).toContain('hf-card--text');
+    expect(html).not.toContain('hf-card__cover');
+  });
+
+  it('variant overlay : classe de surimpression, couverture présente', async () => {
+    const html = await render(SeriesCard, { series: SERIES[0], variant: 'overlay' });
+    expect(html).toContain('hf-card--overlay');
+    expect(html).toContain('hf-card__cover');
+  });
+
+  it('fields : lieu et mots-clés, limités par maxTags', async () => {
+    const html = await render(SeriesCard, {
+      series: tagged,
+      fields: ['location', 'tags'],
+      maxTags: 2,
+    });
+    expect(html).toMatch(/<p class="hf-card__location"[^>]*>Brest<\/p>/);
+    expect(html).not.toContain('hf-card__description');
+    const items = [...html.matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map((m) => m[1]);
+    expect(items).toEqual(['a', 'b']);
+    expect(html).toContain('aria-label="Mots-clés"');
+  });
+
+  it('série privée : badge « Série privée » et classe d’état', async () => {
+    const html = await render(SeriesCard, { series: series('p', { title: 'P', private: true }) });
+    expect(html).toContain('hf-card--locked');
+    expect(html).toMatch(/<span class="hf-card__badge"[^>]*>Série privée<\/span>/);
+    expect(await render(SeriesCard, { series: SERIES[0], locale: 'en' })).not.toContain('hf-card__badge');
+  });
+
+  it('linkAttrs : data-* et aria-* posés sur le lien, rien d’autre', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      linkAttrs: { 'data-track': 'card-click', onclick: 'alert(1)', href: '/x' },
+    });
+    expect(html).toContain('data-track="card-click"');
+    expect(html).not.toContain('onclick');
+  });
+
+  it('eager et decorativeCover : chargement immédiat, alt vide', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      eager: true,
+      decorativeCover: true,
+      coverImage: { src: 'https://r2.example/c.jpg', width: 1200, height: 800, alt: 'Phare' },
+    });
+    expect(html).toContain('loading="eager"');
+    // Astro rend une valeur vide sans guillemets : `alt` seul.
+    expect(html).toMatch(/<img src="https:\/\/r2\.example\/c\.jpg" alt[ >]/);
+    expect(html).not.toContain('Phare');
+  });
+});
+
+describe('SeriesList — cardProps et maçonnerie (#136, P2)', () => {
+  it('cardProps : options par série, appliquées à chaque carte', async () => {
+    const html = await render(SeriesList, {
+      series: SERIES,
+      cardProps: (s: { id: string }) => (s.id === 'alpes' ? { variant: 'text' } : {}),
+    });
+    expect(html.match(/hf-card--text/g)).toHaveLength(1);
+    expect(html.match(/class="hf-card hf-card--default/g)).toHaveLength(1);
+  });
+
+  it('masonry : classe de maçonnerie', async () => {
+    expect(await render(SeriesList, { series: SERIES, masonry: true })).toContain('hf-series-list--masonry');
+  });
+});
+
+describe('SeriesPagination (#136, P2)', () => {
+  it('rel prev/next, page 2 sous page/, page courante marquée', async () => {
+    const html = await render(SeriesPagination, { page: 2, totalPages: 3, baseUrl: '/s/b' });
+    expect(html).toContain('rel="prev"');
+    expect(html).toContain('rel="next"');
+    expect(html).toContain('href="/s/b/"');
+    expect(html).toContain('href="/s/b/page/3/"');
+    expect(html).toContain('aria-current="page"');
+  });
+
+  it('plusieurs pages : trous marqués par « … », cachés des lecteurs d’écran', async () => {
+    const html = await render(SeriesPagination, { page: 10, totalPages: 20, baseUrl: '/s/b' });
+    expect(html).toMatch(/<span class="hf-pagination__gap" aria-hidden="true"[^>]*>…<\/span>/);
+    expect(html).toContain('href="/s/b/page/9/"');
+  });
+
+  it('une seule page : rien', async () => {
+    expect(await render(SeriesPagination, { page: 1, totalPages: 1, baseUrl: '/s/b' })).not.toContain('<nav');
+  });
+
+  it('en : libellés anglais', async () => {
+    const html = await render(SeriesPagination, { page: 1, totalPages: 2, baseUrl: '/s/b', locale: 'en' });
+    expect(html).toContain('aria-label="Next page"');
+    expect(html).toContain('aria-label="Gallery pagination"');
+  });
+});
+
+describe('SeriesLineup (#136, P2)', () => {
+  it('titre fr et en, liste des sous-séries', async () => {
+    const fr = await render(SeriesLineup, { series: SERIES });
+    expect(fr).toContain('Dans cette série');
+    expect(fr).toContain('hf-lineup');
+    expect(await render(SeriesLineup, { series: SERIES, locale: 'en' })).toContain('In this series');
+  });
+
+  it('sans sous-série : rien', async () => {
+    expect(await render(SeriesLineup, { series: [] })).not.toContain('hf-lineup');
+  });
+});
+
+describe('coverFallback — repli de couverture sans lecture du corpus (#136)', () => {
+  it("coverFallback: 'none' : pas de lecture du corpus, placeholder", async () => {
+    const html = await render(SeriesCard, { series: series('nocover', { title: 'Sans couverture' }), coverFallback: 'none' });
+    expect(html).toContain('hf-card__placeholder');
+    expect(html).not.toContain('<img');
+  });
+
+  it("coverFallback: 'none' transmis par SeriesList", async () => {
+    const html = await render(SeriesList, { series: [series('nocover', { title: 'Sans' })], coverFallback: 'none' });
+    expect(html).toContain('hf-card__placeholder');
+  });
+});
+
