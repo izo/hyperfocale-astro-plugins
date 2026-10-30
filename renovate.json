@@ -1,16 +1,17 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended"],
+  "extends": ["config:recommended", "helpers:pinGitHubActionDigests"],
+  "minimumReleaseAge": "7 days",
+  "internalChecksFilter": "strict",
   "schedule": ["before 6am on monday"],
   "timezone": "Europe/Paris",
   "labels": ["dependencies"],
   "packageRules": [
     {
-      "description": "Grouper les mises à jour des devDependencies en un seul PR",
+      "description": "Grouper les mises à jour des devDependencies en un seul PR, à relire : ce code s'exécute sur la chaîne de publication (#154)",
       "matchDepTypes": ["devDependencies"],
       "groupName": "devDependencies",
-      "automerge": true,
-      "automergeType": "pr"
+      "automerge": false
     },
     {
       "description": "PRs séparés pour les peer dependencies (astro, zod) — breaking changes possibles",
