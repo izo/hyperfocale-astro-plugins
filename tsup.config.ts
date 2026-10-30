@@ -23,6 +23,8 @@ export default defineConfig({
     'components/filter-client': 'src/components/filter-client.ts',
     // Repli d'erreur des images réécrites par un `imageProvider` (#136, P0).
     'components/image-fallback': 'src/components/image-fallback.ts',
+    // Script client de SeriesLightbox : dialog natif, API `window.hfLightbox` (#136, P1).
+    'components/lightbox-client': 'src/components/lightbox-client.ts',
     loader: 'src/loader.ts',
     // Contrat d'ingestion : sous-chemins additifs, jamais importés par
     // l'intégration. `ingest/index`, `ingest/dropbox` et `ingest/webdav`

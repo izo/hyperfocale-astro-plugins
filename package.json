@@ -38,6 +38,8 @@
     "./components/SeriesFilter.astro": "./dist/components/SeriesFilter.astro",
     "./components/SeriesMap.astro": "./dist/components/SeriesMap.astro",
     "./components/SeriesMasonry.astro": "./dist/components/SeriesMasonry.astro",
+    "./components/SeriesPagination.astro": "./dist/components/SeriesPagination.astro",
+    "./components/SeriesLineup.astro": "./dist/components/SeriesLineup.astro",
     "./styles/attachments.css": "./dist/theme/attachments.css",
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",

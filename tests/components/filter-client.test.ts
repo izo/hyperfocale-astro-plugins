@@ -142,3 +142,123 @@ describe('câblage de SeriesFilter.astro (régression #138)', () => {
     expect(script).toMatch(/^\s*initSeriesFilter\(\s*\)\s*;?\s*$/m);
   });
 });
+
+describe('SeriesFilter — recherche, facettes, index distant (#136, P3)', () => {
+  const custom = (id: string, data: Record<string, unknown>, collection = 'series') => ({
+    id,
+    collection,
+    body: '',
+    data: { title: id, ...data },
+  });
+
+  async function markupOf(series: unknown[], extra: Record<string, unknown> = {}) {
+    const container = await AstroContainer.create();
+    return container.renderToString(SeriesFilter, { props: { series, ...extra } as never });
+  }
+
+  it('recherche plein texte : insensible à la casse et aux accents, sur la description', async () => {
+    const markup = await markupOf([
+      custom('cotes', { title: 'Sauvages', description: 'Côtes sauvages' }),
+      custom('plaines', { title: 'Plaines', description: 'Champs ouverts' }),
+    ]);
+    const { visible, fire, $ } = mount(markup);
+    const search = $<HTMLInputElement>('#hf-filter-search');
+    search.value = 'COTES sauv';
+    fire(search, 'input');
+    expect(visible()).toEqual(['cotes']);
+    search.value = 'champs ouverts';
+    fire(search, 'input');
+    expect(visible()).toEqual(['plaines']);
+  });
+
+  it('facette collection : liste déroulante, filtre sur la collection', async () => {
+    const markup = await markupOf([
+      custom('a', { title: 'A' }, 'archives'),
+      custom('b', { title: 'B' }, 'series'),
+      custom('c', { title: 'C' }, 'archives'),
+    ], { filters: ['collection'] });
+    const { visible, fire, $ } = mount(markup);
+    const select = $<HTMLSelectElement>('#hf-filter-collection');
+    expect(select).not.toBeNull();
+    select.value = 'archives';
+    fire(select, 'change');
+    expect(visible()).toEqual(['a', 'c']);
+  });
+
+  it('facette visibilité : n’apparaît qu’avec une série privée, filtre public / privé', async () => {
+    const markup = await markupOf([
+      custom('pub', { title: 'Pub' }),
+      custom('priv', { title: 'Priv', private: true }),
+    ], { filters: ['visibility'] });
+    const { visible, fire, $ } = mount(markup);
+    const select = $<HTMLSelectElement>('#hf-filter-visibility');
+    select.value = 'private';
+    fire(select, 'change');
+    expect(visible()).toEqual(['priv']);
+    select.value = 'public';
+    fire(select, 'change');
+    expect(visible()).toEqual(['pub']);
+  });
+
+  it('sans série privée, la facette visibilité ne s’affiche pas', async () => {
+    const markup = await markupOf([custom('pub', { title: 'Pub' })], { filters: ['visibility'] });
+    expect(markup).not.toContain('id="hf-filter-visibility"');
+  });
+
+  describe('index distant', () => {
+    const realFetch = globalThis.fetch;
+    afterEach(() => {
+      globalThis.fetch = realFetch;
+    });
+
+    it('chargé à la première interaction, puis la liste est rendue depuis le <template>', async () => {
+      const markup = await markupOf([custom('local', { title: 'Locale' })], { indexUrl: 'https://idx.example/index.json' });
+      const index = [
+        { id: 'x1', title: 'Première', date: 2021, tags: ['mer'], location: 'Brest', url: '/series/x1/' },
+        { id: 'x2', title: 'Deuxième', date: null, tags: [], location: null, url: '/series/x2/' },
+      ];
+      const calls: string[] = [];
+      globalThis.fetch = (async (url: string) => {
+        calls.push(url);
+        return { ok: true, json: async () => index } as unknown as Response;
+      }) as typeof fetch;
+
+      const { visible, fire, $, document, count } = mount(markup);
+      expect(calls).toEqual([]);
+      fire($<HTMLInputElement>('#hf-filter-search'), 'input');
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      expect(calls).toEqual(['https://idx.example/index.json']);
+      expect(visible()).toEqual(['x1', 'x2']);
+      expect(document.querySelector('[data-id="x1"] .hf-filter__title')?.textContent).toBe('Première');
+      expect(document.querySelector('[data-id="x1"] .hf-filter__meta')?.textContent).toBe('2021 · Brest');
+      expect(document.querySelector('[data-id="x2"] .hf-filter__chips')).toBeNull();
+      expect(count()).toBe('');
+    });
+
+    it('un titre venu de l’index reste du texte : aucun élément créé', async () => {
+      const markup = await markupOf([], { indexUrl: 'https://idx.example/index.json' });
+      globalThis.fetch = (async () =>
+        ({
+          ok: true,
+          json: async () => [{ id: 'evil', title: '<img src=x onerror=alert(1)>', date: null, tags: [], location: null, url: '/s/evil/' }],
+        }) as unknown as Response) as typeof fetch;
+      const { fire, $, document } = mount(markup);
+      fire($<HTMLInputElement>('#hf-filter-search'), 'input');
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(document.querySelector('[data-id="evil"] .hf-filter__title')?.textContent).toBe('<img src=x onerror=alert(1)>');
+      expect(document.querySelector('[data-id="evil"] img')).toBeNull();
+    });
+
+    it('échec du chargement : la liste rendue au serveur reste, sans erreur', async () => {
+      const markup = await markupOf([custom('local', { title: 'Locale' })], { indexUrl: 'https://idx.example/index.json' });
+      globalThis.fetch = (async () => {
+        throw new Error('réseau');
+      }) as typeof fetch;
+      const { visible, fire, $ } = mount(markup);
+      fire($<HTMLInputElement>('#hf-filter-search'), 'input');
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      expect(visible()).toEqual(['local']);
+    });
+  });
+});

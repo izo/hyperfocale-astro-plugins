@@ -10,6 +10,14 @@ interface Props extends InstanceProps {
   prefix?: string;
   /** Niveau de titre des cartes, transmis à chaque `SeriesCard` (défaut : 2). */
   headingLevel?: HeadingLevel;
+  /**
+   * Options propres à chaque carte (variante, champs, couverture…), calculées
+   * par série : c'est le point d'extension de la carte. Elles s'ajoutent aux
+   * props de la liste, et l'emportent sur elles.
+   */
+  cardProps?: (series: Series, index: number) => Record<string, unknown>;
+  /** Disposition en maçonnerie : colonnes CSS, cartes de hauteur naturelle. @default false */
+  masonry?: boolean;
   /** Couvertures résolues par l'appelant, par identifiant de série (`series.id`). */
   coverImages?: Record<string, ResolvedImage>;
   /** Fournisseur d'image, transmis à chaque `SeriesCard`. */
@@ -21,6 +29,8 @@ const {
   columns = 3,
   prefix = '/series',
   headingLevel,
+  cardProps,
+  masonry = false,
   coverImages,
   imageProvider,
   locale = 'fr',
@@ -33,11 +43,15 @@ const labels = resolveLabels(locale, labelOverrides);
 const rootAttrs = passthroughAttrs(rest);
 ---
 
-<section class:list={['hf-series-list', className]} style={`--hf-columns: ${columns}`} {...rootAttrs}>
+<section
+  class:list={['hf-series-list', { 'hf-series-list--masonry': masonry }, className]}
+  style={`--hf-columns: ${columns}`}
+  {...rootAttrs}
+>
   {series.length === 0 ? (
     <p class="hf-series-list__empty">{labels['list.empty']}</p>
   ) : (
-    series.map((s) => (
+    series.map((s, i) => (
       <SeriesCard
         series={s}
         prefix={prefix}
@@ -46,6 +60,7 @@ const rootAttrs = passthroughAttrs(rest);
         imageProvider={imageProvider}
         locale={locale}
         labels={labelOverrides}
+        {...(cardProps ? cardProps(s, i) : {})}
       />
     ))
   )}
@@ -67,6 +82,31 @@ const rootAttrs = passthroughAttrs(rest);
   @media (max-width: 600px) {
     .hf-series-list {
       grid-template-columns: 1fr;
+    }
+  }
+
+  /* Maçonnerie : colonnes CSS, chaque carte garde sa hauteur. */
+  .hf-series-list--masonry {
+    display: block;
+    columns: var(--hf-columns, 3);
+    column-gap: var(--hf-gallery-gap, 0.5rem);
+  }
+
+  .hf-series-list--masonry > * {
+    display: block;
+    break-inside: avoid;
+    margin-bottom: var(--hf-gallery-gap, 0.5rem);
+  }
+
+  @media (max-width: 900px) {
+    .hf-series-list--masonry {
+      columns: min(var(--hf-columns, 3), 2);
+    }
+  }
+
+  @media (max-width: 600px) {
+    .hf-series-list--masonry {
+      columns: 1;
     }
   }
 

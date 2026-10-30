@@ -461,6 +461,11 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 |-----|-----------|-----------|------|------|
 | `card.link` | SeriesCard (`aria-label` du lien) | `{title}` | Voir la série : {title} | View series: {title} |
 | `card.coverAlt` | SeriesCard (`alt` de repli) | `{title}` | Couverture de la série {title} | Cover of the series {title} |
+| `card.locked` | SeriesCard (badge d'une série `private`) | — | Série privée | Private series |
+| `card.tags` | SeriesCard (`aria-label` des mots-clés) | — | Mots-clés | Keywords |
+| `route.backToList` | Routes `series-detail`, `series-page` (lien de retour) | — | Toutes les séries | All series |
+| `route.page` | Route `series-page` (titre et en-tête) | `{n}` | Page {n} | Page {n} |
+| `lineup.heading` | SeriesLineup | — | Dans cette série | In this series |
 | `list.empty` | SeriesList | — | Aucune série disponible pour le moment. | No series available yet. |
 | `image.alt` | SeriesGallery, SeriesMasonry (`alt` de repli) | `{n}` | Photo {n} | Photo {n} |
 | `gallery.label` | SeriesGallery | — | Galerie photos | Photo gallery |
@@ -469,6 +474,7 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 | `pagination.prev` | SeriesGallery | — | Page précédente | Previous page |
 | `pagination.next` | SeriesGallery | — | Page suivante | Next page |
 | `pagination.page` | SeriesGallery | `{n}` | Page {n} | Page {n} |
+| `pagination.ellipsis` | SeriesPagination (trou entre pages) | — | … | … |
 | `lightbox.label` | SeriesLightbox | — | Visionneuse d'images | Image viewer |
 | `lightbox.close` | SeriesLightbox | — | Fermer la visionneuse | Close the viewer |
 | `lightbox.prev` | SeriesLightbox | — | Image précédente | Previous image |
@@ -488,6 +494,14 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 | `filter.location` | SeriesFilter | — | Lieu | Location |
 | `filter.locationPlaceholder` | SeriesFilter | — | Filtrer par lieu… | Filter by location… |
 | `filter.reset` | SeriesFilter | — | Réinitialiser | Reset |
+| `filter.search` | SeriesFilter (recherche) | — | Rechercher | Search |
+| `filter.searchPlaceholder` | SeriesFilter (recherche) | — | Titre, texte, lieu, mot-clé… | Title, text, place, keyword… |
+| `filter.collection` | SeriesFilter (facette collection) | — | Collection | Collection |
+| `filter.allCollections` | SeriesFilter (facette collection) | — | Toutes | All |
+| `filter.visibility` | SeriesFilter (facette visibilité) | — | Visibilité | Visibility |
+| `filter.visibilityAll` | SeriesFilter (facette visibilité) | — | Toutes | All |
+| `filter.visibilityPublic` | SeriesFilter (facette visibilité) | — | Publiques | Public |
+| `filter.visibilityPrivate` | SeriesFilter (facette visibilité) | — | Privées | Private |
 | `filter.count` | SeriesFilter (client, pluriel sur `{shown}`) | `{shown}` `{total}` | {shown} série(s) affichée(s) sur {total} | {shown} series shown of {total} |
 | `map.label` | SeriesMap | — | Carte géographique des séries | Map of the series |
 | `map.empty` | SeriesMap | — | Aucune série avec coordonnées GPS. | No series with GPS coordinates. |
@@ -583,6 +597,15 @@ Card d'aperçu : cover, titre, date, description.
 | `headingLevel` | `1`–`6` | `2` | Niveau du titre de la carte |
 | `coverImage` | `ResolvedImage` | — | Couverture résolue par l'appelant (sortie de `resolveSeriesMedia`), prioritaire sur `series.data.cover`. Rendue en `<img>` simple, sans `astro:assets` |
 | `imageProvider` | `ImageProvider` | — | Fournisseur appliqué à `coverImage` : `(image, { width, height }) => ResolvedImage`. Si l'URL réécrite échoue, l'image retombe sur son URL d'origine (`data-hf-fallback`) |
+| `variant` | `'default' \| 'overlay' \| 'text'` | `default` | `default` : couverture au-dessus du texte. `overlay` : texte posé sur la couverture. `text` : pas de couverture |
+| `fields` | `('date' \| 'description' \| 'location' \| 'tags')[]` | `['date', 'description']` | Champs affichés sous le titre, dans cet ordre |
+| `maxTags` | `number` | `5` | Nombre maximal de mots-clés affichés (si `tags` est dans `fields`) |
+| `eager` | `boolean` | `false` | Couverture chargée tout de suite (au-dessus de la ligne de flottaison) |
+| `sizes` | `string` | — | Attribut `sizes` de la couverture |
+| `decorativeCover` | `boolean` | `false` | Couverture décorative : `alt` vide, quand le lien nomme déjà la série |
+| `linkAttrs` | `Record<string, unknown>` | — | Attributs `data-*` / `aria-*` posés sur le lien (suivi d'un clic, par exemple) |
+
+Une série `private: true` porte le badge « Série privée » (libellé `card.locked`) et la classe `hf-card--locked`.
 
 ### `<SeriesList series={arr} columns={3} />`
 
@@ -596,6 +619,15 @@ Grille responsive de `SeriesCard`.
 | `headingLevel` | `1`–`6` | `2` | Transmis à chaque `SeriesCard` |
 | `coverImages` | `Record<string, ResolvedImage>` | — | Couvertures résolues, par `series.id` |
 | `imageProvider` | `ImageProvider` | — | Transmis à chaque `SeriesCard` |
+| `cardProps` | `(series, index) => Record<string, unknown>` | — | Options propres à chaque carte (variante, champs, couverture…), calculées par série. Point d'extension de la carte |
+| `masonry` | `boolean` | `false` | Disposition en maçonnerie : colonnes CSS, cartes de hauteur naturelle |
+
+```astro
+<SeriesList
+  series={series}
+  cardProps={(s) => (s.data.private ? { variant: 'text' } : {})}
+/>
+```
 
 ### `<SeriesGallery images={imgs} page={1} totalPages={3} baseUrl="/series/slug" />`
 
@@ -609,14 +641,30 @@ Galerie paginée avec navigation entre les pages.
 | `baseUrl` | `string` | URL de base pour la pagination |
 | `allImages` | `Array<ImageMetadata \| ResolvedImage>` | Toutes les images de la série (lightbox, index de page) |
 | `imageProvider` | `ImageProvider` | Fournisseur appliqué aux images résolues (`src`, `srcset`) |
+| `columns` | `number` | Nombre de colonnes. Sans valeur, la grille s'adapte (vignettes d'au moins 220 px) ; deux colonnes sous 600 px |
+| `masonry` | `boolean` (défaut `false`) | Disposition en maçonnerie, hauteurs naturelles |
+| `eagerCount` | `number` (défaut `1`) | Nombre d'images chargées tout de suite, depuis la première |
+| `sizes` | `string` | Attribut `sizes` des vignettes |
 
 ### `<SeriesLightbox images={allImgs} />`
 
-Visionneuse plein écran. S'ouvre au clic sur une image, navigation ←/→/Esc.
+Visionneuse plein écran, en `<dialog>` natif (`showModal()`). S'ouvre au clic sur une image, navigation ←/→/Esc. Le script client vit dans `components/lightbox-client.ts`.
 
-| Prop | Type | Description |
-|------|------|-------------|
-| `images` | `Image[]` | Toutes les images de la série |
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `images` | `Array<ImageMetadata \| ResolvedImage>` | — | Toutes les images de la série |
+| `loop` | `boolean` | `false` | Navigation qui boucle. Sans cela, les boutons arrivés au bout passent en `aria-disabled` |
+| `decorativeAlt` | `boolean` | `false` | Images décoratives : `alt` vide et pas de légende, pour toute la série. Sans cela, la légende reprend le texte alternatif |
+
+**Légende.** Le texte alternatif de l'image s'affiche sous elle ; une image sans `alt` n'a pas de légende.
+
+**Précharge.** Les images voisines de l'image courante sont préchargées.
+
+**Événements** (sur la `<dialog>`, `detail: { index }`) : `hf:lightbox-open` à l'ouverture, `hf:lightbox-navigate` à chaque changement d'image par les boutons, le clavier ou le swipe.
+
+**API** (`window.hfLightbox`) : `open(index)`, `close()`, `setImages(list)` — pour une série déverrouillée après coup.
+
+La lightbox affiche toujours l'URL d'origine : un `imageProvider` ne s'y applique pas.
 
 ### `<SeriesMasonry images={imgs} columns={3} />`
 
@@ -624,8 +672,9 @@ Galerie en maçonnerie (colonnes de hauteurs variables), alternative à `SeriesG
 
 | Prop | Type | Défaut | Description |
 |------|------|--------|-------------|
-| `images` | `ImageMetadata[]` | — | Images à afficher |
+| `images` | `Array<ImageMetadata \| ResolvedImage>` | — | Images à afficher |
 | `columns` | `number` | `3` | Nombre de colonnes |
+| `imageProvider` | `ImageProvider` | — | Fournisseur appliqué aux images résolues |
 
 ### `<SeriesAttachments attachments={att} heading="Documents" headingLevel={2} />`
 
@@ -669,17 +718,37 @@ Deux raisons à la façade : onze lecteurs montés d'emblée plombent la page, e
 
 Un embed dont `platform` n'est pas reconnue, ou dont l'`id` manque, se rend en lien : c'est la dégradation prévue par la spec, et elle vaut pour tout hébergeur que le plugin ne connaît pas.
 
+**Content-Security-Policy.** La façade n'insère une iframe qu'au clic, vers l'un de ces hôtes — à autoriser dans `frame-src` si le site envoie une CSP :
+
+| Plateforme | Hôte du lecteur |
+|---|---|
+| `vimeo` | `player.vimeo.com` |
+| `youtube` | `www.youtube-nocookie.com` |
+| `dailymotion` | `www.dailymotion.com` |
+| `soundcloud` | `w.soundcloud.com` |
+| `bandcamp` | `bandcamp.com` |
+| `spotify` | `open.spotify.com` |
+
+Sans ces hôtes dans `frame-src`, le lien de repli reste fonctionnel, mais le lecteur est bloqué par le navigateur. Un hébergeur absent de la table se rend en lien : aucune CSP n'a à le connaître.
+
 ⚠️ **Beaucoup d'hébergeurs restreignent leur lecteur au domaine déclaré.** Un embed qui refuse de se lancer en local n'est pas nécessairement cassé — c'est un contrôle à faire en production, pas au build.
 
-### `<SeriesFilter series={arr} filters={['tags','date','location']} />`
+### `<SeriesFilter series={arr} filters={['search','tags','date','location']} />`
 
-Filtres interactifs (par tags, année, lieu) sur une liste de séries.
+Filtres interactifs sur une liste de séries : recherche plein texte, tags, année, lieu, collection, visibilité.
 
 | Prop | Type | Défaut | Description |
 |------|------|--------|-------------|
-| `series` | `Series[]` | — | Séries à filtrer |
-| `filters` | `('tags' \| 'date' \| 'location')[]` | tous | Filtres actifs |
+| `series` | `Series[]` | — | Séries rendues au serveur. Les facettes se calculent sur elles |
+| `filters` | `('search' \| 'tags' \| 'date' \| 'location' \| 'collection' \| 'visibility')[]` | `['search','tags','date','location']` | Filtres actifs |
 | `prefix` | `string` | `/series` | Préfixe des liens générés |
+| `indexUrl` | `string` | — | Index distant (JSON) : chargé à la première interaction, il remplace la liste rendue au serveur |
+
+**Recherche** : insensible à la casse et aux accents, sur le titre, la description, le lieu et les mots-clés. Chaque mot doit se trouver quelque part.
+
+**Facettes** : la collection n'apparaît qu'avec plusieurs collections ; la visibilité n'apparaît qu'avec une série `private: true`.
+
+**Index distant** : un tableau de séries au format du filtre — `{ id, title, description?, date (année ou null), tags, location, url, collection?, private? }`. Les éléments sont rendus depuis un `<template>` ; les textes passent par `textContent`, jamais par `innerHTML`. En cas d'échec du chargement, la liste rendue au serveur reste en place et la prochaine interaction réessaie.
 
 Les séries sont passées au script client dans un `<script type="application/json">` (avant la 0.23.0, ce JSON n'était pas rendu et le filtre restait inerte, #138). Un seul `SeriesFilter` par page : ses identifiants sont fixes.
 
@@ -692,6 +761,30 @@ Carte des séries géolocalisées (coordonnées lues dans `iptc.gps`).
 | `series` | `Series[]` | — | Séries à placer sur la carte |
 | `height` | `string` | — | Hauteur CSS de la carte |
 | `prefix` | `string` | `/series` | Préfixe des liens générés |
+
+### `<SeriesPagination page={2} totalPages={20} baseUrl="/series/slug" />`
+
+Pagination d'une série. La page 1 est `{baseUrl}/`, les autres `{baseUrl}/page/{n}/` (spec §1.6). Au-delà de sept pages, les pages masquées sont remplacées par « … » (`pagination.ellipsis`), caché des lecteurs d'écran.
+
+| Prop | Type | Description |
+|------|------|-------------|
+| `page` | `number` | Numéro de page courant |
+| `totalPages` | `number` | Nombre total de pages |
+| `baseUrl` | `string` | URL de base de la série |
+
+`<SeriesGallery>` l'utilise pour sa propre pagination.
+
+### `<SeriesLineup series={subSeries} prefix="/series" />`
+
+Line-up des sous-séries d'un conteneur (spec §1.8) : un titre (`lineup.heading`) et un `SeriesList`. Rien ne s'affiche sans sous-série. C'est le bloc que la route `series-detail` place en bas de page.
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `series` | `Series[]` | — | Sous-séries |
+| `prefix` | `string` | `/series` | Préfixe des liens |
+| `headingLevel` | `1`–`6` | `2` | Niveau du titre du bloc |
+| `columns` | `number` | `3` | Colonnes de la liste |
+| `cardProps` | `(series, index) => Record<string, unknown>` | — | Voir `SeriesList` |
 
 ---
 
@@ -922,6 +1015,14 @@ afterEach(() => resetSeriesCache());
 ```
 
 ---
+
+### `seriesJsonLd(series, images?)`
+
+Données structurées `ImageGallery` (schema.org) d'une série, pour la prop `schema` du layout. Sans `images`, seuls le nom et la description sont émis ; avec `images`, chaque image devient un `ImageObject` (`contentUrl`, dimensions, `caption` = `alt`).
+
+```astro
+<Layout schema={seriesJsonLd(series, allImages)}>
+```
 
 ## Corpus hors de `src/content/` — `/loader` et `/media`
 
@@ -1178,6 +1279,24 @@ Pourquoi la feuille n'est ni en `@layer` d'office ni en `:where()` : hors couche
 
 Les huit autres composants gardent leur `<style>` scopé en 0.24.0.
 
+### Jetons par composant (`theme: 'none'`)
+
+Pour un site qui écrit son propre thème, voici les jetons `--hf-*` que chaque composant lit. Un jeton **requis** n'a pas de repli dans le composant : sans lui, le rendu perd une couleur ou une mesure. Un jeton **optionnel** a un repli, il peut rester indéfini. Les variables que le composant pose lui-même (`--hf-columns`, `--hf-gallery-columns`, `--hf-masonry-columns`) ne sont pas listées. Un test (`tests/unit/tokens.test.ts`) vérifie que cette table couvre tous les jetons lus.
+
+| Composant | Requis (sans repli) | Optionnels (avec repli) |
+|---|---|---|
+| `SeriesAttachments` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted` | `--hf-attachments-badge-font`, `--hf-attachments-badge-icon`, `--hf-attachments-badge-padding`, `--hf-attachments-bg`, `--hf-attachments-bg-hover`, `--hf-attachments-font-size-badge`, `--hf-attachments-font-size-heading`, `--hf-attachments-font-size-kind`, `--hf-attachments-font-size-meta`, `--hf-attachments-font-size-size`, `--hf-attachments-font-size-title`, `--hf-attachments-gap`, `--hf-attachments-radius`, `--hf-font-mono`, `--hf-font-sans`, `--hf-transition` |
+| `SeriesCard` | `--hf-card-shadow`, `--hf-card-shadow-hover`, `--hf-color-border`, `--hf-color-overlay`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted`, `--hf-color-text-overlay` | `--hf-card-radius`, `--hf-font-sans`, `--hf-transition` |
+| `SeriesEmbeds` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-overlay`, `--hf-color-scrim`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted`, `--hf-color-text-overlay` | `--hf-attachments-bg`, `--hf-attachments-gap`, `--hf-card-radius`, `--hf-embeds-gap`, `--hf-embeds-item-gap`, `--hf-embeds-radius`, `--hf-font-sans`, `--hf-transition` |
+| `SeriesFilter` | `--hf-card-shadow`, `--hf-color-accent`, `--hf-color-bg`, `--hf-color-border`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted` | `--hf-card-radius`, `--hf-filter-bg`, `--hf-filter-border`, `--hf-filter-radius`, `--hf-font-sans`, `--hf-transition` |
+| `SeriesGallery` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text` | `--hf-card-radius`, `--hf-font-sans`, `--hf-gallery-gap`, `--hf-transition` |
+| `SeriesLightbox` | `--hf-color-btn-overlay-hover`, `--hf-color-overlay`, `--hf-color-text-overlay`, `--hf-color-text-overlay-muted` | `--hf-font-sans`, `--hf-transition` |
+| `SeriesLineup` | `--hf-color-text` | `--hf-lineup-gap`, `--hf-lineup-heading-size` |
+| `SeriesList` | `--hf-color-text-muted` | `--hf-font-sans`, `--hf-gallery-gap` |
+| `SeriesMap` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-text`, `--hf-color-text-muted`, `--hf-map-bg`, `--hf-map-marker-hover`, `--hf-map-stroke` | `--hf-card-radius`, `--hf-filter-border`, `--hf-font-sans`, `--hf-map-marker`, `--hf-transition` |
+| `SeriesMasonry` | — | `--hf-card-radius`, `--hf-gallery-gap`, `--hf-masonry-gap`, `--hf-transition` |
+| `SeriesPagination` | `--hf-color-accent`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted` | `--hf-card-radius`, `--hf-font-sans`, `--hf-transition` |
+
 ### Couche data seule — `theme: 'none'`
 
 Le thème part sur **toutes** les pages du site, pas seulement les routes injectées.
@@ -1300,7 +1419,7 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 - **Octets vérifiés** (§4.4) — tout ce qui est lu (validation, garde, matérialisation) est confronté à l'empreinte de l'entrée : un fichier qui a changé depuis le listing (`entry-hash-mismatch`) rend le snapshot impubliable. Une entrée `placeholder` (non téléchargée) ou `conflict` (copie conflictuelle) n'est jamais lue et bloque la publication.
 - **Garde** (§4.11) — `guardChangeSet(changeSet, base, target, { read, policy })` applique des seuils fournis par le site : suppressions massives, déplacements massifs, fichier trop lourd. Toujours actives : snapshot incomplet ou vide, et série privée (`private: true` sur l'un de ses fichiers index) qui ne l'est plus dans target. La garde est *fail-closed* côté base : un fichier index illisible (non matérialisé, octets divergents, frontmatter illisible) y rend la série privée par prudence.
 - **Originaux** (§1.9, §4.11, v2.11) — le snapshot d'une source garde ses RAW et sidecars ; le snapshot **publié** n'en a jamais. `publishable(target)` les retire (`id` recalculé) : c'est vers lui que va le diff de publication, c'est lui qu'on matérialise et qu'on enregistre. La validation porte sur `target` tel quel. La garde rapporte l'exclusion en `guard-originals-excluded` (`info`, champs `count` et `bytes`) et n'évalue `guard-oversize` que sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
-- **Manifeste dérivé** (§1.5.1, v2.12) — `images.json` est une donnée `derived` qu'un outil d'ingestion PEUT régénérer, mais il NE DOIT PAS en produire pour une série dont l'`index.md` porte `images:` : il violerait lui-même la règle d'exclusivité (`images-conflict`). `buildSeriesImagesManifest(snapshot, dir, { read, urlFor? })` lit le fichier index et rend `null` dans ce cas — ou quand le frontmatter est illisible ; sinon le manifeste de `buildImagesManifest`, qui, lui, ne lit pas le frontmatter.
+- **Manifeste dérivé** (§1.5.1, v2.12) — `images.json` est une donnée `derived` qu'un outil d'ingestion PEUT régénérer, mais il NE DOIT PAS en produire pour une série dont l'`index.md` porte `images:` : il violerait lui-même la règle d'exclusivité (`images-conflict`). `buildSeriesImagesManifest(snapshot, dir, { read, urlFor? })` lit le fichier index et rend `null` dans ce cas — ou quand le frontmatter est illisible ; sinon le manifeste de `buildImagesManifest`, qui, lui, ne lit pas le frontmatter. Ce manifeste passe en forme longue `{ url, width, height }` pour les entrées dont l'option `sizeFor` connaît les dimensions (§1.5.1).
 
 ### Providers
 

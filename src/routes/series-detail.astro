@@ -1,12 +1,12 @@
 ---
 import { render } from 'astro:content';
 import Layout from 'virtual:hyperfocale/layout';
-import { getSeriesList, getSeriesImages, getSeriesAttachments, getSeriesEmbeds, getSubSeries, paginateImages } from '../helpers/index.js';
+import { getSeriesList, getSeriesImages, getSeriesAttachments, getSeriesEmbeds, getSubSeries, paginateImages, seriesJsonLd } from '../helpers/index.js';
 import SeriesGallery from '../components/SeriesGallery.astro';
 import SeriesAttachments from '../components/SeriesAttachments.astro';
 import SeriesEmbeds from '../components/SeriesEmbeds.astro';
-import SeriesList from '../components/SeriesList.astro';
-import { formatDate } from '../i18n.js';
+import SeriesLineup from '../components/SeriesLineup.astro';
+import { formatDate, resolveLabels } from '../i18n.js';
 
 export async function getStaticPaths() {
   const series = await getSeriesList();
@@ -35,14 +35,12 @@ const { items: pageImages, totalPages } = paginateImages(allImages, pageSize, 1)
 
 const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const baseUrl = `${normalizedPrefix}/${slug}`;
+// Locale de la série (`lang` du frontmatter), français par défaut.
+const locale = series.data.lang ?? 'fr';
+const labels = resolveLabels(locale);
 
 // Données structurées : galerie d'images de la série.
-const schema = {
-  '@context': 'https://schema.org',
-  '@type': 'ImageGallery',
-  name: series.data.title,
-  ...(series.data.description ? { description: series.data.description } : {}),
-};
+const schema = seriesJsonLd(series);
 
 const { Content } = await render(series);
 ---
@@ -55,11 +53,11 @@ const { Content } = await render(series);
   schema={schema}
 >
   <header class="hf-series-header">
-    <a href={`${normalizedPrefix}/`}>&larr; Toutes les séries</a>
+    <a href={`${normalizedPrefix}/`}>&larr; {labels['route.backToList']}</a>
     <h1>{series.data.title}</h1>
     {series.data.date && (
       <time datetime={(series.data.date as Date).toISOString()}>
-        {formatDate(series.data.date as Date, 'fr')}
+        {formatDate(series.data.date as Date, locale)}
       </time>
     )}
     {series.data.location && <p class="location">{series.data.location}</p>}
@@ -88,23 +86,7 @@ const { Content } = await render(series);
   {/* Line-up des sous-séries (spec §1.8) — rien pour une série ordinaire.
       Placé en dernier : ce qui appartient à la série vient d'abord, la
       navigation vers les séries qu'elle regroupe ensuite. */}
-  {subSeries.length > 0 && (
-    <section class="hf-lineup" aria-labelledby="hf-lineup-heading">
-      <h2 id="hf-lineup-heading" class="hf-lineup__heading">Dans cette série</h2>
-      <SeriesList series={subSeries} prefix={prefix} />
-    </section>
-  )}
+  <SeriesLineup series={subSeries} prefix={prefix} />
 </Layout>
 
-<style>
-  .hf-lineup {
-    margin-top: var(--hf-lineup-gap, 3rem);
-  }
 
-  .hf-lineup__heading {
-    margin: 0 0 1rem;
-    font-size: var(--hf-lineup-heading-size, 1.3rem);
-    font-weight: 600;
-    color: var(--hf-color-text, #111);
-  }
-</style>

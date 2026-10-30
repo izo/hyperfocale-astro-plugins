@@ -376,3 +376,18 @@ describe('waitForQuiescence', () => {
     expect(result).toEqual({ settled: true, waitedMs: 3000 });
   });
 });
+
+describe('buildImagesManifest — forme longue avec sizeFor (#136, manifeste)', () => {
+  it('sizeFor rend { url, width, height } pour les images dont les dimensions sont connues, chaîne sinon', async () => {
+    const snap = await snapshot([entry('s/index.md'), entry('s/media/01.jpg'), entry('s/media/02.jpg')]);
+    const sizeFor = (e: { path: string }) => (e.path.endsWith('01.jpg') ? { width: 1200, height: 800 } : undefined);
+    expect(buildImagesManifest(snap, 's', { sizeFor })).toEqual({
+      images: [{ url: './media/01.jpg', width: 1200, height: 800 }, './media/02.jpg'],
+    });
+  });
+
+  it('sans sizeFor, forme courte inchangée', async () => {
+    const snap = await snapshot([entry('s/index.md'), entry('s/media/01.jpg')]);
+    expect(buildImagesManifest(snap, 's')).toEqual({ images: ['./media/01.jpg'] });
+  });
+});

@@ -332,7 +332,7 @@ describe('série conteneur et line-up (§1.8)', () => {
     // première image — `data-image-component` marque le rendu par `<Image>`,
     // là où le repli sert un `<img>` brut.
     const list = htmlOf('series/index.html');
-    const cards = [...list.matchAll(/<article class="hf-card"[\s\S]*?<\/article>/g)].map((m) => m[0]);
+    const cards = [...list.matchAll(/<article class="hf-card[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
     const card = cards.find((c) => c.includes('href="/series/festival-2024/"'));
     expect(card).toBeDefined();
     expect(card).toContain('data-image-component');

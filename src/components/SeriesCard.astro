@@ -13,6 +13,9 @@ import {
   type HeadingLevel,
 } from './runtime.js';
 
+/** Champs de la carte affichés sous le titre. */
+type CardField = 'date' | 'description' | 'location' | 'tags';
+
 interface Props extends InstanceProps {
   series: Series;
   prefix?: string;
@@ -25,6 +28,28 @@ interface Props extends InstanceProps {
   coverImage?: ResolvedImage;
   /** Fournisseur d'image appliqué à `coverImage` (redimensionnement, CDN). */
   imageProvider?: ImageProvider;
+  /**
+   * Disposition. `default` : couverture au-dessus du texte. `overlay` : texte posé
+   * sur la couverture. `text` : pas de couverture, texte seul.
+   * @default 'default'
+   */
+  variant?: 'default' | 'overlay' | 'text';
+  /** Champs affichés sous le titre, dans cet ordre. @default ['date', 'description'] */
+  fields?: CardField[];
+  /** Nombre maximal de mots-clés affichés. @default 5 */
+  maxTags?: number;
+  /** Chargement immédiat de la couverture (au-dessus de la ligne de flottaison). @default false */
+  eager?: boolean;
+  /** Attribut `sizes` de la couverture, pour le choix de la source par le navigateur. */
+  sizes?: string;
+  /**
+   * Couverture décorative : `alt` vide. Pour une carte dont le lien nomme déjà la
+   * série, sans doublon à l'annonce.
+   * @default false
+   */
+  decorativeCover?: boolean;
+  /** Attributs `data-*` / `aria-*` posés sur le lien (le suivi d'un clic, par exemple). */
+  linkAttrs?: Record<string, unknown>;
 }
 
 const {
@@ -33,6 +58,13 @@ const {
   headingLevel,
   coverImage,
   imageProvider,
+  variant = 'default',
+  fields = ['date', 'description'],
+  maxTags = 5,
+  eager = false,
+  sizes,
+  decorativeCover = false,
+  linkAttrs,
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -46,6 +78,15 @@ const Heading = headingTag(headingLevel, 2);
 const rootAttrs = passthroughAttrs(rest);
 const linkLabel = formatLabel(labels['card.link'], { title: String(title) });
 const coverAlt = formatLabel(labels['card.coverAlt'], { title: String(title) });
+const alt = decorativeCover ? '' : coverAlt;
+const loading = eager ? 'eager' : 'lazy';
+
+// Champs libres du frontmatter : la carte ne lit que ce qu'elle affiche.
+const data = series.data as Record<string, unknown>;
+const location = typeof data.location === 'string' ? data.location : undefined;
+const tags = Array.isArray(data.tags) ? (data.tags as string[]) : [];
+const locked = data.private === true;
+const shows = (field: CardField) => fields.includes(field);
 
 const formattedDate = date instanceof Date ? formatDate(date, locale) : undefined;
 
@@ -65,66 +106,78 @@ const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const seriesUrl = `${normalizedPrefix}/${slug}/`;
 ---
 
-<article class:list={['hf-card', className]} {...rootAttrs}>
-  <a href={seriesUrl} class="hf-card__link" aria-label={linkLabel}>
-    <div class="hf-card__cover">
-      {resolvedCover ? (
-        <img
-          src={resolvedCover.src}
-          srcset={resolvedCover.srcset}
-          sizes={resolvedCover.sizes}
-          alt={resolvedCover.alt ?? coverAlt}
-          width={600}
-          height={400}
-          data-hf-fallback={coverFallback}
-          class="hf-card__image"
-          loading="lazy"
-          decoding="async"
-        />
-      ) : cover && optimizeImages ? (
-        <Image
-          src={cover}
-          alt={coverAlt}
-          width={600}
-          height={400}
-          class="hf-card__image"
-          loading="lazy"
-        />
-      ) : cover ? (
-        <img
-          src={(cover as { src: string }).src}
-          alt={coverAlt}
-          width={600}
-          height={400}
-          class="hf-card__image"
-          loading="lazy"
-          decoding="async"
-        />
-      ) : fallbackImage ? (
-        <img
-          src={fallbackImage.src}
-          alt={fallbackImage.alt ?? coverAlt}
-          width={600}
-          height={400}
-          class="hf-card__image"
-          loading="lazy"
-        />
-      ) : (
-        <div class="hf-card__placeholder" aria-hidden="true">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-        </div>
-      )}
-    </div>
+<article class:list={['hf-card', `hf-card--${variant}`, { 'hf-card--locked': locked }, className]} {...rootAttrs}>
+  <a href={seriesUrl} class="hf-card__link" aria-label={linkLabel} {...passthroughAttrs(linkAttrs ?? {})}>
+    {variant !== 'text' && (
+      <div class="hf-card__cover">
+        {resolvedCover ? (
+          <img
+            src={resolvedCover.src}
+            srcset={resolvedCover.srcset}
+            sizes={resolvedCover.sizes ?? sizes}
+            alt={decorativeCover ? '' : (resolvedCover.alt ?? coverAlt)}
+            width={600}
+            height={400}
+            data-hf-fallback={coverFallback}
+            class="hf-card__image"
+            loading={loading}
+            decoding="async"
+          />
+        ) : cover && optimizeImages ? (
+          <Image
+            src={cover}
+            alt={alt}
+            width={600}
+            height={400}
+            sizes={sizes}
+            class="hf-card__image"
+            loading={loading}
+          />
+        ) : cover ? (
+          <img
+            src={(cover as { src: string }).src}
+            alt={alt}
+            width={600}
+            height={400}
+            sizes={sizes}
+            class="hf-card__image"
+            loading={loading}
+            decoding="async"
+          />
+        ) : fallbackImage ? (
+          <img
+            src={fallbackImage.src}
+            alt={decorativeCover ? '' : (fallbackImage.alt ?? coverAlt)}
+            width={600}
+            height={400}
+            sizes={sizes}
+            class="hf-card__image"
+            loading={loading}
+          />
+        ) : (
+          <div class="hf-card__placeholder" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+          </div>
+        )}
+      </div>
+    )}
     <div class="hf-card__body">
+      {locked && <span class="hf-card__badge">{labels['card.locked']}</span>}
       <Heading class="hf-card__title">{title}</Heading>
-      {date instanceof Date && (
+      {shows('date') && date instanceof Date && (
         <time class="hf-card__date" datetime={date.toISOString()}>{formattedDate}</time>
       )}
-      {description && <p class="hf-card__description">{description}</p>}
+      {shows('location') && location && <p class="hf-card__location">{location}</p>}
+      {shows('description') && description && <p class="hf-card__description">{description}</p>}
+      {shows('tags') && tags.length > 0 && (
+        <ul class="hf-card__tags" aria-label={labels['card.tags']}>
+          {tags.slice(0, maxTags).map((tag) => <li>{tag}</li>)}
+        </ul>
+      )}
     </div>
   </a>
 </article>
@@ -191,6 +244,17 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     padding: 1rem;
   }
 
+  .hf-card__badge {
+    display: inline-block;
+    margin-bottom: 0.5rem;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--hf-color-border);
+    font-size: 0.75rem;
+    color: var(--hf-color-text-muted);
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
   .hf-card__title {
     margin: 0 0 0.25rem;
     font-size: 1.1rem;
@@ -207,6 +271,13 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     font-family: var(--hf-font-sans, system-ui);
   }
 
+  .hf-card__location {
+    margin: 0 0 0.25rem;
+    font-size: 0.85rem;
+    color: var(--hf-color-text-muted);
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
   .hf-card__description {
     margin: 0;
     font-size: 0.9rem;
@@ -217,5 +288,48 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+  }
+
+  .hf-card__tags {
+    list-style: none;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .hf-card__tags li {
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--hf-color-border);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--hf-color-text-muted);
+    font-family: var(--hf-font-sans, system-ui);
+  }
+
+  /* Surimpression : le texte posé sur la couverture, sur un voile. */
+  .hf-card--overlay .hf-card__cover {
+    position: relative;
+  }
+
+  .hf-card--overlay .hf-card__body {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--hf-color-overlay);
+  }
+
+  .hf-card--overlay .hf-card__title,
+  .hf-card--overlay .hf-card__date,
+  .hf-card--overlay .hf-card__description,
+  .hf-card--overlay .hf-card__location {
+    color: var(--hf-color-text-overlay);
+  }
+
+  /* Texte seul : pas de couverture, un peu plus d'air. */
+  .hf-card--text .hf-card__body {
+    padding: 1.25rem;
   }
 </style>

@@ -25,6 +25,8 @@ import SeriesLightbox from '../../src/components/SeriesLightbox.astro';
 import SeriesList from '../../src/components/SeriesList.astro';
 import SeriesMap from '../../src/components/SeriesMap.astro';
 import SeriesMasonry from '../../src/components/SeriesMasonry.astro';
+import SeriesPagination from '../../src/components/SeriesPagination.astro';
+import SeriesLineup from '../../src/components/SeriesLineup.astro';
 import { HF_LABELS, formatDate, type HyperfocaleLabels } from '../../src/i18n.js';
 
 let container: AstroContainer;
@@ -94,6 +96,8 @@ const CASES: Array<[string, AnyComponent, Record<string, unknown>]> = [
   ['SeriesMap', SeriesMap, { series: SERIES }],
   ['SeriesMap (vide)', SeriesMap, { series: [] }],
   ['SeriesMasonry', SeriesMasonry, { images: IMAGES }],
+  ['SeriesPagination', SeriesPagination, { page: 2, totalPages: 5, baseUrl: '/s/b' }],
+  ['SeriesLineup', SeriesLineup, { series: SERIES }],
 ];
 
 // ─── Extraction du texte lisible ────────────────────────────────────────────
@@ -155,7 +159,7 @@ function leftovers(text: string, data: string[]): string {
 
 describe('aucun texte lisible hors des libellés (dictionnaire sentinelle)', () => {
   it('couvre les 9 composants', () => {
-    expect(new Set(CASES.map(([name]) => name.split(' ')[0])).size).toBe(9);
+    expect(new Set(CASES.map(([name]) => name.split(' ')[0])).size).toBe(11);
   });
 
   it('le dictionnaire sentinelle couvre toutes les clés', () => {

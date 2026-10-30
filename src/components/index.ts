@@ -15,6 +15,8 @@ export { default as SeriesAttachments } from './SeriesAttachments.astro';
 export { default as SeriesEmbeds } from './SeriesEmbeds.astro';
 export { default as SeriesFilter } from './SeriesFilter.astro';
 export { default as SeriesMap } from './SeriesMap.astro';
+export { default as SeriesPagination } from './SeriesPagination.astro';
+export { default as SeriesLineup } from './SeriesLineup.astro';
 
 export type {
   Series,

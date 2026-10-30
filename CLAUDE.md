@@ -28,9 +28,10 @@ src/
   i18n.ts           ← libellés fr/en (HF_LABELS), formats Intl (dates, pluriels, tailles) — pur
   media.ts          ← résolveur de médias pur (galerie, couverture, documents joints) + primitives partagées avec helpers/
   loader.ts         ← loader Content Layer pour un corpus hors de src/content/ (repli index.<locale>.md → index.md)
-  components/       ← 9 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
-                       SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry)
-                       + runtime.ts (outils internes : attributs passés, headingLevel, JSON de script)
+  components/       ← 11 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
+                       SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry,
+                       SeriesPagination, SeriesLineup)
+                       + runtime.ts (outils internes : attributs passés, headingLevel, pagination, JSON de script)
   routes/           ← pages Astro injectées via injectRoute()
   theme/            ← base.css avec custom properties --hf-*
   ingest/           ← contrat d'ingestion (spec couche 4) : snapshot, diff, validation, garde,
@@ -39,7 +40,7 @@ src/
 tests/
   __mocks__/        ← mocks astro:content et astro:assets (modules virtuels hors runtime)
   unit/             ← tests helpers + schéma Zod ; unit/ingest/ = contrat d'ingestion
-  components/       ← rendu des 9 composants (API container d'Astro, vitest.components.config.ts)
+  components/       ← rendu des 11 composants (API container d'Astro, vitest.components.config.ts)
   e2e/              ← tests routes via astro build statique
   fixtures/spec-ingestion/ ← copie épinglée des fixtures de la spec (npm run fixtures:sync / fixtures:check)
 examples/demo-site/ ← site consommateur pour tester le plugin en conditions réelles
@@ -64,7 +65,7 @@ dist/               ← build tsup (gitignored)
 
 **Feuilles émises à la demande** (#136, 0.24.0) : `SeriesAttachments` n'a pas de `<style>` scopé. Sa feuille vit dans `src/theme/attachments.css` (publiée `@regrets/hyperfocale/styles/attachments.css`, importée en `?raw` par le composant) et part dans un `<style data-hf-styles="attachments">` une fois par page (`claimStyles(Astro.request, …)` de `runtime.ts`), seulement si le composant rend quelque chose, sauf `componentStyles: 'none'` / `unstyled`. Sélecteurs d'une classe, hors couche, sans `:where()` — mesures et raison au README (*Thème → Feuilles des composants et cascade layers*) : ne pas les passer en `:where()` ni en `@layer` d'office. Une feuille de `src/theme/` (hors `base.css`) doit avoir son entrée `./styles/<nom>.css` dans `exports` (test). `vitest.components.config.ts` a `css: true`, sans quoi `?raw` d'un `.css` rend `''`. Un balisage de titre dynamique (`<Heading>`) dans un composant à `<style>` scopé reçoit `data-astro-cid-…="true"` (Astro le traite en composant) — inoffensif, encore présent sur `SeriesEmbeds`/`SeriesCard`.
 
-**Gardes des composants** : `tests/components/labels-sentinel.test.ts` rend les 9 composants avec un dictionnaire sentinelle — un texte lisible écrit en dur dans un `.astro` le fait échouer ; ajouter un composant ou une branche qui émet du texte = l'ajouter aux `CASES`. Le JS client de `SeriesFilter` vit dans `components/filter-client.ts` (entrée tsup, comme `runtime`) et se teste en happy-dom (`tests/components/filter-client.test.ts`).
+**Gardes des composants** : `tests/components/labels-sentinel.test.ts` rend les 11 composants avec un dictionnaire sentinelle — un texte lisible écrit en dur dans un `.astro` le fait échouer ; ajouter un composant ou une branche qui émet du texte = l'ajouter aux `CASES`. Le JS client de `SeriesFilter` vit dans `components/filter-client.ts`, celui de `SeriesLightbox` dans `components/lightbox-client.ts`, le repli d'image dans `components/image-fallback.ts` : entrées tsup comme `runtime`, testées en happy-dom (`tests/components/*-client.test.ts`, `filter-client.test.ts`).
 
 ## CLI
 

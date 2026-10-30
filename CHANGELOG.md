@@ -11,6 +11,30 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Ajouté
 
+- **Lot P1-P4 de l'issue #136 (composants, médias résolus, thème)** :
+  - `SeriesLightbox` en `<dialog>` natif, script client dans `components/lightbox-client.ts` : `loop`, `decorativeAlt`, légende depuis l'`alt`, précharge des voisins, événements `hf:lightbox-open` / `hf:lightbox-navigate`, API `window.hfLightbox` (`open`, `close`, `setImages`).
+  - `SeriesGallery` : `columns`, `masonry`, `eagerCount`, `sizes`. Pagination déléguée à `SeriesPagination`.
+  - `SeriesCard` : `variant` (`default` / `overlay` / `text`), `fields`, `maxTags`, `eager`, `sizes`, `decorativeCover`, `linkAttrs`. Badge « Série privée » pour `private: true`.
+  - `SeriesList` : `cardProps` (options par série, point d'extension de la carte), `masonry`, `coverImages`, `imageProvider`.
+  - `SeriesMasonry`, `SeriesEmbeds` (poster) acceptent des images résolues, avec `imageProvider`.
+  - Nouveaux composants : `SeriesPagination` (pagination compacte, trous en « … ») et `SeriesLineup` (line-up des sous-séries, sorti de la route `series-detail`). Exportés depuis `@regrets/hyperfocale/components`.
+  - `SeriesFilter` : recherche plein texte (casse et accents ignorés), facettes collection et visibilité, index distant `indexUrl` chargé à la première interaction, rendu depuis un `<template>`.
+  - `seriesJsonLd(series, images?)` (helpers) : données structurées `ImageGallery` pour le layout.
+  - `buildImagesManifest` : forme longue `{ url, width, height }` avec l'option `sizeFor` (ingestion).
+  - Repli d'erreur des images réécrites par un `imageProvider` (`data-hf-fallback`, module `components/image-fallback`).
+  - Table « Jetons par composant » dans le README, vérifiée par `tests/unit/tokens.test.ts`.
+- **`ResolvedImage`** gagne `srcset` et `sizes` ; helpers `isResolvedImage`, `applyImageProvider`, `fallbackSrc` dans `@regrets/hyperfocale/media`.
+
+### Modifié
+
+- **`SeriesFilter`** : les filtres par défaut incluent désormais la recherche (`['search', 'tags', 'date', 'location']`). Passer `filters` explicitement retrouve l'ancien rendu.
+- **`SeriesLightbox`** : le balisage est une `<dialog>` (`div#hf-lightbox` avant). La classe `hf-lightbox--open` disparaît : l'ouverture se lit sur l'attribut `open`.
+- **Routes** `series-detail` et `series-page` : libellés et formats suivent `lang` de la série (français par défaut), au lieu d'un français figé.
+
+### Corrigé
+
+- Routes injectées : « Toutes les séries », « Page {n} » et « Dans cette série » ne sont plus écrits en dur en français.
+
 - **Images résolues par l'appelant** (#136, P0) : `SeriesCard` accepte `coverImage` (`ResolvedImage`, sortie de `resolveSeriesMedia`) et `SeriesGallery` accepte des `ResolvedImage` dans `images` / `allImages`. Ces images sont rendues en `<img>` simple, sans `astro:assets` ni `import.meta.glob`. `ResolvedImage` gagne `srcset` et `sizes`.
 - **Fournisseur d'image par instance** (#136, P0) : prop `imageProvider` sur `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesMasonry` et `SeriesEmbeds` (poster), de type `ImageProvider` = `(image, { width, height? }) => ResolvedImage`. Il ne s'applique qu'aux images résolues ; un `ImageMetadata` d'Astro passe toujours par `astro:assets`. Helpers `isResolvedImage`, `applyImageProvider` et `fallbackSrc` dans `@regrets/hyperfocale/media`.
 - **Repli d'erreur des images réécrites** (#136, P0) : une image dont l'URL réécrite échoue retombe, une fois, sur son URL d'origine (`data-hf-fallback`, module client `components/image-fallback`).
