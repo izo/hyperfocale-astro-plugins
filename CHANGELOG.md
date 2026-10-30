@@ -7,6 +7,18 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ---
 
+## [Non publié]
+
+### Corrigé
+
+- **Fichiers système de `media/`** (#155). `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) sont exclus du glob des documents joints — ils étaient proposés au téléchargement et copiés dans le build ; un `Icon\r` dans `media/` faisait même échouer `astro build` (nom de module invalide).
+- **`embeds[].url` et `files[].url` refusent `javascript:`, `data:` et tout schéma autre que `http(s)`** (#152, SEC-003) : schéma Zod, helpers (entrées de `images.json` hors Zod) et `href` des composants.
+- **`hyperfocale init` ne corrompt plus un `content.config.ts` existant** (#153, SEC-004) : fusion limitée à un objet `collections` sans imbrication, sauvegarde `content.config.ts.bak`, sinon lignes à ajouter affichées ; idempotence insensible à l'espacement et aux commentaires.
+
+### Performance
+
+- **`getSeriesImages`, `getSeriesAttachments` et la lecture d'`images.json` ne balaient plus tout le glob** (#151, PERF-001) : index `<collection>/<dirSlug>` construit une fois. 600 séries × 6 images : `astro build` 34,5 s → 18,0 s.
+
 ## [0.25.1] — 2026-10-27 — composants du barrel, types du module virtuel
 
 ### Corrigé

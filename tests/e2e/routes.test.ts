@@ -10,9 +10,9 @@
  * - Le build statique Astro est déterministe et vérifiable via le filesystem
  */
 
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const ROOT = resolve(__dirname, '../..');
@@ -23,7 +23,13 @@ const DEMO_DIST = resolve(DEMO_SITE, 'dist');
  * Builder le plugin puis le demo-site une seule fois avant tous les tests.
  * Timeout élevé car `astro build` peut prendre 30-60s.
  */
+// `Icon\r` (icône de dossier macOS, §4.2) porte un retour chariot dans son nom :
+// on ne le versionne pas, on le crée le temps du build (#155).
+const ICON_FILE = resolve(DEMO_SITE, 'src/content/series/atelier-2026/media', 'Icon\r');
+
 beforeAll(async () => {
+  writeFileSync(ICON_FILE, `SENTINELLE-ICON-CR\n${'x'.repeat(8000)}`);
+
   // 1. Builder le plugin (génère dist/)
   execFileSync('npm', ['run', 'build'], { cwd: ROOT, stdio: 'pipe' });
 
@@ -37,6 +43,10 @@ beforeAll(async () => {
     env: { ...process.env, NODE_ENV: 'production' },
   });
 }, 180_000);
+
+afterAll(() => {
+  rmSync(ICON_FILE, { force: true });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -660,6 +670,35 @@ describe('originaux (§1.9, v2.11)', () => {
     const content = source.toString('base64').slice(0, 64);
     for (const f of files.filter((f) => /\.(html|js|mjs|css|json)$/.test(f))) {
       expect(readFileSync(f, 'utf-8'), f).not.toContain(content);
+    }
+  });
+});
+
+// #155 — fichiers système (§4.2) : `Thumbs.db`, `desktop.ini` et `Icon\r` sont
+// posés dans `atelier-2026/media/` (le dernier le temps du build). Plus de 4 Ko
+// chacun, pour être émis comme fichiers s'ils étaient globbés.
+describe('fichiers système (§4.2)', () => {
+  const page = () => htmlOf('series/atelier-2026/index.html');
+
+  it('ne sont pas des documents joints', () => {
+    const html = page();
+    expect(html).toContain('devis.pdf');
+    expect(html).not.toMatch(/Thumbs|desktop\.ini|Icon/);
+    expect(html.match(/<a class="hf-attachments__link"/g) ?? []).toHaveLength(1);
+  });
+
+  it('ne sont émis nulle part dans le build', () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+        d.isDirectory() ? walk(resolve(dir, d.name)) : [resolve(dir, d.name)],
+      );
+    const files = walk(DEMO_DIST);
+    expect(files.filter((f) => /Thumbs|desktop|Icon/i.test(f))).toEqual([]);
+    for (const marker of ['SENTINELLE-THUMBS-DB', '[.ShellClassInfo]', 'SENTINELLE-ICON-CR']) {
+      const content = Buffer.from(marker).toString('base64').slice(0, 24);
+      for (const f of files.filter((f) => /\.(html|js|mjs|css|json)$/.test(f))) {
+        expect(readFileSync(f, 'utf-8'), `${f} / ${marker}`).not.toContain(content);
+      }
     }
   });
 });

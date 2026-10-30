@@ -2,7 +2,7 @@ import { getCollection } from 'astro:content';
 import type { CollectionEntry, CollectionKey } from 'astro:content';
 import { EMBED_PLATFORMS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
-import { isSafeLinkUrl } from '../ingest/paths.js';
+import { isExcluded, isSafeLinkUrl } from '../ingest/paths.js';
 import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf } from '../media.js';
 import { compareNFC, compareSeriesOrder } from '../order.js';
 import type { ImageManifest, ManifestImage } from '../media.js';
@@ -95,6 +95,10 @@ const _attachmentGlob = import.meta.glob<string>(
   [
     '/src/content/**/media/*',
     '!/src/content/**/media/*.{jpg,jpeg,png,webp,avif,tif,tiff,JPG,JPEG,PNG,WEBP,AVIF,TIF,TIFF}',
+    // Fichiers système (§4.2) : exclus du glob, pas seulement du rendu — comme
+    // un original, un fichier globbé en `?url` serait copié dans le build (#155).
+    // `Icon\r` est l'icône de dossier de macOS : le nom finit par un retour chariot.
+    '!/src/content/**/media/{Thumbs.db,desktop.ini,Icon[\r]}',
     '!/src/content/**/media/*.{[rR][aA][fF],[cC][rR]2,[cC][rR]3,[nN][eE][fF],[nN][rR][wW],[aA][rR][wW],[sS][rR][fF],[sS][rR]2,[oO][rR][fF],[rR][wW]2,[pP][eE][fF],[dD][nN][gG],3[fF][rR],[iI][iI][qQ],[xX]3[fF],[sS][rR][wW],[rR][wW][lL],[eE][rR][fF],[mM][oO][sS],[mM][eE][fF],[kK][dD][cC],[dD][cC][rR],[xX][mM][pP],[pP][pP]3,[dD][oO][pP],[cC][oO][sS]}',
   ],
   { eager: true, query: '?url', import: 'default' },
@@ -591,7 +595,8 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
 
   return (mediaIndex().attachments.get(mediaKey(COLLECTION_NAME, dirSlug)) ?? [])
     .map(({ value, filename }) => ({ url: value, filename }))
-    .filter(({ filename }) => classifyAttachment(filename) !== null)
+    // Fichiers système (§4.2) : jamais proposés au téléchargement (#155).
+    .filter(({ filename }) => !isExcluded(filename) && classifyAttachment(filename) !== null)
     .sort((a, b) => compareNFC(a.filename, b.filename))
     .map(({ url, filename }) => {
       const meta = metaByFilename.get(filename);
