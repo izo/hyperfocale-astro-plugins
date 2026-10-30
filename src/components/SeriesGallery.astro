@@ -2,19 +2,22 @@
 import { Image } from 'astro:assets';
 import SeriesLightbox from './SeriesLightbox.astro';
 import type { ImageMetadata } from '../helpers/index.js';
+import { applyImageProvider, isResolvedImage, type ImageProvider, type ResolvedImage } from '../media.js';
 import { resolveLabels, formatLabel, passthroughAttrs, type InstanceProps } from './runtime.js';
 
 interface Props extends InstanceProps {
-  /** Images de la page courante */
-  images: ImageMetadata[];
+  /** Images de la page courante : `ImageMetadata` d'Astro, ou images résolues par l'appelant */
+  images: Array<ImageMetadata | ResolvedImage>;
   /** Toutes les images de la série (pour la lightbox) */
-  allImages: ImageMetadata[];
+  allImages: Array<ImageMetadata | ResolvedImage>;
   /** Numéro de page courant (1-indexed) */
   page: number;
   /** Nombre total de pages */
   totalPages: number;
   /** URL de base pour la pagination, ex: /series/bretagne-2024 */
   baseUrl: string;
+  /** Fournisseur d'image appliqué aux images résolues (redimensionnement, CDN). */
+  imageProvider?: ImageProvider;
 }
 
 const {
@@ -23,6 +26,7 @@ const {
   page,
   totalPages,
   baseUrl,
+  imageProvider,
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -66,6 +70,13 @@ function pageUrl(p: number): string {
     {images.map((image, i) => {
       const globalIndex = safePageStartIndex + i;
       const alt = image.alt ?? formatLabel(labels['image.alt'], { n: globalIndex + 1 });
+      const resolved = isResolvedImage(image)
+        ? applyImageProvider(
+            image,
+            galleryLayout === 'column' ? { width: 1000 } : { width: 600, height: 400 },
+            imageProvider,
+          )
+        : undefined;
       return (
         <button
           class="hf-gallery__item"
@@ -73,7 +84,19 @@ function pageUrl(p: number): string {
           aria-label={formatLabel(labels['gallery.open'], { n: globalIndex + 1 })}
           data-lightbox-index={globalIndex}
         >
-          {!optimizeImages ? (
+          {resolved ? (
+            <img
+              src={resolved.src}
+              srcset={resolved.srcset}
+              sizes={resolved.sizes}
+              alt={alt}
+              width={resolved.width || undefined}
+              height={resolved.height || undefined}
+              class="hf-gallery__img"
+              loading={globalIndex === 0 ? 'eager' : 'lazy'}
+              decoding="async"
+            />
+          ) : !optimizeImages ? (
             <img
               src={image.src}
               alt={alt}

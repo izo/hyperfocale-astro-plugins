@@ -1,9 +1,10 @@
 ---
 import type { ImageMetadata } from '../helpers/index.js';
+import type { ResolvedImage } from '../media.js';
 import { resolveLabels, passthroughAttrs, scriptJson, type InstanceProps } from './runtime.js';
 
 interface Props extends InstanceProps {
-  images: ImageMetadata[];
+  images: Array<ImageMetadata | ResolvedImage>;
 }
 
 const { images, locale = 'fr', labels: labelOverrides, class: className, ...rest } = Astro.props;

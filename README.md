@@ -581,6 +581,8 @@ Card d'aperçu : cover, titre, date, description.
 | `series` | `Series` | — | Série à présenter |
 | `prefix` | `string` | `/series` | Préfixe du lien |
 | `headingLevel` | `1`–`6` | `2` | Niveau du titre de la carte |
+| `coverImage` | `ResolvedImage` | — | Couverture résolue par l'appelant (sortie de `resolveSeriesMedia`), prioritaire sur `series.data.cover`. Rendue en `<img>` simple, sans `astro:assets` |
+| `imageProvider` | `ImageProvider` | — | Fournisseur appliqué à `coverImage` : `(image, { width, height }) => ResolvedImage` |
 
 ### `<SeriesList series={arr} columns={3} />`
 
@@ -599,10 +601,12 @@ Galerie paginée avec navigation entre les pages.
 
 | Prop | Type | Description |
 |------|------|-------------|
-| `images` | `Image[]` | Images de la page courante |
+| `images` | `Array<ImageMetadata \| ResolvedImage>` | Images de la page courante |
 | `page` | `number` | Numéro de page courant |
 | `totalPages` | `number` | Nombre total de pages |
 | `baseUrl` | `string` | URL de base pour la pagination |
+| `allImages` | `Array<ImageMetadata \| ResolvedImage>` | Toutes les images de la série (lightbox, index de page) |
+| `imageProvider` | `ImageProvider` | Fournisseur appliqué aux images résolues (`src`, `srcset`) |
 
 ### `<SeriesLightbox images={allImgs} />`
 

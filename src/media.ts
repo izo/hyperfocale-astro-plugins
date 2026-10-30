@@ -172,6 +172,47 @@ export interface ResolvedImage {
   readonly alt?: string;
   readonly width?: number;
   readonly height?: number;
+  /** `srcset` déjà formé, typiquement par un `ImageProvider`. */
+  readonly srcset?: string;
+  /** `sizes` accompagnant `srcset`. */
+  readonly sizes?: string;
+}
+
+/** Taille d'affichage visée, en CSS px, transmise à un `ImageProvider`. */
+export interface ImageRequest {
+  readonly width: number;
+  readonly height?: number;
+}
+
+/**
+ * Fournisseur d'image, passé par instance à un composant (`imageProvider`) :
+ * reçoit une image résolue et la taille visée, rend l'image à servir. Il sert à
+ * brancher un redimensionnement à la volée (Cloudflare Image Resizing, un
+ * service d'images, un CDN) sans que le plugin connaisse l'hébergeur.
+ */
+export type ImageProvider = (image: ResolvedImage, request: ImageRequest) => ResolvedImage;
+
+/**
+ * Vrai pour une image résolue par l'appelant (`ResolvedImage`), faux pour un
+ * `ImageMetadata` d'Astro : celui-ci porte toujours `format`, et le rendre passe
+ * par `astro:assets`, pas par le fournisseur.
+ */
+export function isResolvedImage(image: unknown): image is ResolvedImage {
+  return (
+    typeof image === 'object' &&
+    image !== null &&
+    typeof (image as { src?: unknown }).src === 'string' &&
+    !('format' in image)
+  );
+}
+
+/** Applique le fournisseur à une image résolue ; sans fournisseur, l'image passe telle quelle. */
+export function applyImageProvider(
+  image: ResolvedImage,
+  request: ImageRequest,
+  provider?: ImageProvider,
+): ResolvedImage {
+  return provider ? provider(image, request) : image;
 }
 
 /** Codes de diagnostic de §4.10 que le résolveur peut produire. */

@@ -9,6 +9,11 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [Non publié]
 
+### Ajouté
+
+- **Images résolues par l'appelant** (#136, P0) : `SeriesCard` accepte `coverImage` (`ResolvedImage`, sortie de `resolveSeriesMedia`) et `SeriesGallery` accepte des `ResolvedImage` dans `images` / `allImages`. Ces images sont rendues en `<img>` simple, sans `astro:assets` ni `import.meta.glob`. `ResolvedImage` gagne `srcset` et `sizes`.
+- **Fournisseur d'image par instance** (#136, P0) : prop `imageProvider` sur `SeriesCard` et `SeriesGallery`, de type `ImageProvider` = `(image, { width, height? }) => ResolvedImage`. Il ne s'applique qu'aux images résolues ; un `ImageMetadata` d'Astro passe toujours par `astro:assets`. Helpers `isResolvedImage` et `applyImageProvider` dans `@regrets/hyperfocale/media`.
+
 ### Corrigé
 
 - **Fichiers système de `media/`** (#155). `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) sont exclus du glob des documents joints — ils étaient proposés au téléchargement et copiés dans le build ; un `Icon\r` dans `media/` faisait même échouer `astro build` (nom de module invalide).

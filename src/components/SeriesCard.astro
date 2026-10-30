@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import type { Series } from '../helpers/index.js';
 import { getSeriesImages } from '../helpers/index.js';
+import { applyImageProvider, type ImageProvider, type ResolvedImage } from '../media.js';
 import {
   resolveLabels,
   formatLabel,
@@ -17,12 +18,21 @@ interface Props extends InstanceProps {
   prefix?: string;
   /** Niveau du titre de la carte (défaut : 2). */
   headingLevel?: HeadingLevel;
+  /**
+   * Couverture résolue par l'appelant (sortie de `resolveSeriesMedia`), prioritaire
+   * sur `series.data.cover`. Rendue en `<img>` simple : aucun passage par `astro:assets`.
+   */
+  coverImage?: ResolvedImage;
+  /** Fournisseur d'image appliqué à `coverImage` (redimensionnement, CDN). */
+  imageProvider?: ImageProvider;
 }
 
 const {
   series,
   prefix = '/series',
   headingLevel,
+  coverImage,
+  imageProvider,
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -39,8 +49,12 @@ const coverAlt = formatLabel(labels['card.coverAlt'], { title: String(title) });
 
 const formattedDate = date instanceof Date ? formatDate(date, locale) : undefined;
 
+const resolvedCover = coverImage
+  ? applyImageProvider(coverImage, { width: 600, height: 400 }, imageProvider)
+  : undefined;
+
 // Cover fallback — première image si `cover` absent (spec §1.6, #MVP-004)
-const fallbackImage = !cover ? (await getSeriesImages(slug, series))[0] : undefined;
+const fallbackImage = !cover && !resolvedCover ? (await getSeriesImages(slug, series))[0] : undefined;
 
 // `disabled` sert le fichier d'origine, sans passer par `astro:assets`
 // (option `imageOptimization` de l'intégration).
@@ -53,7 +67,19 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
 <article class:list={['hf-card', className]} {...rootAttrs}>
   <a href={seriesUrl} class="hf-card__link" aria-label={linkLabel}>
     <div class="hf-card__cover">
-      {cover && optimizeImages ? (
+      {resolvedCover ? (
+        <img
+          src={resolvedCover.src}
+          srcset={resolvedCover.srcset}
+          sizes={resolvedCover.sizes}
+          alt={resolvedCover.alt ?? coverAlt}
+          width={600}
+          height={400}
+          class="hf-card__image"
+          loading="lazy"
+          decoding="async"
+        />
+      ) : cover && optimizeImages ? (
         <Image
           src={cover}
           alt={coverAlt}

@@ -217,6 +217,38 @@ describe('SeriesCard', () => {
     const html = await render(SeriesCard, { series: SERIES[0], headingLevel: 3 });
     expect(html).toMatch(/<h3[^>]*>Bretagne<\/h3>/);
   });
+
+  it('coverImage résolu : <img> simple, srcset et sizes repris, alt de l’image', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      coverImage: {
+        src: 'https://r2.example/bretagne/01.jpg',
+        width: 1200,
+        height: 800,
+        alt: 'Phare',
+        srcset: 'https://r2.example/bretagne/01-600.jpg 600w, https://r2.example/bretagne/01-1200.jpg 1200w',
+        sizes: '(min-width: 40rem) 600px, 100vw',
+      },
+    });
+    expect(html).toContain('src="https://r2.example/bretagne/01.jpg"');
+    expect(html).toContain('srcset="https://r2.example/bretagne/01-600.jpg 600w, https://r2.example/bretagne/01-1200.jpg 1200w"');
+    expect(html).toContain('sizes="(min-width: 40rem) 600px, 100vw"');
+    expect(html).toContain('alt="Phare"');
+    expect(html).not.toContain('_astro/');
+  });
+
+  it('imageProvider réécrit l’URL de coverImage, sans toucher aux autres champs', async () => {
+    const html = await render(SeriesCard, {
+      series: SERIES[0],
+      coverImage: { src: 'https://r2.example/bretagne/01.jpg', width: 1200, height: 800 },
+      imageProvider: (image: { src: string }, { width }: { width: number }) => ({
+        ...image,
+        src: `/cdn-cgi/image/width=${width}/${image.src}`,
+      }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/bretagne/01.jpg"');
+    expect(html).toContain(`alt="${HF_LABELS.fr['card.coverAlt'].replace('{title}', 'Bretagne')}"`);
+  });
 });
 
 describe('SeriesList', () => {
@@ -255,6 +287,30 @@ describe('SeriesGallery', () => {
     const page2 = await render(SeriesGallery, { ...props, page: 2, images: IMAGES.slice(2) });
     expect(page2).toContain('href="/s/b/"');
     expect(page2).not.toContain('href="/s/b/1/"');
+  });
+
+  it('images résolues : <img> simple aux dimensions fournies, sans passer par astro:assets', async () => {
+    const resolved = [{ src: 'https://r2.example/b/01.jpg', width: 800, height: 600, alt: 'Phare' }];
+    const html = await render(SeriesGallery, { ...props, images: resolved, allImages: resolved });
+    expect(html).toContain('src="https://r2.example/b/01.jpg"');
+    expect(html).toContain('width="800"');
+    expect(html).toContain('height="600"');
+    expect(html).toContain('alt="Phare"');
+    expect(html).not.toContain('_astro/');
+  });
+
+  it('imageProvider s’applique aux images résolues', async () => {
+    const resolved = [{ src: 'https://r2.example/b/01.jpg', width: 800, height: 600 }];
+    const html = await render(SeriesGallery, {
+      ...props,
+      images: resolved,
+      allImages: resolved,
+      imageProvider: (image: { src: string }, { width }: { width: number }) => ({
+        ...image,
+        src: `/cdn-cgi/image/width=${width}/${image.src}`,
+      }),
+    });
+    expect(html).toContain('src="/cdn-cgi/image/width=600/https://r2.example/b/01.jpg"');
   });
 });
 
