@@ -41,6 +41,9 @@ export {
   formatFileSize,
 } from '../i18n.js';
 export type { HyperfocaleLabels, HyperfocaleLabelKey, HfPluralForms, HeadingLevel } from '../i18n.js';
+// JSON à injecter dans un `<script>` via `set:html` : `<` échappé en `\u003c` (#138).
+// Pour les layouts de site, qui reçoivent `schema` en objet (README, *Layout du site*).
+export { scriptJson } from './runtime.js';
 export type {
   InstanceProps as HyperfocaleInstanceProps,
   SeriesAttachmentItem,

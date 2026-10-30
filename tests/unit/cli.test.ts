@@ -138,6 +138,50 @@ describe('CLI — init sur un content.config.ts existant (#153)', () => {
   });
 });
 
+describe('CLI — init --collection (CODE-006, #158)', () => {
+  const CONFIG = 'src/content.config.ts';
+  const read = () => readFileSync(join(work, CONFIG), 'utf-8');
+
+  it('crée la collection au nom demandé', async () => {
+    const { code, stdout } = await run('init', '--collection', 'projects');
+    expect(code).toBe(0);
+    expect(stdout).toContain('La collection "projects" est prête');
+    expect(read()).toContain('projects: seriesCollection');
+    expect(read()).not.toContain('series: seriesCollection');
+  });
+
+  it('forme --collection=nom, et clé entre apostrophes si ce n\'est pas un identifiant', async () => {
+    expect((await run('init', '--collection=brands-fr')).code).toBe(0);
+    expect(read()).toContain("'brands-fr': seriesCollection");
+  });
+
+  it('fusionne dans un fichier existant, et reste idempotent', async () => {
+    tree({ [CONFIG]: `export const collections = { other };\n` });
+    expect((await run('init', '--collection', 'projects')).code).toBe(0);
+    expect(read()).toMatch(/other,\n\s+projects: seriesCollection,/);
+    const again = await run('init', '--collection', 'projects');
+    expect(again.stdout).toContain('Aucune modification nécessaire');
+    expect(read().match(/projects: seriesCollection/g)).toHaveLength(1);
+  });
+
+  it('une clé entre apostrophes déjà présente est reconnue', async () => {
+    tree({ [CONFIG]: `export const collections = {\n  'brands-fr': seriesCollection,\n};\n` });
+    expect((await run('init', '--collection', 'brands-fr')).stdout).toContain('Aucune modification nécessaire');
+  });
+
+  it('refuse un nom invalide : 2, aucun fichier', async () => {
+    const { code, stderr } = await run('init', '--collection', "a'b");
+    expect(code).toBe(2);
+    expect(stderr).toContain('Nom de collection invalide');
+    expect(existsSync(join(work, CONFIG))).toBe(false);
+  });
+
+  it('refuse un argument inconnu : 2', async () => {
+    expect((await run('init', '--nope')).code).toBe(2);
+    expect((await run('init', '--collection')).code).toBe(2);
+  });
+});
+
 describe('CLI — validate', () => {
   it('corpus conforme : 0', async () => {
     const { code, stdout } = await run('validate', join(CORPORA, 'minimal'));

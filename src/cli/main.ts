@@ -3,8 +3,8 @@ import { EXIT, type CliIO } from './io.js';
 
 export const USAGE = `Usage : hyperfocale [commande]
 
-  init                                 Enregistre la collection "series" dans src/content.config.ts
-                                       (commande par défaut)
+  init [--collection <nom>]            Enregistre la collection (défaut : "series") dans
+                                       src/content.config.ts (commande par défaut)
   validate <dossier> [options]         Valide un corpus (contrat d'ingestion, spec §4.10)
       --root <chemin>[:nodate]         Racine de validation, répétable (défaut : tout le corpus)
       --ignore <règle>                 Exclusion supplémentaire, répétable (« _todo/ »)
@@ -29,7 +29,20 @@ const INGEST_COMMANDS = new Set(['validate', 'snapshot', 'diff']);
  */
 export async function main(argv: readonly string[], io: CliIO): Promise<number> {
   const [command, ...rest] = argv;
-  if (command === undefined || command === 'init') return runInit(io);
+  if (command === undefined || command === 'init') {
+    let collection: string | undefined;
+    for (let i = 0; i < rest.length; i++) {
+      const arg = rest[i] as string;
+      const inline = /^--collection=(.*)$/.exec(arg);
+      if (inline) collection = inline[1] as string;
+      else if (arg === '--collection' && rest[i + 1] !== undefined) collection = rest[++i] as string;
+      else {
+        io.stderr(`[hyperfocale] ✗ Argument inconnu pour init : ${arg}\n\n${USAGE}`);
+        return EXIT.usage;
+      }
+    }
+    return runInit(io, collection === undefined ? {} : { collection });
+  }
   if (command === '-h' || command === '--help' || command === 'help') {
     io.stdout(USAGE);
     return EXIT.ok;

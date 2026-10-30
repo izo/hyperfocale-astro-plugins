@@ -8,7 +8,7 @@
 
 import { abortableSleep } from './concurrency.js';
 import { toHex, utf8 } from './hash.js';
-import { classifyPath, collisionKey, compareCanonical, isExcluded } from './paths.js';
+import { classifyPath, collisionKey, compareCanonical, isExcluded, normalizePath } from './paths.js';
 import type { ExclusionRule } from './paths.js';
 import { CursorResetError } from './snapshot.js';
 import type {
@@ -213,9 +213,25 @@ export class DropboxClient {
     return this.refreshToken !== undefined && this.appKey !== undefined;
   }
 
-  /** Obtient un nouveau jeton d'accès depuis le refresh token. */
-  async refreshAccessToken(signal?: AbortSignal): Promise<string> {
-    if (!this.canRefresh) throw new Error('[hyperfocale] Dropbox : refresh token et clé d\'app requis pour rafraîchir.');
+  /** Rafraîchissement en cours, partagé par les requêtes simultanées (PERF-011). */
+  private refreshing: Promise<string> | undefined;
+
+  /**
+   * Obtient un nouveau jeton d'accès depuis le refresh token. Des appels
+   * simultanés — `mapConcurrent` voit N requêtes retrouver le même jeton
+   * expiré — partagent un seul aller-retour vers `oauth2/token`.
+   */
+  refreshAccessToken(signal?: AbortSignal): Promise<string> {
+    if (!this.canRefresh) {
+      return Promise.reject(new Error('[hyperfocale] Dropbox : refresh token et clé d\'app requis pour rafraîchir.'));
+    }
+    this.refreshing ??= this.requestAccessToken(signal).finally(() => {
+      this.refreshing = undefined;
+    });
+    return this.refreshing;
+  }
+
+  private async requestAccessToken(signal?: AbortSignal): Promise<string> {
     const form = new URLSearchParams({
       grant_type: 'refresh_token',
       refresh_token: this.refreshToken as string,
@@ -398,6 +414,10 @@ export class DropboxClient {
   /**
    * Téléverse un fichier : `files/upload` jusqu'à 150 Mio, session d'upload
    * au-delà (`start` → `append_v2` → `finish`).
+   *
+   * `mode` vaut `'overwrite'` par défaut : un fichier existant au même chemin
+   * est **remplacé** sans avertissement. Passer `{ mode: 'add' }` pour que
+   * Dropbox refuse un chemin déjà pris.
    */
   async upload(
     path: string,
@@ -488,7 +508,11 @@ export class DropboxProvider implements ContentProvider {
 
   /** Chemin Dropbox absolu d'un chemin relatif du corpus. */
   private absolute(path: string): string {
-    return `${this.root}/${path}`;
+    // Même contrôle que les providers WebDAV et filesystem (§4.1) : `..`, chemin
+    // absolu ou antislash ne sortent pas de la racine par concaténation (SEC-008).
+    const normalized = normalizePath(path);
+    if (!normalized.valid) throw new Error(`[hyperfocale] chemin refusé « ${path} » : ${normalized.reason}.`);
+    return `${this.root}/${normalized.path}`;
   }
 
   /** Chemin relatif en minuscules, ou `null` hors racine / racine elle-même. */

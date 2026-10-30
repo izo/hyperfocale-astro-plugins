@@ -366,7 +366,8 @@ export async function getAllSeries(collectionName?: string): Promise<Series[]> {
  */
 export async function getSections(collectionName?: string): Promise<Series[]> {
   const all = await getAllSeriesCached(collectionName);
-  return all.filter(isSection).sort((a, b) => a.id.localeCompare(b.id));
+  // Ordre canonique NFC (§1.6), pas une collation locale.
+  return all.filter(isSection).sort((a, b) => compareNFC(a.id, b.id));
 }
 
 /**
@@ -409,7 +410,25 @@ export async function getSeriesList(collectionName?: string): Promise<Series[]> 
  * @example getSubSeries('printemps-bourges-2008') → les séries de chaque artiste
  */
 export async function getSubSeries(containerId: string, collectionName?: string): Promise<Series[]> {
-  const series = (await getAllSeriesCached(collectionName)).filter((entry) => !isSection(entry));
+  const all = await getAllSeriesCached(collectionName);
+  let children = _childrenIndex.get(all);
+  if (children === undefined) {
+    children = buildChildrenIndex(all);
+    _childrenIndex.set(all, children);
+  }
+  return [...(children.get(containerId) ?? [])];
+}
+
+/**
+ * Table `parent → sous-séries triées`, construite en une passe par collection
+ * (PERF-002) : `getSubSeries` était appelé pour chaque série et refiltrait
+ * toute la collection à chaque appel. Clé : le tableau mis en cache par
+ * `getAllSeriesCached`, que `resetSeriesCache()` fait tomber avec lui.
+ */
+const _childrenIndex = new WeakMap<Series[], Map<string, Series[]>>();
+
+function buildChildrenIndex(all: Series[]): Map<string, Series[]> {
+  const series = all.filter((entry) => !isSection(entry));
   const ids = new Set(series.map((entry) => entry.id));
 
   /** Plus proche ancêtre qui est une série, ou `null`. */
@@ -421,19 +440,28 @@ export async function getSubSeries(containerId: string, collectionName?: string)
     return null;
   };
 
-  const subs = series.filter((entry) => parentOf(entry.id) === containerId);
-
   const orderOf = (s: Series): number => {
     const raw = (s.data as Record<string, unknown>).lineup_order;
     return typeof raw === 'number' ? raw : Number.POSITIVE_INFINITY;
   };
 
-  return subs.sort((a, b) => {
-    const oa = orderOf(a);
-    const ob = orderOf(b);
-    if (oa !== ob) return oa - ob;
-    return compareSeriesOrder(a, b);
-  });
+  const children = new Map<string, Series[]>();
+  for (const entry of series) {
+    const parent = parentOf(entry.id);
+    if (parent === null) continue;
+    let list = children.get(parent);
+    if (list === undefined) children.set(parent, (list = []));
+    list.push(entry);
+  }
+  for (const list of children.values()) {
+    list.sort((a, b) => {
+      const oa = orderOf(a);
+      const ob = orderOf(b);
+      if (oa !== ob) return oa - ob;
+      return compareSeriesOrder(a, b);
+    });
+  }
+  return children;
 }
 
 /**
@@ -745,8 +773,14 @@ export interface QuerySeriesOptions {
   published?: boolean;
   /** Filtre sur `draft` (défaut `false`). */
   draft?: boolean;
-  /** Tri : `'date'` (défaut) | `'title'` | `'random'`. */
+  /**
+   * Tri : `'date'` (défaut) | `'title'` (ordre canonique NFC, §1.6 — pas une
+   * collation locale) | `'random'` (mélange de Fisher-Yates, différent à chaque
+   * build sauf avec `seed`).
+   */
   sort?: 'date' | 'title' | 'random';
+  /** Graine entière de `sort: 'random'` : même graine, même ordre. */
+  seed?: number;
   /** Nombre maximum d'éléments retournés. */
   limit?: number;
   /** Index de départ (0-indexed). */
@@ -764,6 +798,26 @@ export interface QueryResult<T> {
   };
 }
 
+/** Générateur pseudo-aléatoire déterministe (mulberry32) dans [0, 1). */
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let t = state;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** Mélange de Fisher-Yates, en place. */
+function shuffle<T>(items: T[], random: () => number): void {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [items[i], items[j]] = [items[j] as T, items[i] as T];
+  }
+}
+
 /**
  * API de requête flexible sur la collection `series`.
  * Remplace `getSeriesList()` pour les cas nécessitant filtres, tri ou pagination.
@@ -777,6 +831,7 @@ export async function querySeries(options: QuerySeriesOptions = {}): Promise<Que
     published = true,
     draft = false,
     sort = 'date',
+    seed,
     limit,
     offset = 0,
     collectionName,
@@ -798,14 +853,19 @@ export async function querySeries(options: QuerySeriesOptions = {}): Promise<Que
     return true;
   });
 
+  // Un mélange n'est pas un tri : un comparateur aléatoire est incohérent et
+  // sa distribution n'est pas uniforme. On mélange d'abord, puis le tri stable
+  // ne fait remonter que les `featured`.
+  if (sort === 'random') shuffle(filtered, seed === undefined ? Math.random : seededRandom(seed));
+
   filtered.sort((a, b) => {
     if (featured === 'first') {
       const aF = d(a).featured ? 1 : 0;
       const bF = d(b).featured ? 1 : 0;
       if (aF !== bF) return bF - aF;
     }
-    if (sort === 'title') return String(a.data.title).localeCompare(String(b.data.title));
-    if (sort === 'random') return Math.random() - 0.5;
+    if (sort === 'random') return 0;
+    if (sort === 'title') return compareNFC(String(a.data.title), String(b.data.title));
     return compareSeriesOrder(a, b);
   });
 

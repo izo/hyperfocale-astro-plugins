@@ -15,14 +15,19 @@ import { resolve, dirname } from 'node:path';
 import type { CliIO } from './io.js';
 
 const VIRTUAL_IMPORT = `import { seriesCollection } from 'virtual:hyperfocale/collection';`;
-const COLLECTION_EXPORT = `series: seriesCollection`;
 
-const TEMPLATE = `${VIRTUAL_IMPORT}
+/** Nom de collection accepté — le même motif que l'option `collectionName` de l'intégration. */
+export const COLLECTION_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
 
-export const collections = {
-  series: seriesCollection,
-};
-`;
+/** Clé d'objet pour la collection : nue si c'est un identifiant, entre apostrophes sinon (`'brands-fr'`). */
+function keyOf(collection: string): string {
+  return /^[A-Za-z_$][\w$]*$/.test(collection) ? collection : `'${collection}'`;
+}
+
+/** Échappe une chaîne pour l'insérer dans une expression régulière. */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 /**
  * Le source où commentaires et contenu des chaînes sont remplacés par des
@@ -73,7 +78,14 @@ function backupPath(configPath: string): string {
 }
 
 /** Exécute `init` dans `io.cwd` ; rend le code de sortie. */
-export function runInit(io: CliIO): number {
+export function runInit(io: CliIO, options: { collection?: string } = {}): number {
+  const collection = options.collection ?? 'series';
+  if (!COLLECTION_NAME_PATTERN.test(collection)) {
+    io.stderr(`[hyperfocale] ✗ Nom de collection invalide : « ${collection} » (lettres, chiffres, « _ » et « - » seulement).\n`);
+    return 2;
+  }
+  const COLLECTION_EXPORT = `${keyOf(collection)}: seriesCollection`;
+  const TEMPLATE = `${VIRTUAL_IMPORT}\n\nexport const collections = {\n  ${COLLECTION_EXPORT},\n};\n`;
   const log = (msg: string) => io.stdout(`[hyperfocale] ${msg}\n`);
   const configPath = resolve(io.cwd, 'src/content.config.ts');
 
@@ -93,7 +105,7 @@ export function runInit(io: CliIO): number {
       mkdirSync(dirname(configPath), { recursive: true });
       writeFileSync(configPath, TEMPLATE, 'utf-8');
       log(`✓ Créé : src/content.config.ts`);
-      log(`  La collection "series" est prête.`);
+      log(`  La collection "${collection}" est prête.`);
       return 0;
     }
 
@@ -101,8 +113,14 @@ export function runInit(io: CliIO): number {
     const code = maskNonCode(existing);
 
     // Idempotence : la clé, au espacement près, hors commentaire et hors chaîne.
-    if (/\bseries\s*:\s*seriesCollection\b/.test(code)) {
-      log(`ℹ src/content.config.ts existe déjà et contient la collection "series".`);
+    const name = escapeRegExp(collection);
+    const bare = new RegExp(`\\b${name}\\s*:\\s*seriesCollection\\b`).test(code);
+    // Clé entre apostrophes : le contenu de la chaîne est masqué dans `code`, on
+    // lit donc le source, et on vérifie que l'ouvrante n'est pas dans un commentaire.
+    const quotedAt = new RegExp(`['"]${name}['"]\\s*:\\s*seriesCollection\\b`).exec(existing)?.index;
+    const quoted = quotedAt !== undefined && (code[quotedAt] === '"' || code[quotedAt] === "'");
+    if (bare || quoted) {
+      log(`ℹ src/content.config.ts existe déjà et contient la collection "${collection}".`);
       log(`  Aucune modification nécessaire.`);
       return 0;
     }

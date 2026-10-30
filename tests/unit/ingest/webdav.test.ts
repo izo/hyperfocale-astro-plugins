@@ -173,3 +173,100 @@ describe('WebDAVProvider', () => {
     ]);
   });
 });
+
+// ─── Durcissement (SEC-007, #158) ────────────────────────────────────────────
+
+describe('WebDAVProvider — transport et bornes', () => {
+  const noFetch: typeof fetch = async () => new Response('', { status: 500 });
+  const multistatus = (body: string) =>
+    `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">${body}</d:multistatus>`;
+  const dirResponse = `<d:response><d:href>/dav/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
+
+  it('refuse http:// hors boucle locale, sauf allowInsecureHttp', () => {
+    expect(() => new WebDAVProvider({ url: 'http://dav.example.com/dav/', fetch: noFetch })).toThrow(/https/);
+    expect(() => new WebDAVProvider({ url: 'http://dav.example.com/dav/', fetch: noFetch, allowInsecureHttp: true })).not.toThrow();
+    expect(() => new WebDAVProvider({ url: 'ftp://dav.example.com/dav/', fetch: noFetch, allowInsecureHttp: true })).toThrow(/https/);
+  });
+
+  it.each(['http://localhost:8080/dav/', 'http://127.0.0.1/dav/', 'http://[::1]:3000/', 'http://dav.localhost/'])(
+    'admet http:// en boucle locale : %s',
+    (url) => {
+      expect(() => new WebDAVProvider({ url, fetch: noFetch })).not.toThrow();
+    },
+  );
+
+  it('des identifiants malformés dans l\'URL ne font pas lever le constructeur', () => {
+    expect(() => new WebDAVProvider({ url: 'https://us%er:p%zz@dav.example.com/dav/', fetch: noFetch })).not.toThrow();
+  });
+
+  it('une référence numérique hors Unicode (&#x110000;) ne fait pas lever le listing', async () => {
+    const file = `<d:response><d:href>/dav/a%26%23x110000%3B.md</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>3</d:getcontentlength></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
+    const hostile = `<d:response><d:href>/dav/&#x110000;&#xD800;x.md</d:href><d:propstat><d:prop><d:resourcetype/><d:getcontentlength>3</d:getcontentlength></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
+    const provider = new WebDAVProvider({
+      url: 'https://dav.example.com/dav/',
+      fetch: async () => new Response(multistatus(dirResponse + file + hostile), { status: 207 }),
+    });
+    await expect(provider.list()).resolves.toBeDefined();
+  });
+
+  it('un listing plus gros que maxListingBytes est refusé', async () => {
+    const provider = new WebDAVProvider({
+      url: 'https://dav.example.com/dav/',
+      maxListingBytes: 200,
+      fetch: async () => new Response(multistatus(dirResponse + 'x'.repeat(500)), { status: 207 }),
+    });
+    await expect(provider.list()).rejects.toThrow(/trop volumineux/);
+  });
+
+  it('un fichier plus gros que maxFileBytes est refusé, qu\'il déclare sa taille ou non', async () => {
+    const declared = new WebDAVProvider({
+      url: 'https://dav.example.com/dav/',
+      maxFileBytes: 10,
+      fetch: async () => new Response('x'.repeat(50), { headers: { 'content-length': '50' } }),
+    });
+    await expect(declared.read('a.bin')).rejects.toThrow(/trop volumineux/);
+
+    const stream = new WebDAVProvider({
+      url: 'https://dav.example.com/dav/',
+      maxFileBytes: 10,
+      fetch: async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('x'.repeat(50)));
+              controller.close();
+            },
+          }),
+        ),
+    });
+    await expect(stream.read('a.bin')).rejects.toThrow(/trop volumineux/);
+
+    const small = new WebDAVProvider({
+      url: 'https://dav.example.com/dav/',
+      maxFileBytes: 10,
+      fetch: async () => new Response('petit'),
+    });
+    expect(new TextDecoder().decode(await small.read('a.bin'))).toBe('petit');
+  });
+
+  it('un serveur qui ne répond pas est interrompu par timeoutMs', async () => {
+    const hanging: typeof fetch = (_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(init.signal?.reason ?? new Error('abort')));
+      });
+    const provider = new WebDAVProvider({ url: 'https://dav.example.com/dav/', fetch: hanging, timeoutMs: 30 });
+    await expect(provider.list()).rejects.toBeDefined();
+  });
+
+  it('le signal de l\'appelant reste honoré avec le délai par défaut', async () => {
+    const hanging: typeof fetch = (_input, init) =>
+      new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('annulé')));
+      });
+    const provider = new WebDAVProvider({ url: 'https://dav.example.com/dav/', fetch: hanging });
+    const controller = new AbortController();
+    const pending = provider.read('a.bin', { signal: controller.signal });
+    controller.abort();
+    await expect(pending).rejects.toThrow(/annulé/);
+  });
+});

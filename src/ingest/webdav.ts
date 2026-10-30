@@ -31,7 +31,10 @@ function decodeEntities(text: string): string {
   return text.replace(/&(#x[0-9a-f]+|#\d+|[a-z]+);/gi, (match, ref: string) => {
     if (ref[0] === '#') {
       const code = ref[1] === 'x' || ref[1] === 'X' ? parseInt(ref.slice(2), 16) : parseInt(ref.slice(1), 10);
-      return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+      // `fromCodePoint` lève `RangeError` au-delà de U+10FFFF ; un substitut isolé
+      // n'est pas un caractère. Une référence invalide reste telle quelle (SEC-007).
+      const valid = Number.isInteger(code) && code >= 0 && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff);
+      return valid ? String.fromCodePoint(code) : match;
     }
     return ENTITIES[ref.toLowerCase()] ?? match;
   });
@@ -153,6 +156,65 @@ export interface WebDAVProviderOptions {
   readonly ignore?: readonly ExclusionRule[];
   /** Requêtes PROPFIND simultanées. Défaut 4. */
   readonly concurrency?: number;
+  /**
+   * Autorise une URL `http:` hors boucle locale. Défaut `false` : l'en-tête
+   * `Authorization: Basic` partirait en clair (SEC-007).
+   */
+  readonly allowInsecureHttp?: boolean;
+  /** Délai maximal d'une requête, en millisecondes. Défaut 120 000 ; `0` : aucun. */
+  readonly timeoutMs?: number;
+  /** Taille maximale d'une réponse PROPFIND, en octets. Défaut 32 Mio. */
+  readonly maxListingBytes?: number;
+  /** Taille maximale d'un fichier lu (`read`), en octets. Défaut : aucune. */
+  readonly maxFileBytes?: number;
+}
+
+const DEFAULT_TIMEOUT_MS = 120_000;
+const DEFAULT_MAX_LISTING_BYTES = 32 * 1024 * 1024;
+
+/** Boucle locale : `localhost`, `*.localhost`, `127.0.0.0/8`, `::1`. */
+function isLoopbackHost(hostname: string): boolean {
+  const host = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  return host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127(\.\d{1,3}){3}$/.test(host);
+}
+
+/** Corps d'une réponse, lu par morceaux ; au-delà de `max` octets, la lecture s'arrête et lève. */
+async function readBounded(response: Response, max: number | undefined, what: string): Promise<Uint8Array> {
+  const declared = Number(response.headers.get('content-length'));
+  if (max !== undefined && Number.isFinite(declared) && declared > max) {
+    await response.body?.cancel();
+    throw new Error(`[hyperfocale] WebDAV : ${what} trop volumineux (${declared} octets, maximum ${max}).`);
+  }
+  if (max === undefined || response.body === null) return new Uint8Array(await response.arrayBuffer());
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > max) {
+      await reader.cancel();
+      throw new Error(`[hyperfocale] WebDAV : ${what} trop volumineux (plus de ${max} octets).`);
+    }
+    chunks.push(value);
+  }
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
+}
+
+/** `decodeURIComponent` sans exception : une séquence malformée reste telle quelle. */
+function safeDecode(text: string): string {
+  try {
+    return decodeURIComponent(text);
+  } catch {
+    return text;
+  }
 }
 
 /** Base64 d'une chaîne UTF-8 — `btoa` n'accepte que du Latin-1. */
@@ -206,16 +268,25 @@ export class WebDAVProvider implements ContentProvider {
   private readonly fetchFn: typeof fetch;
   private readonly ignore: readonly ExclusionRule[];
   private readonly concurrency: number;
+  private readonly timeoutMs: number;
+  private readonly maxListingBytes: number;
+  private readonly maxFileBytes: number | undefined;
   /** Collections connues à l'issue du dernier listing ou écrites depuis. */
   private readonly knownCollections = new Set<string>();
 
   constructor(options: WebDAVProviderOptions) {
     this.base = new URL(options.url.endsWith('/') ? options.url : `${options.url}/`);
+    if (this.base.protocol !== 'https:' && !(this.base.protocol === 'http:' && (options.allowInsecureHttp === true || isLoopbackHost(this.base.hostname)))) {
+      throw new Error(
+        `[hyperfocale] WebDAV : l'URL doit être en https:// (reçu ${this.base.protocol}//${this.base.host}). ` +
+          `Un http:// envoie les identifiants en clair ; \`allowInsecureHttp: true\` le permet explicitement.`,
+      );
+    }
     // Des identifiants dans l'URL (`https://user:pass@…`) passent en
     // authentification basic : `fetch` refuse une telle URL, et elle fuirait
     // dans les messages d'erreur.
-    const username = options.username ?? (this.base.username !== '' ? decodeURIComponent(this.base.username) : undefined);
-    const password = options.password ?? decodeURIComponent(this.base.password);
+    const username = options.username ?? (this.base.username !== '' ? safeDecode(this.base.username) : undefined);
+    const password = options.password ?? safeDecode(this.base.password);
     this.base.username = '';
     this.base.password = '';
     this.basePath = decodePath(this.base.pathname);
@@ -224,6 +295,18 @@ export class WebDAVProvider implements ContentProvider {
     this.fetchFn = options.fetch ?? ((input, init) => globalThis.fetch(input, init));
     this.ignore = options.ignore ?? [];
     this.concurrency = options.concurrency ?? 4;
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.maxListingBytes = options.maxListingBytes ?? DEFAULT_MAX_LISTING_BYTES;
+    this.maxFileBytes = options.maxFileBytes;
+  }
+
+  /** Requête avec le délai par défaut, combiné au signal de l'appelant. */
+  private request(url: string, init: RequestInit, signal?: AbortSignal): Promise<Response> {
+    const signals = [signal, this.timeoutMs > 0 ? AbortSignal.timeout(this.timeoutMs) : undefined].filter(
+      (s): s is AbortSignal => s !== undefined,
+    );
+    const merged = signals.length === 0 ? undefined : signals.length === 1 ? signals[0] : AbortSignal.any(signals);
+    return this.fetchFn(url, { ...init, ...(merged !== undefined ? { signal: merged } : {}) });
   }
 
   /** URL d'un chemin relatif du corpus ; `collection` ajoute le `/` final. */
@@ -239,17 +322,20 @@ export class WebDAVProvider implements ContentProvider {
   }
 
   private async propfind(url: string, depth: '0' | '1', signal?: AbortSignal): Promise<DavResource[]> {
-    const response = await this.fetchFn(url, {
-      method: 'PROPFIND',
-      headers: { ...this.headers, Depth: depth, 'Content-Type': 'application/xml; charset=utf-8' },
-      body: PROPFIND_BODY,
-      ...(signal !== undefined ? { signal } : {}),
-    });
+    const response = await this.request(
+      url,
+      {
+        method: 'PROPFIND',
+        headers: { ...this.headers, Depth: depth, 'Content-Type': 'application/xml; charset=utf-8' },
+        body: PROPFIND_BODY,
+      },
+      signal,
+    );
     if (response.status !== 207) {
       await response.body?.cancel();
       throw new WebDAVError('PROPFIND', url, response.status);
     }
-    return parseMultiStatus(await response.text());
+    return parseMultiStatus(new TextDecoder().decode(await readBounded(response, this.maxListingBytes, 'listing PROPFIND')));
   }
 
   /** Chemin relatif (NFC) d'un href de réponse, `''` pour la racine, `null` hors racine. */
@@ -312,16 +398,12 @@ export class WebDAVProvider implements ContentProvider {
 
   async read(path: string, opts: ProviderCallOptions = {}): Promise<Uint8Array> {
     const url = this.urlFor(this.checked(path));
-    const response = await this.fetchFn(url, {
-      method: 'GET',
-      headers: this.headers,
-      ...(opts.signal !== undefined ? { signal: opts.signal } : {}),
-    });
+    const response = await this.request(url, { method: 'GET', headers: this.headers }, opts.signal);
     if (!response.ok) {
       await response.body?.cancel();
       throw new WebDAVError('GET', url, response.status);
     }
-    return new Uint8Array(await response.arrayBuffer());
+    return readBounded(response, this.maxFileBytes, `fichier « ${path} »`);
   }
 
   /**
@@ -330,25 +412,27 @@ export class WebDAVProvider implements ContentProvider {
    */
   async write(path: string, bytes: Uint8Array, opts: ProviderCallOptions = {}): Promise<SnapshotEntry> {
     const target = this.checked(path);
-    const init = opts.signal !== undefined ? { signal: opts.signal } : {};
     const segments = target.split('/');
     for (let i = 1; i < segments.length; i++) {
       const dir = segments.slice(0, i).join('/');
       if (this.knownCollections.has(dir)) continue;
       const url = this.urlFor(dir, true);
-      const response = await this.fetchFn(url, { method: 'MKCOL', headers: this.headers, ...init });
+      const response = await this.request(url, { method: 'MKCOL', headers: this.headers }, opts.signal);
       await response.body?.cancel();
       if (response.status !== 201 && response.status !== 405) throw new WebDAVError('MKCOL', url, response.status);
       this.knownCollections.add(dir);
     }
 
     const url = this.urlFor(target);
-    const put = await this.fetchFn(url, {
-      method: 'PUT',
-      headers: { ...this.headers, 'Content-Type': 'application/octet-stream' },
-      body: bytes as Uint8Array<ArrayBuffer>,
-      ...init,
-    });
+    const put = await this.request(
+      url,
+      {
+        method: 'PUT',
+        headers: { ...this.headers, 'Content-Type': 'application/octet-stream' },
+        body: bytes as Uint8Array<ArrayBuffer>,
+      },
+      opts.signal,
+    );
     await put.body?.cancel();
     if (!put.ok) throw new WebDAVError('PUT', url, put.status);
 

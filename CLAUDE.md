@@ -12,7 +12,7 @@ Plugin d'intégration Astro pour contenu structuré en séries. La photo à l'or
 npm run build        # tsup → dist/ (ESM + types)
 npm run typecheck    # tsc --noEmit (0 erreur attendu)
 npm test             # tous les tests (unit + e2e) — lent (~60s, build Astro inclus)
-npm run test:unit    # tests unitaires uniquement (~1s)
+npm run test:unit    # tests unitaires + rendu des composants (~20s)
 npm run test:e2e     # tests e2e uniquement — buildent le plugin + demo-site
 npm run pack:dry     # vérifier le contenu du package avant publication
 npm run dev          # tsup --watch (développement)
@@ -22,8 +22,8 @@ npm run dev          # tsup --watch (développement)
 
 ```
 src/
-  index.ts          ← point d'entrée de l'intégration (defineIntegration, options)
-  schema.ts         ← schéma Zod de la collection + module virtuel Vite
+  index.ts          ← point d'entrée de l'intégration (fonction `hyperfocale(options)`, options, module virtuel Vite)
+  schema.ts         ← schéma Zod de la collection (`seriesSchema` / `baseSeriesSchema`)
   helpers/          ← API publique TypeScript (getSeriesList, getSeriesBySlug, etc.) — lit src/content/ par import.meta.glob
   i18n.ts           ← libellés fr/en (HF_LABELS), formats Intl (dates, pluriels, tailles) — pur
   media.ts          ← résolveur de médias pur (galerie, couverture, documents joints) + primitives partagées avec helpers/
@@ -69,7 +69,7 @@ dist/               ← build tsup (gitignored)
 ## CLI
 
 ```bash
-npx hyperfocale init                     # défaut quand aucune commande n'est donnée
+npx hyperfocale init [--collection <nom>] # défaut quand aucune commande n'est donnée
 npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--astro-schema] [--json]
 npx hyperfocale snapshot <dossier> [-o fichier] [--ignore <règle>]… [--json]
 npx hyperfocale diff <base.json> <target.json> [--json]

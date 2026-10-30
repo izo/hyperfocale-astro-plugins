@@ -135,6 +135,15 @@ export interface HyperfocaleOptions {
    * @default true
    */
   listRoute?: boolean;
+
+  /**
+   * Injecter la route de l'ancienne pagination `/{prefix}/{chemin}/{n}/` (valide
+   * jusqu'à la spec 2.12), qui redirige vers `/{prefix}/{chemin}/page/{n}/`. Elle
+   * produit une page de redirection par page de galerie : à `false`, un site
+   * créé après la 0.25 s'épargne ces fichiers. Sans effet si `injectRoutes` est `false`.
+   * @default true
+   */
+  legacyPaginationRedirects?: boolean;
 }
 
 /**
@@ -153,6 +162,7 @@ export interface NormalizedHyperfocaleOptions {
   componentStyles: 'inline' | 'none';
   injectRoutes: boolean;
   listRoute: boolean;
+  legacyPaginationRedirects: boolean;
 }
 
 /**
@@ -177,11 +187,12 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const componentStyles = options.componentStyles ?? 'inline';
   const injectRoutes = options.injectRoutes ?? true;
   const listRoute = options.listRoute ?? true;
+  const legacyPaginationRedirects = options.legacyPaginationRedirects ?? true;
 
   if (!rawPrefix.startsWith('/')) {
     throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${rawPrefix}`);
   }
-  if (pageSize < 1) {
+  if (!Number.isInteger(pageSize) || pageSize < 1) {
     throw new Error(`[hyperfocale] L'option "pageSize" doit être un entier >= 1. Reçu: ${pageSize}`);
   }
   if (!['light', 'dark', 'auto', 'none'].includes(theme)) {
@@ -191,6 +202,13 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   }
   if (!collectionName || collectionName.trim() === '') {
     throw new Error(`[hyperfocale] L'option "collectionName" ne peut pas être vide.`);
+  }
+  // Le nom entre dans une expression régulière et dans le code du module virtuel :
+  // un nom simple, comme le supposent déjà le CLI et le glob des helpers.
+  if (!/^[A-Za-z0-9_-]+$/.test(collectionName)) {
+    throw new Error(
+      `[hyperfocale] L'option "collectionName" ne doit contenir que des lettres, chiffres, "_" et "-". Reçu: ${collectionName}`,
+    );
   }
   if (!['grid', 'column'].includes(galleryLayout)) {
     throw new Error(`[hyperfocale] L'option "galleryLayout" doit être 'grid' ou 'column'. Reçu: ${galleryLayout}`);
@@ -215,7 +233,13 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
     componentStyles,
     injectRoutes,
     listRoute,
+    legacyPaginationRedirects,
   };
+}
+
+/** Échappe une chaîne pour l'insérer dans une expression régulière. */
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
@@ -242,6 +266,7 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
     componentStyles,
     injectRoutes,
     listRoute,
+    legacyPaginationRedirects,
   } = normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
@@ -269,13 +294,13 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
         const contentConfig = resolve(fileURLToPath(config.root), 'src/content.config.ts');
         const registered =
           existsSync(contentConfig) &&
-          new RegExp(`seriesCollection|seriesSchema|baseSeriesSchema|content/${collectionName}\\b`).test(
+          new RegExp(`seriesCollection|seriesSchema|baseSeriesSchema|content/${escapeRegExp(collectionName)}\\b`).test(
             readFileSync(contentConfig, 'utf-8'),
           );
         if (!registered) {
           logger.warn(
             `La collection "${collectionName}" n'est pas enregistrée.\n` +
-            `  → Lancez : npx hyperfocale init`,
+            `  → Lancez : npx hyperfocale init${collectionName === 'series' ? '' : ` --collection ${collectionName}`}`,
           );
         }
 
@@ -306,11 +331,13 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
 
           // Ancienne forme `/{prefix}/{chemin}/{n}/` (jusqu'à la spec 2.12) : redirigée
           // vers `/page/{n}/`, sauf si une sous-série porte ce numéro pour slug.
-          injectRoute({
-            pattern: `${prefix}/[...slug]/[page]/`,
-            entrypoint: resolve(routesDir, 'series-page-legacy.astro'),
-            prerender: true,
-          });
+          if (legacyPaginationRedirects) {
+            injectRoute({
+              pattern: `${prefix}/[...slug]/[page]/`,
+              entrypoint: resolve(routesDir, 'series-page-legacy.astro'),
+              prerender: true,
+            });
+          }
         }
 
         // Le thème part sur **toutes** les pages du site, pas seulement les
@@ -318,7 +345,7 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
         // ses propres pages en a besoin. D'où l'opt-out explicite plutôt qu'un
         // garde sur `injectRoutes`, qui priverait cet usage-là de ses styles.
         if (theme !== 'none') {
-          injectScript('page-ssr', `import "${themeFile}";`);
+          injectScript('page-ssr', `import ${JSON.stringify(themeFile)};`);
 
           // `base.css` articule ses trois blocs sur `data-hf-theme`, attribut que
           // rien n'écrivait : `theme: 'light'` et `theme: 'dark'` étaient donc

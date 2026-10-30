@@ -1,3 +1,4 @@
+import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { parseFrontmatter } from './frontmatter.js';
 import { verifyEntryBytes } from './hash.js';
@@ -34,6 +35,9 @@ export interface GuardOptions {
   readonly read: (side: GuardSide, path: string) => Promise<Uint8Array | string>;
   readonly policy: GuardPolicy;
 }
+
+/** Lectures simultanées de la garde. */
+const GUARD_CONCURRENCY = 8;
 
 function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path: string, message: string): Diagnostic {
   return { code, severity, path, message, rule: '§4.11' };
@@ -146,8 +150,16 @@ export async function guardChangeSet(
       return false;
     };
 
-    for (const [folder, indexPaths] of baseFolders) {
-      if (!(await isPrivate('base', indexPaths))) continue;
+    // Les dossiers de base sont lus en parallèle (PERF-009) : sur un provider
+    // distant, une lecture après l'autre se payait en latence réseau, série par série.
+    // Les diagnostics restent produits dans l'ordre des dossiers.
+    const baseList = [...baseFolders];
+    const basePrivate = await mapConcurrent(baseList, GUARD_CONCURRENCY, ([, indexPaths]) =>
+      isPrivate('base', indexPaths),
+    );
+
+    for (const [position, [folder]] of baseList.entries()) {
+      if (!basePrivate[position]) continue;
       // Homologue dans target : même dossier s'il porte encore un fichier
       // index, sinon la destination du premier fichier index déplacé.
       const firstMove = movedIndexes

@@ -48,6 +48,8 @@ chaque site consommateur.)*
 npx hyperfocale init
 ```
 
+Pour une collection au nom personnalisé (`collectionName`, ou un preset comme `portfolio` → `projects`) : `npx hyperfocale init --collection projects`.
+
 Le CLI crée ou met à jour `src/content.config.ts` pour enregistrer la collection `series`. Idempotent — relancez-le sans risque si le fichier existe déjà.
 
 Sur un fichier existant, `init` ne fusionne que le cas trivial (un objet `collections` sans définition imbriquée) et écrit d'abord une sauvegarde `content.config.ts.bak`. Dès que `collections` contient des `defineCollection({ … })`, des objets ou des tableaux, il laisse le fichier intact et affiche les lignes à ajouter à la main.
@@ -86,6 +88,9 @@ C'est tout — votre site génère maintenant des routes `/series/` automatiquem
 | `dateRequired` | `boolean` | `true` | Si `false`, le champ `date` devient optionnel (collections non temporelles : marques, produits). |
 | `imageOptimization` | `'auto' \| 'disabled'` | `'auto'` | `'disabled'` sert les fichiers d'origine sans passer par `astro:assets` (voir *Déploiement*). |
 | `componentStyles` | `'inline' \| 'none'` | `'inline'` | Feuilles des composants qui portent la leur (`SeriesAttachments` depuis la 0.24.0). `'inline'` : émise par le composant, une fois par page, seulement s'il rend quelque chose. `'none'` : rien n'est émis, le site importe `@regrets/hyperfocale/styles/attachments.css` — voir *Thème → Feuilles des composants et cascade layers*. |
+| `listRoute` | `boolean` | `true` | `false` : l'index `/{prefix}/` n'est pas injecté (le site fournit le sien). |
+| `injectRoutes` | `boolean` | `true` | `false` : aucune route injectée, le site câble ses pages avec les helpers et composants. |
+| `legacyPaginationRedirects` | `boolean` | `true` | `false` : pas de redirection depuis l'ancienne pagination `/{chemin}/{n}/` (jusqu'à la spec 2.12) vers `/{chemin}/page/{n}/` — une page de moins par page de galerie, pour un site créé après la 0.25. |
 | `layout` | `string` | — | Chemin (depuis la racine du projet) d'un layout `.astro` du site qui enveloppe les routes injectées. Absent : document HTML minimal interne. Voir *Layout du site*. |
 
 ### Layout du site
@@ -103,12 +108,14 @@ Avec l'option `layout`, chaque route injectée (liste, détail, pages de galerie
 ```astro
 ---
 // src/layouts/Site.astro
+import { scriptJson } from '@regrets/hyperfocale/components';
+
 const { title, description, lang = 'fr', schema } = Astro.props;
 
 // `schema` est un objet, pas une chaîne : le sérialiser avec `JSON.stringify`
 // seul laisse passer `<` — un titre contenant `</script>` fermerait la balise.
-// Échapper `<` en `\u003c`, que `JSON.parse` restitue tel quel.
-const schemaJson = schema && JSON.stringify(schema).replace(/</g, '\\u003c');
+// `scriptJson` échappe `<` en `\u003c`, que `JSON.parse` restitue tel quel.
+const schemaJson = schema && scriptJson(schema);
 ---
 <html lang={lang}>
   <head>
@@ -786,7 +793,8 @@ const { items, pagination } = await querySeries({
   featured: 'first',          // true = seulement featured · 'first' = remontées en tête
   exclude: ['voyages/asie/tokyo-2024'],
   draft: false,               // défaut false — `published` est déprécié, cf. frontmatter
-  sort: 'date',               // 'date' (défaut) | 'title' | 'random'
+  sort: 'date',               // 'date' (défaut) | 'title' (ordre NFC, §1.6) | 'random' (Fisher-Yates)
+  seed: 42,                   // graine de 'random' : même graine, même ordre
   limit: 12,
   offset: 0,
 });
@@ -1236,7 +1244,7 @@ Importez-les depuis la **racine**, jamais depuis `@regrets/hyperfocale/helpers` 
 
 ```bash
 npx hyperfocale              # = npx hyperfocale init
-npx hyperfocale init
+npx hyperfocale init [--collection <nom>]   # nom de la collection (défaut : series)
 npx hyperfocale validate <dossier> [--root <chemin>[:nodate]]… [--ignore <règle>]… [--astro-schema] [--json]
 npx hyperfocale snapshot <dossier> [-o snapshot.json] [--ignore <règle>]… [--json]
 npx hyperfocale diff <base.json> <target.json> [--json]
@@ -1291,8 +1299,8 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 | Provider | Capacités | Particularités |
 |---|---|---|
 | `FilesystemProvider` | lecture/écriture locales, `sha256` + `dropbox` calculés | hachage en flux, dossiers exclus jamais parcourus ; lien symbolique écarté par défaut (`followSymlinks` pour suivre ceux qui restent sous `root`), erreur de lecture → `complete: false` avec le motif dans `problems` |
-| `DropboxProvider` | lecture/écriture distantes, incrémental, identité stable, webhook, `dropbox` | OAuth avec ou sans secret (PKCE), retry 429/5xx avec `Retry-After` plafonné (`maxRetryWait`, 60 s), upload par session au-delà de 150 Mio, casse des dossiers reconstruite ; les erreurs ne recopient jamais le corps de la réponse |
-| `WebDAVProvider` | lecture/écriture distantes, `x-etag` | PROPFIND `Depth: 1` récursif, ETag conservé tel que rendu par le serveur ; fichier sans taille → `complete: false` ; identifiants jamais dans une erreur |
+| `DropboxProvider` | lecture/écriture distantes, incrémental, identité stable, webhook, `dropbox` | OAuth avec ou sans secret (PKCE), retry 429/5xx avec `Retry-After` plafonné (`maxRetryWait`, 60 s), upload par session au-delà de 150 Mio, casse des dossiers reconstruite ; les erreurs ne recopient jamais le corps de la réponse ; rafraîchissement du jeton partagé entre requêtes simultanées ; `read`/`write` refusent un chemin hors §4.1. `DropboxClient.upload` **remplace** un fichier existant par défaut (`mode: 'overwrite'`) — `{ mode: 'add' }` pour refuser |
+| `WebDAVProvider` | lecture/écriture distantes, `x-etag` | PROPFIND `Depth: 1` récursif, ETag conservé tel que rendu par le serveur ; fichier sans taille → `complete: false` ; identifiants jamais dans une erreur. `https://` exigé hors boucle locale (`allowInsecureHttp: true` pour l'autoriser), délai de 120 s par requête (`timeoutMs`), listing plafonné à 32 Mio (`maxListingBytes`), `maxFileBytes` pour borner un fichier lu |
 
 Un pipeline ne suppose jamais une capacité absente : sans webhook, il réconcilie périodiquement ; sans incrémental, il relit le listing complet (`waitForQuiescence` compare alors des listings successifs).
 

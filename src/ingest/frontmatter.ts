@@ -1,5 +1,10 @@
 import { CORE_SCHEMA, load } from 'js-yaml';
 
+/** Taille maximale du bloc de frontmatter lu, en octets (SEC-010). */
+export const MAX_FRONTMATTER_BYTES = 256 * 1024;
+/** Nombre maximal d'alias YAML (`*ref`) par frontmatter (SEC-010). */
+const MAX_ALIASES = 20;
+
 // `fatal` : des octets qui ne forment pas de l'UTF-8 valide rendent le fichier
 // illisible (§4.10, règle 3) au lieu d'être remplacés par U+FFFD en silence.
 // Le BOM initial est retiré par le décodeur.
@@ -46,9 +51,16 @@ export function parseFrontmatter(content: Uint8Array | string): FrontmatterResul
   const end = lines.indexOf('---', 1);
   if (end === -1) return { status: 'missing' };
 
+  const block = lines.slice(1, end).join('\n');
+  // Plafonds contre un YAML hostile (SEC-010) : une « bombe » d'alias partage ses
+  // références en mémoire et ne devient exponentielle qu'à la sérialisation.
+  if (new TextEncoder().encode(block).length > MAX_FRONTMATTER_BYTES) {
+    return { status: 'invalid', reason: `frontmatter de plus de ${MAX_FRONTMATTER_BYTES / 1024} Kio` };
+  }
+
   let data: unknown;
   try {
-    data = load(lines.slice(1, end).join('\n'), { schema: CORE_SCHEMA });
+    data = load(block, { schema: CORE_SCHEMA, maxAliases: MAX_ALIASES });
   } catch (err) {
     return { status: 'invalid', reason: (err as Error).message.split('\n')[0] ?? 'YAML illisible' };
   }

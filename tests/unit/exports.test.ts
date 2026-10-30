@@ -119,3 +119,27 @@ describe('barrel @regrets/hyperfocale/components', () => {
     });
   }
 });
+
+// Le test ci-dessus lit les sources : il ne verrait pas un barrel construit sans
+// ses composants (#148, CODE-008 — le hook `onSuccess` de tsup change, `dist/`
+// perd les réexports, tout reste vert). Celui-ci lit `dist/`, produit par
+// `npm run build` (et par le hook `prepare` de `npm ci`).
+describe('barrel construit dist/components/index.js', () => {
+  const builtPath = resolve(ROOT, 'dist', 'components', 'index.js');
+
+  it('existe (lancer `npm run build`)', () => {
+    expect(existsSync(builtPath)).toBe(true);
+  });
+
+  for (const name of ASTRO_COMPONENTS) {
+    it(`réexporte ${name}`, () => {
+      // tsup renomme les défauts (`default3 as SeriesList`) : on cherche la liste d'export.
+      expect(readFileSync(builtPath, 'utf-8')).toMatch(new RegExp(`\\bdefault\\d* as ${name}\\b`));
+    });
+  }
+
+  it('réexporte scriptJson, pour les layouts de site (SEC-006)', () => {
+    expect(readFileSync(builtPath, 'utf-8')).toMatch(/\bscriptJson\b/);
+  });
+});
+

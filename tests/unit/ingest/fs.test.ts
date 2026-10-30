@@ -144,6 +144,29 @@ describe('FilesystemProvider', () => {
     });
   });
 
+  // SEC-009 : fenêtre entre `list()` et `read()` — le fichier listé devient un lien.
+  it.skipIf(process.platform === 'win32')('read ne suit pas un fichier listé devenu lien symbolique', async () => {
+    tree(work, { 'root/a.md': 'dans la racine' });
+    tree(work, { 'outside.txt': 'secret' });
+    const root = join(work, 'root');
+    const provider = new FilesystemProvider({ root });
+    await provider.list();
+    rmSync(join(root, 'a.md'));
+    symlinkSync(join(work, 'outside.txt'), join(root, 'a.md'));
+    await expect(provider.read('a.md')).rejects.toThrow();
+  });
+
+  it.skipIf(process.platform === 'win32')('avec followSymlinks, un lien sorti de la racine depuis le listing est refusé à la lecture', async () => {
+    tree(work, { 'root/a.md': 'dans la racine' });
+    tree(work, { 'outside.txt': 'secret' });
+    const root = join(work, 'root');
+    const provider = new FilesystemProvider({ root, followSymlinks: true });
+    await provider.list();
+    rmSync(join(root, 'a.md'));
+    symlinkSync(join(work, 'outside.txt'), join(root, 'a.md'));
+    await expect(provider.read('a.md')).rejects.toBeInstanceOf(UnsafePathError);
+  });
+
   it.skipIf(process.getuid?.() === 0)('une erreur de lecture rend le listing incomplet sans l\'interrompre', async () => {
     tree(work, { 'a/index.md': 'a', 'b/secret.md': 's', 'c/locked/x.md': 'x' });
     chmodSync(join(work, 'b/secret.md'), 0o000);

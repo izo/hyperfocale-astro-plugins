@@ -152,3 +152,24 @@ CORPUS.push(
   entry('mixte/recente', { date: new Date('2024-05-02') }),
   entry('mixte/ordonnee', { date: new Date('2023-01-01'), lineup_order: 1 }),
 );
+
+describe('getSubSeries — table des enfants mémoïsée (PERF-002, #158)', () => {
+  it('rend le même résultat à chaque appel, sans partager le tableau', async () => {
+    const first = await getSubSeries('festival-2024');
+    first.reverse();
+    first.pop();
+    const second = await getSubSeries('festival-2024');
+    expect(second.map((s) => s.id)).toEqual(['festival-2024/set-crepuscule', 'festival-2024/set-aurore']);
+  });
+
+  it('un parent sans sous-série, ou inconnu, rend un tableau vide', async () => {
+    expect(await getSubSeries('bretagne-2024')).toEqual([]);
+    expect(await getSubSeries('inconnu')).toEqual([]);
+  });
+
+  it('ne relit la collection qu\'une fois pour une série d\'appels', async () => {
+    const { getCollectionFetchCount } = await import('../../src/helpers/index.js');
+    for (let i = 0; i < 20; i++) await getSubSeries('festival-2024');
+    expect(getCollectionFetchCount()).toBe(1);
+  });
+});

@@ -157,6 +157,14 @@ describe('routes injectées', () => {
     ]);
   });
 
+  it("legacyPaginationRedirects: false retire seulement la route de redirection (PERF-003)", () => {
+    expect(injectedPatterns({ legacyPaginationRedirects: false })).toEqual([
+      '/series/',
+      '/series/[...slug]/',
+      '/series/[...slug]/page/[n]/',
+    ]);
+  });
+
   it("injectRoutes: false n'injecte aucune route", () => {
     expect(injectedPatterns({ injectRoutes: false })).toEqual([]);
   });
@@ -314,5 +322,43 @@ describe('déclaration de virtual:hyperfocale/collection', () => {
     expect(VIRTUAL_COLLECTION_TYPES).toContain("declare module 'virtual:hyperfocale/collection'");
     expect(VIRTUAL_COLLECTION_TYPES).toContain('export const seriesCollection');
     expect(VIRTUAL_COLLECTION_TYPES).toContain("typeof import('@regrets/hyperfocale').seriesSchema");
+  });
+});
+
+// ─── Validation des options (CODE-005, CODE-013 — #158) ──────────────────────
+
+describe('hyperfocale() — validation des options', () => {
+  it.each([2.5, NaN, 0, -1, Infinity])('refuse pageSize = %s', (pageSize) => {
+    expect(() => hyperfocale({ pageSize })).toThrow(/pageSize/);
+  });
+
+  it('accepte un pageSize entier', () => {
+    expect(() => hyperfocale({ pageSize: 24 })).not.toThrow();
+  });
+
+  it.each(['a(b', "it's", 'a b', 'a/b', '../x', 'a.b'])('refuse collectionName = %j', (collectionName) => {
+    expect(() => hyperfocale({ collectionName })).toThrow(/collectionName/);
+  });
+
+  it.each(['series', 'series_fr', 'brands-fr', 'Albums2'])('accepte collectionName = %j', (collectionName) => {
+    expect(() => hyperfocale({ collectionName })).not.toThrow();
+  });
+
+  it("le chemin du thème est injecté comme une chaîne JSON (pas d'interpolation brute)", () => {
+    const injected: string[] = [];
+    const integration = hyperfocale({ theme: 'auto' });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (integration.hooks['astro:config:setup'] as any)({
+      injectRoute: () => {},
+      injectScript: (_stage: string, code: string) => injected.push(code),
+      updateConfig: () => {},
+      logger: { info: () => {}, warn: () => {} },
+      config: { root: new URL('file:///nonexistent/') },
+    });
+    const themeImport = injected.find((code) => code.startsWith('import '));
+    expect(themeImport).toBeDefined();
+    const literal = /^import (.*);$/.exec(themeImport as string)?.[1] as string;
+    expect(typeof JSON.parse(literal)).toBe('string');
+    expect(JSON.parse(literal)).toMatch(/base\.css$/);
   });
 });

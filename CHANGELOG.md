@@ -15,7 +15,20 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 - **`embeds[].url` et `files[].url` refusent `javascript:`, `data:` et tout schéma autre que `http(s)`** (#152, SEC-003) : schéma Zod, helpers (entrées de `images.json` hors Zod) et `href` des composants.
 - **`hyperfocale init` ne corrompt plus un `content.config.ts` existant** (#153, SEC-004) : fusion limitée à un objet `collections` sans imbrication, sauvegarde `content.config.ts.bak`, sinon lignes à ajouter affichées ; idempotence insensible à l'espacement et aux commentaires.
 
+- **Dette P2 de l'audit du 2026-10-29** (#158, en partie) :
+  - `hyperfocale init --collection <nom>` (CODE-006) ; `pageSize` entier et `collectionName` restreint à `[A-Za-z0-9_-]` (CODE-005) ; chemin du thème injecté en chaîne JSON (CODE-013).
+  - `querySeries({ sort: 'title' })` et `getSections()` suivent l'ordre canonique NFC (§1.6) ; `sort: 'random'` est un vrai mélange de Fisher-Yates, avec `seed` optionnelle (CODE-007). **`sort: 'title'` ne suit plus la collation de la locale** : « B » passe avant « a ».
+  - `scriptJson` est exporté par `@regrets/hyperfocale/components`, pour les layouts de site (SEC-006) ; README : section « Layout du site ».
+  - `WebDAVProvider` : `https://` exigé hors boucle locale, délai et plafonds de taille par défaut, entité XML hors Unicode sans exception (SEC-007). `DropboxProvider` : chemins contrôlés comme ceux des autres providers (SEC-008). `FilesystemProvider.read` : `O_NOFOLLOW`, ou reconfinement avec `followSymlinks` (SEC-009). Frontmatter plafonné à 256 Kio et 20 alias YAML (SEC-010).
+  - `@types/js-yaml` retiré (CODE-010) ; un test lit le barrel construit `dist/components/index.js` (CODE-008) ; `CLAUDE.md` corrigé (CODE-004).
+
+### Ajouté
+
+- Option `legacyPaginationRedirects` (défaut `true`) : `false` n'injecte pas la route de redirection de l'ancienne pagination `/{chemin}/{n}/` (PERF-003).
+
 ### Performance
+
+- `getSubSeries` : table des enfants construite une fois par collection (PERF-002). `guardChangeSet` lit les index de base en parallèle (PERF-009). Rafraîchissement du jeton Dropbox partagé entre requêtes simultanées (PERF-011).
 
 - **`getSeriesImages`, `getSeriesAttachments` et la lecture d'`images.json` ne balaient plus tout le glob** (#151, PERF-001) : index `<collection>/<dirSlug>` construit une fois. 600 séries × 6 images : `astro build` 34,5 s → 18,0 s.
 

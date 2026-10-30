@@ -6,8 +6,8 @@
  */
 
 import { createHash, randomBytes, type Hash } from 'node:crypto';
-import { createReadStream } from 'node:fs';
-import { lstat, mkdir, readdir, readFile, realpath, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
+import { constants, createReadStream } from 'node:fs';
+import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import { mapConcurrent } from './concurrency.js';
 import { DROPBOX_BLOCK_SIZE } from './hash.js';
@@ -280,7 +280,18 @@ export class FilesystemProvider implements ContentProvider {
   }
 
   async read(path: string): Promise<Uint8Array> {
-    return new Uint8Array(await readFile(this.onDisk.get(path) ?? (await this.confined(path))));
+    // Le chemin du dernier listing n'est pas revérifié par `list()` : entre-temps
+    // le fichier a pu être remplacé par un lien. On reconfine donc à la lecture
+    // (`followSymlinks`), ou on ouvre en refusant de suivre le lien final
+    // (`O_NOFOLLOW`) — `ELOOP` si c'en est devenu un (SEC-009).
+    const abs = this.onDisk.get(path) ?? (await this.confined(path));
+    if (this.followSymlinks) await this.confined(path);
+    const handle = await open(abs, this.followSymlinks ? constants.O_RDONLY : constants.O_RDONLY | constants.O_NOFOLLOW);
+    try {
+      return new Uint8Array(await handle.readFile());
+    } finally {
+      await handle.close();
+    }
   }
 
   async write(path: string, bytes: Uint8Array): Promise<SnapshotEntry> {

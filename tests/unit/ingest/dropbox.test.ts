@@ -138,6 +138,23 @@ describe('DropboxClient — authentification', () => {
     expect(auth).toEqual(['Bearer tok-1', 'Bearer tok-2', 'Bearer tok-2', 'Bearer tok-3']);
   });
 
+  it('des requêtes simultanées partagent un seul rafraîchissement (PERF-011)', async () => {
+    let n = 0;
+    const server = fakeDropbox({
+      '/oauth2/token': async () => {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        return json({ access_token: `tok-${++n}`, expires_in: 3600 });
+      },
+      '/2/files/list_folder/get_latest_cursor': json({ cursor: 'c' }),
+    });
+    const client = new DropboxClient({ refreshToken: 'rt', appKey: 'k', fetch: server.fetch });
+    await Promise.all(Array.from({ length: 8 }, () => client.getLatestCursor('')));
+    expect(server.calls.filter((c) => c.url.includes('oauth2/token'))).toHaveLength(1);
+    expect(new Set(server.calls.filter((c) => c.url.includes('/2/')).map((c) => c.headers.Authorization))).toEqual(
+      new Set(['Bearer tok-1']),
+    );
+  });
+
   it('un rafraîchissement refusé lève', async () => {
     const server = fakeDropbox({ '/oauth2/token': json({ error: 'invalid_grant' }, 400) });
     const client = new DropboxClient({ refreshToken: 'rt', appKey: 'k', fetch: server.fetch });
@@ -413,6 +430,16 @@ describe('DropboxProvider', () => {
     expect(JSON.parse(server.calls[0]?.headers['Dropbox-API-Arg'] ?? '')).toEqual({ path: '/MDR Content/a/index.md' });
     expect(JSON.parse(server.calls[1]?.headers['Dropbox-API-Arg'] ?? '').path).toBe('/MDR Content/a/media/01.jpg');
     expect(JSON.parse(server.calls[2]?.body ?? '')).toMatchObject({ path: '/MDR Content', recursive: true });
+  });
+
+  it('read et write refusent un chemin hors contrat §4.1 sans appeler Dropbox (SEC-008)', async () => {
+    const server = fakeDropbox({});
+    const provider = new DropboxProvider({ client: new DropboxClient({ accessToken: 't', fetch: server.fetch }), root: 'MDR Content' });
+    for (const bad of ['../secret', 'a/../../b', '/absolu', 'a\\b', 'a/', '']) {
+      await expect(provider.read(bad), bad).rejects.toThrow(/refusé/);
+      await expect(provider.write(bad, new Uint8Array([1])), bad).rejects.toThrow(/refusé/);
+    }
+    expect(server.calls).toHaveLength(0);
   });
 
   it('racine = tout le Dropbox', async () => {
