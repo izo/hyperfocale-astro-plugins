@@ -22,6 +22,8 @@ interface Props extends InstanceProps {
   coverImages?: Record<string, ResolvedImage>;
   /** Fournisseur d'image, transmis à chaque `SeriesCard`. */
   imageProvider?: ImageProvider;
+  /** Repli de couverture, transmis à chaque `SeriesCard` — voir `SeriesCard`. @default 'series' */
+  coverFallback?: 'series' | 'none';
 }
 
 const {
@@ -33,6 +35,7 @@ const {
   masonry = false,
   coverImages,
   imageProvider,
+  coverFallback = 'series',
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -58,6 +61,7 @@ const rootAttrs = passthroughAttrs(rest);
         headingLevel={headingLevel}
         coverImage={coverImages?.[s.id]}
         imageProvider={imageProvider}
+        coverFallback={coverFallback}
         locale={locale}
         labels={labelOverrides}
         {...(cardProps ? cardProps(s, i) : {})}

@@ -50,6 +50,14 @@ interface Props extends InstanceProps {
   decorativeCover?: boolean;
   /** Attributs `data-*` / `aria-*` posés sur le lien (le suivi d'un clic, par exemple). */
   linkAttrs?: Record<string, unknown>;
+  /**
+   * Repli quand la série n'a ni `cover` ni `coverImage` : `'series'` sert la
+   * première image de la série (spec §1.6, lue dans le corpus local) ; `'none'`
+   * ne lit rien et affiche le placeholder. Un site dont le corpus vient d'un
+   * bucket passe `'none'`.
+   * @default 'series'
+   */
+  coverFallback?: 'series' | 'none';
 }
 
 const {
@@ -65,6 +73,7 @@ const {
   sizes,
   decorativeCover = false,
   linkAttrs,
+  coverFallback = 'series',
   locale = 'fr',
   labels: labelOverrides,
   class: className,
@@ -93,10 +102,11 @@ const formattedDate = date instanceof Date ? formatDate(date, locale) : undefine
 const resolvedCover = coverImage
   ? applyImageProvider(coverImage, { width: 600, height: 400 }, imageProvider)
   : undefined;
-const coverFallback = coverImage && resolvedCover ? fallbackSrc(coverImage, resolvedCover) : undefined;
+const coverOriginSrc = coverImage && resolvedCover ? fallbackSrc(coverImage, resolvedCover) : undefined;
 
 // Cover fallback — première image si `cover` absent (spec §1.6, #MVP-004)
-const fallbackImage = !cover && !resolvedCover ? (await getSeriesImages(slug, series))[0] : undefined;
+const fallbackImage =
+  !cover && !resolvedCover && coverFallback === 'series' ? (await getSeriesImages(slug, series))[0] : undefined;
 
 // `disabled` sert le fichier d'origine, sans passer par `astro:assets`
 // (option `imageOptimization` de l'intégration).
@@ -118,7 +128,7 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
             alt={decorativeCover ? '' : (resolvedCover.alt ?? coverAlt)}
             width={600}
             height={400}
-            data-hf-fallback={coverFallback}
+            data-hf-fallback={coverOriginSrc}
             class="hf-card__image"
             loading={loading}
             decoding="async"
@@ -309,8 +319,9 @@ const seriesUrl = `${normalizedPrefix}/${slug}/`;
     font-family: var(--hf-font-sans, system-ui);
   }
 
-  /* Surimpression : le texte posé sur la couverture, sur un voile. */
-  .hf-card--overlay .hf-card__cover {
+  /* Surimpression : le texte posé sur la couverture, sur un voile. La carte
+     est le bloc de positionnement, sans quoi le texte se pose sur la page. */
+  .hf-card--overlay {
     position: relative;
   }
 

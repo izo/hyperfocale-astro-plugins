@@ -763,3 +763,17 @@ describe('SeriesLineup (#136, P2)', () => {
     expect(await render(SeriesLineup, { series: [] })).not.toContain('hf-lineup');
   });
 });
+
+describe('coverFallback — repli de couverture sans lecture du corpus (#136)', () => {
+  it("coverFallback: 'none' : pas de lecture du corpus, placeholder", async () => {
+    const html = await render(SeriesCard, { series: series('nocover', { title: 'Sans couverture' }), coverFallback: 'none' });
+    expect(html).toContain('hf-card__placeholder');
+    expect(html).not.toContain('<img');
+  });
+
+  it("coverFallback: 'none' transmis par SeriesList", async () => {
+    const html = await render(SeriesList, { series: [series('nocover', { title: 'Sans' })], coverFallback: 'none' });
+    expect(html).toContain('hf-card__placeholder');
+  });
+});
+
