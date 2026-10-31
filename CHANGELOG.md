@@ -11,6 +11,7 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Ajouté
 
+- **Cache de hash du `FilesystemProvider`** (#158, PERF-007) : option `hashCache: true` (défaut `false`), qui réutilise l'empreinte d'un fichier d'un listing à l'autre quand `path`, `size` et `modifiedAt` sont tous identiques, comme le prévoit §4.4 (« Coût et cache », v2.17). Le snapshot est identique avec ou sans cache. `invalidateHashes(path?)` oublie les empreintes retenues, à appeler sur `entry-hash-mismatch`.
 - **Dette P2, troisième tranche** (#158) :
   - `memoizeRead` (`@regrets/hyperfocale/ingest`) : une lecture mémorisée par chemin, que `validateSnapshot` et `guardChangeSet` partagent — chaque fichier index n'est lu qu'une fois (PERF-009). L'exemple d'orchestration du README l'emploie.
   - `npm run test:coverage` (`@vitest/coverage-v8`) : rapport de couverture des tests unitaires, sans seuil, publié en artefact par la CI (CODE-009). Un job e2e hebdomadaire (lundi), lançable à la main, rattrape une dérive d'Astro ou d'une dépendance.

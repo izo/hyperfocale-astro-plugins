@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { createSnapshot, diffSnapshots } from '../../../src/ingest/index.js';
@@ -371,3 +371,98 @@ describe('materializeSnapshot', () => {
     expect(readFileSync(join(baseDir, 'old/index.md'), 'utf-8')).toBe('déplacé');
   });
 });
+
+describe('FilesystemProvider — cache de hash (§4.4, « Coût et cache », #158 PERF-007)', () => {
+  const stamp = new Date('2024-01-01T00:00:00.000Z');
+  const hashOf = (text: string) => sha256(Buffer.from(text));
+
+  /** Réécrit un fichier en lui rendant la date `when` : la taille ne change que si le texte change. */
+  function rewrite(path: string, text: string, when: Date = stamp) {
+    writeFileSync(join(work, path), text);
+    utimesSync(join(work, path), when, when);
+  }
+  const sha = async (provider: FilesystemProvider, path: string) =>
+    (await provider.list()).entries.find((entry) => entry.path === path)?.hashes.sha256;
+
+  it('sans hashCache (défaut) : un fichier réécrit à taille et date identiques est rehaché', async () => {
+    tree(work, { 'a.md': 'AAAA' });
+    utimesSync(join(work, 'a.md'), stamp, stamp);
+    const provider = new FilesystemProvider({ root: work });
+    expect(await sha(provider, 'a.md')).toBe(hashOf('AAAA'));
+    rewrite('a.md', 'BBBB');
+    expect(await sha(provider, 'a.md')).toBe(hashOf('BBBB'));
+  });
+
+  it('avec hashCache : même (path, size, modifiedAt), l\'empreinte est réutilisée sans relire les octets', async () => {
+    tree(work, { 'a.md': 'AAAA' });
+    utimesSync(join(work, 'a.md'), stamp, stamp);
+    const provider = new FilesystemProvider({ root: work, hashCache: true });
+    expect(await sha(provider, 'a.md')).toBe(hashOf('AAAA'));
+    // Le pari documenté : taille et date identiques → l'ancienne empreinte, même si les octets ont changé.
+    rewrite('a.md', 'BBBB');
+    expect(await sha(provider, 'a.md')).toBe(hashOf('AAAA'));
+  });
+
+  it('une taille ou une date différente invalide l\'entrée', async () => {
+    tree(work, { 'a.md': 'AAAA' });
+    utimesSync(join(work, 'a.md'), stamp, stamp);
+    const provider = new FilesystemProvider({ root: work, hashCache: true });
+    await provider.list();
+    rewrite('a.md', 'BBBBB'); // taille différente, même date
+    expect(await sha(provider, 'a.md')).toBe(hashOf('BBBBB'));
+    rewrite('a.md', 'CCCCC', new Date('2024-06-01T00:00:00.000Z')); // même taille, autre date
+    expect(await sha(provider, 'a.md')).toBe(hashOf('CCCCC'));
+  });
+
+  it('invalidateHashes force le rehachage, d\'un chemin ou de tous', async () => {
+    tree(work, { 'a.md': 'AAAA', 'b.md': 'XXXX' });
+    for (const file of ['a.md', 'b.md']) utimesSync(join(work, file), stamp, stamp);
+    const provider = new FilesystemProvider({ root: work, hashCache: true });
+    await provider.list();
+    rewrite('a.md', 'BBBB');
+    rewrite('b.md', 'YYYY');
+    provider.invalidateHashes('a.md');
+    expect(await sha(provider, 'a.md')).toBe(hashOf('BBBB'));
+    expect(await sha(provider, 'b.md')).toBe(hashOf('XXXX'));
+    provider.invalidateHashes();
+    expect(await sha(provider, 'b.md')).toBe(hashOf('YYYY'));
+  });
+
+  it('write oublie l\'empreinte du chemin écrit', async () => {
+    tree(work, { 'a.md': 'AAAA' });
+    utimesSync(join(work, 'a.md'), stamp, stamp);
+    const provider = new FilesystemProvider({ root: work, hashCache: true });
+    await provider.list();
+    const written = await provider.write('a.md', Buffer.from('ZZZZ'));
+    utimesSync(join(work, 'a.md'), stamp, stamp); // même taille, même date qu'avant l'écriture
+    expect(written.hashes.sha256).toBe(hashOf('ZZZZ'));
+    expect(await sha(provider, 'a.md')).toBe(hashOf('ZZZZ'));
+  });
+
+  it('un fichier disparu quitte le cache : réapparu autrement, il est rehaché', async () => {
+    tree(work, { 'a.md': 'AAAA' });
+    utimesSync(join(work, 'a.md'), stamp, stamp);
+    const provider = new FilesystemProvider({ root: work, hashCache: true });
+    await provider.list();
+    rmSync(join(work, 'a.md'));
+    await provider.list();
+    rewrite('a.md', 'BBBB');
+    expect(await sha(provider, 'a.md')).toBe(hashOf('BBBB'));
+  });
+
+  it('le snapshot est identique avec ou sans cache, au premier comme au second listing (invariant 6)', async () => {
+    tree(work, { 'a/index.md': 'A', 'a/media/01.jpg': 'jpg', 'b/index.md': 'B' });
+    const snapshot = async (provider: FilesystemProvider) => {
+      const listing = await provider.list();
+      return createSnapshot(listing.entries, { complete: listing.complete, createdAt: '1970-01-01T00:00:00.000Z' });
+    };
+    const plain = await snapshot(new FilesystemProvider({ root: work }));
+    const cached = new FilesystemProvider({ root: work, hashCache: true });
+    const first = await snapshot(cached);
+    const second = await snapshot(cached);
+    expect(first).toEqual(plain);
+    expect(second).toEqual(plain);
+    expect(second.id).toBe(plain.id);
+  });
+});
+
