@@ -1567,7 +1567,7 @@ npm test             # tous les tests, build Astro inclus (~60s)
 npm run pack:dry     # vérifier le contenu du package
 ```
 
-Voir [`examples/demo-site/`](examples/demo-site/) pour un site consommateur complet.
+Voir [`examples/demo-site/`](examples/demo-site/) pour un site consommateur complet. Pour publier une version : [`docs/publication.md`](docs/publication.md).
 
 ---
 

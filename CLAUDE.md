@@ -6,6 +6,8 @@ Plugin d'intégration Astro pour contenu structuré en séries. La photo à l'or
 
 > Spec canonique (source de vérité) : dépôt externe `izo/hyperfocale-spec` — voir `spec-hyperfocale.md`.
 
+> **Publier** = pousser un tag `vX.Y.Z` sur `main` : procédure dans `docs/publication.md`. Une session Claude Code prépare la PR de release mais **ne pousse pas le tag** (son contrôle de permissions le refuse : « Create Public Surface ») — c'est une étape humaine.
+
 ## Commandes
 
 ```bash
