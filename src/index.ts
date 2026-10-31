@@ -128,6 +128,16 @@ export interface HyperfocaleOptions {
   injectRoutes?: boolean;
 
   /**
+   * Flux de syndication (Annexe E, #155) : RSS 2.0 `/{prefix}/feed.xml`, JSON
+   * Feed 1.1 `/{prefix}/feed.json` pour la langue par défaut, un flux par autre
+   * langue sous `/{prefix}/<lang>/feed.xml` (et `.json`), et `/sitemap.xml` de
+   * toutes les séries publiées. Les URLs sont absolues : `site` doit être défini
+   * dans la configuration Astro, sinon le build échoue.
+   * @default false
+   */
+  feeds?: boolean;
+
+  /**
    * Injecter la route d'index `/{prefix}/` (liste des séries).
    * À `false`, seules les pages de détail sont injectées — le site consommateur
    * fournit sa propre page d'index (ex. `src/pages/series/index.astro`) sans
@@ -163,6 +173,7 @@ export interface NormalizedHyperfocaleOptions {
   injectRoutes: boolean;
   listRoute: boolean;
   legacyPaginationRedirects: boolean;
+  feeds: boolean;
 }
 
 /**
@@ -188,6 +199,7 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   const injectRoutes = options.injectRoutes ?? true;
   const listRoute = options.listRoute ?? true;
   const legacyPaginationRedirects = options.legacyPaginationRedirects ?? true;
+  const feeds = options.feeds ?? false;
 
   if (!rawPrefix.startsWith('/')) {
     throw new Error(`[hyperfocale] L'option "prefix" doit être une chaîne commençant par "/". Reçu: ${rawPrefix}`);
@@ -221,7 +233,12 @@ function normalizeOptions(options: HyperfocaleOptions = {}): NormalizedHyperfoca
   }
 
   const prefix = rawPrefix.endsWith('/') ? rawPrefix.slice(0, -1) : rawPrefix;
+  if (typeof feeds !== 'boolean') {
+    throw new Error(`[hyperfocale] L'option "feeds" doit être un booléen. Reçu: ${String(feeds)}`);
+  }
+
   return {
+    feeds,
     prefix,
     pageSize,
     theme,
@@ -267,6 +284,7 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
     injectRoutes,
     listRoute,
     legacyPaginationRedirects,
+    feeds,
   } = normalizeOptions(options);
   const routesDir = resolve(__dirname, 'routes');
   const themeFile = resolve(__dirname, 'theme', 'base.css');
@@ -338,6 +356,23 @@ export default function hyperfocale(options: HyperfocaleOptions = {}): AstroInte
               prerender: true,
             });
           }
+        }
+
+        // Flux de syndication (Annexe E, #155) : les URLs sont absolues, donc `site`
+        // est obligatoire dès que `feeds` est activé.
+        const feedSite = feeds ? config.site?.toString().replace(/\/$/, '') : undefined;
+        if (feeds) {
+          if (!feedSite) {
+            throw new Error(
+              `[hyperfocale] L'option "feeds" exige "site" dans la configuration Astro (astro.config.mjs) : ` +
+              `les URLs des flux et du sitemap sont absolues.`,
+            );
+          }
+          injectRoute({ pattern: `${prefix}/feed.xml`, entrypoint: resolve(routesDir, 'feed-rss.js'), prerender: true });
+          injectRoute({ pattern: `${prefix}/[lang]/feed.xml`, entrypoint: resolve(routesDir, 'feed-rss-lang.js'), prerender: true });
+          injectRoute({ pattern: `${prefix}/feed.json`, entrypoint: resolve(routesDir, 'feed-json.js'), prerender: true });
+          injectRoute({ pattern: `${prefix}/[lang]/feed.json`, entrypoint: resolve(routesDir, 'feed-json-lang.js'), prerender: true });
+          injectRoute({ pattern: '/sitemap.xml', entrypoint: resolve(routesDir, 'sitemap.js'), prerender: true });
         }
 
         // Le thème part sur **toutes** les pages du site, pas seulement les
@@ -419,6 +454,7 @@ export const seriesCollection = defineCollection({
               'import.meta.env.HYPERFOCALE_THEME': JSON.stringify(theme),
               'import.meta.env.HYPERFOCALE_COLLECTION_NAME': JSON.stringify(collectionName),
               'import.meta.env.HYPERFOCALE_DATE_REQUIRED': JSON.stringify(dateRequired),
+              ...(feedSite ? { 'import.meta.env.HYPERFOCALE_SITE': JSON.stringify(feedSite) } : {}),
               'import.meta.env.HYPERFOCALE_GALLERY_LAYOUT': JSON.stringify(galleryLayout),
               'import.meta.env.HYPERFOCALE_IMAGE_OPTIMIZATION': JSON.stringify(imageOptimization),
               'import.meta.env.HYPERFOCALE_COMPONENT_STYLES': JSON.stringify(componentStyles),

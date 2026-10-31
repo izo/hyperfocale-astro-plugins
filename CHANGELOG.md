@@ -11,6 +11,11 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Ajouté
 
+- **Cache de hash du `FilesystemProvider`** (#158, PERF-007) : option `hashCache: true` (défaut `false`), qui réutilise l'empreinte d'un fichier d'un listing à l'autre quand `path`, `size` et `modifiedAt` sont tous identiques, comme le prévoit §4.4 (« Coût et cache », v2.17). Le snapshot est identique avec ou sans cache. `invalidateHashes(path?)` oublie les empreintes retenues, à appeler sur `entry-hash-mismatch`.
+- **Dette P2, troisième tranche** (#158) :
+  - `memoizeRead` (`@regrets/hyperfocale/ingest`) : une lecture mémorisée par chemin, que `validateSnapshot` et `guardChangeSet` partagent — chaque fichier index n'est lu qu'une fois (PERF-009). L'exemple d'orchestration du README l'emploie.
+  - `npm run test:coverage` (`@vitest/coverage-v8`) : rapport de couverture des tests unitaires, sans seuil, publié en artefact par la CI (CODE-009). Un job e2e hebdomadaire (lundi), lançable à la main, rattrape une dérive d'Astro ou d'une dépendance.
+- **Flux de syndication et sitemap, Annexe E** (#155) : option `feeds: true` (défaut `false`). RSS 2.0 `/{prefix}/feed.xml`, JSON Feed 1.1 `/{prefix}/feed.json`, un flux par autre langue sous `/{prefix}/<lang>/`, et `/sitemap.xml`. Exige `site` dans la configuration Astro. Les brouillons sont exclus. Constructeurs purs dans `src/feeds.ts`.
 - **Lot P1-P4 de l'issue #136 (composants, médias résolus, thème)** :
   - `SeriesLightbox` en `<dialog>` natif, script client dans `components/lightbox-client.ts` : `loop`, `decorativeAlt`, légende depuis l'`alt`, précharge des voisins, événements `hf:lightbox-open` / `hf:lightbox-navigate`, API `window.hfLightbox` (`open`, `close`, `setImages`).
   - `SeriesGallery` : `columns`, `masonry`, `eagerCount`, `sizes`. Pagination déléguée à `SeriesPagination`.
@@ -26,6 +31,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 - **`ResolvedImage`** gagne `srcset` et `sizes` ; helpers `isResolvedImage`, `applyImageProvider`, `fallbackSrc` dans `@regrets/hyperfocale/media`.
 
 ### Modifié
+
+- **Loader Content Layer** (#158, PERF-010) : sur un événement `change` d'un fichier index déjà connu, le watcher ne relit ni ne retraite que ce fichier. Un ajout, une suppression, un fichier inconnu, un identifiant devenu autre ou une rubrique écartée relancent la synchronisation complète.
+- **`SeriesLightbox`** (#158, PERF-004) : le JSON sérialisé à chaque page de galerie ne porte plus que `src` et `alt` — le script client n'emploie ni `width` ni `height`.
 
 - **`SeriesFilter`** : les filtres par défaut incluent désormais la recherche (`['search', 'tags', 'date', 'location']`). Passer `filters` explicitement retrouve l'ancien rendu.
 - **`SeriesLightbox`** : le balisage est une `<dialog>` (`div#hf-lightbox` avant). La classe `hf-lightbox--open` disparaît : l'ouverture se lit sur l'attribut `open`.

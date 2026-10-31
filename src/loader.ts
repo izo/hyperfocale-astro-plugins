@@ -32,7 +32,7 @@
 import type { Loader, LoaderContext } from 'astro/loaders';
 import { parseFrontmatter } from 'astro/markdown';
 import { readdir, readFile, stat } from 'node:fs/promises';
-import { isAbsolute, join, relative, resolve, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { mapConcurrent } from './ingest/concurrency.js';
 import { compareCanonical, isExcluded } from './ingest/paths.js';
@@ -339,11 +339,106 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
         return data;
       };
 
+      /** Fichier index retenu → identifiant, tel que le dernier `sync()` complet l'a établi. */
+      let owners = new Map<string, string>();
+
+      /**
+       * Traite un fichier index : lecture déjà faite, identifiant, `prepare`, cache
+       * par empreinte, validation, `store.set`. Partagé par la synchronisation
+       * complète et par la mise à jour d'un seul fichier.
+       *
+       * Rend `skipped` pour une rubrique écartée (`sections: 'exclude'`), `diverged`
+       * quand `expectedId` est donné et que l'identifiant calculé n'est plus le
+       * même — rien n'est alors écrit —, `unchanged` pour une entrée au cache
+       * valide, `processed` sinon.
+       */
+      const processEntry = async (
+        found: Found,
+        contents: string,
+        seen: Map<string, string>,
+        untouched: Set<string>,
+        warnings: Map<string, string[]>,
+        expectedId?: string,
+      ): Promise<'skipped' | 'diverged' | 'unchanged' | 'processed'> => {
+        const abs = join(found.dir, found.file);
+        const { frontmatter, content } = parseFrontmatter(contents);
+        // §1.10 : le discriminant est `type`, tel qu'écrit dans le fichier.
+        if (sections === 'exclude' && frontmatter.type === 'section') return 'skipped';
+        const id = generateId?.({ path: found.path, file: found.file, data: frontmatter }) ?? (found.path === '' ? 'index' : found.path);
+        if (expectedId !== undefined && id !== expectedId) return 'diverged';
+        const previous = seen.get(id);
+        if (previous !== undefined) {
+          throw new Error(`[hyperfocale] seriesLoader : identifiant « ${id} » produit par ${previous} et ${abs}.`);
+        }
+        seen.set(id, abs);
+        untouched.delete(id);
+
+        const filePath = posix(relative(projectRoot, abs));
+        const data = prepares.length === 0 ? frontmatter : await prepareEntry(frontmatter, {
+          id,
+          path: found.path,
+          slug: found.path.slice(found.path.lastIndexOf('/') + 1),
+          file: found.file,
+          filePath,
+          locale: found.file === 'index.md' ? undefined : locale,
+          collectionLocale: locale,
+          warn: (message: string) => {
+            const ids = warnings.get(message) ?? [];
+            if (!ids.includes(id)) ids.push(id);
+            warnings.set(message, ids);
+          },
+        });
+
+        // Avec `prepare`, le cache porte aussi sur le frontmatter préparé :
+        // une préparation qui change (repli retiré, nouvelle règle) revalide.
+        // Un résultat qui ne se sérialise pas n'est jamais tenu pour inchangé.
+        let prepared: string | null = '';
+        if (prepares.length > 0) {
+          try {
+            prepared = `\n${JSON.stringify(data)}`;
+          } catch {
+            prepared = null;
+          }
+        }
+        const digest = context.generateDigest(`${found.file}\n${contents}${prepared ?? ''}`);
+        const existing = context.store.get(id);
+        if (prepared !== null && existing !== undefined && existing.digest === digest && existing.filePath === filePath) {
+          // Ce que fait `glob()` pour une entrée inchangée : redéclarer ses
+          // images au graphe de modules. La méthode n'est pas dans le type
+          // public de `DataStore`, d'où l'appel optionnel.
+          const store = context.store as typeof context.store & {
+            addAssetImports?: (assets: string[], filePath: string) => void;
+          };
+          if (existing.assetImports?.length) store.addAssetImports?.(existing.assetImports, filePath);
+          return 'unchanged';
+        }
+
+        const parsed = await context.parseData({ id, data, filePath: abs });
+        const rendered = render ? await context.renderMarkdown(content, { fileURL: pathToFileURL(abs) }) : undefined;
+        context.store.set({
+          id,
+          data: parsed,
+          body: content,
+          filePath,
+          digest,
+          ...(rendered !== undefined ? { rendered } : {}),
+          ...(rendered?.metadata?.imagePaths?.length ? { assetImports: rendered.metadata.imagePaths } : {}),
+        });
+        return 'processed';
+      };
+
+      const flushWarnings = (warnings: Map<string, string[]>) => {
+        for (const [message, ids] of warnings) {
+          context.logger.warn(`${message} — ${ids.length} entrée(s) : ${listSome(ids)}`);
+        }
+      };
+
       const sync = async () => {
         const exists = await stat(base).then((s) => s.isDirectory(), () => false);
         if (!exists) {
           context.logger.warn(`Dossier de contenu introuvable : ${base}`);
           context.store.clear();
+          owners = new Map();
           return;
         }
         const untouched = new Set(context.store.keys());
@@ -357,77 +452,40 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
             readFile(join(found.dir, found.file), 'utf-8'),
           );
           for (const [position, found] of discovered.entries()) {
-            const abs = join(found.dir, found.file);
-            const contents = files[position] as string;
-            const { frontmatter, content } = parseFrontmatter(contents);
-            // §1.10 : le discriminant est `type`, tel qu'écrit dans le fichier.
-            if (sections === 'exclude' && frontmatter.type === 'section') continue;
-            const id = generateId?.({ path: found.path, file: found.file, data: frontmatter }) ?? (found.path === '' ? 'index' : found.path);
-            const previous = seen.get(id);
-            if (previous !== undefined) {
-              throw new Error(`[hyperfocale] seriesLoader : identifiant « ${id} » produit par ${previous} et ${abs}.`);
-            }
-            seen.set(id, abs);
-            untouched.delete(id);
-
-            const filePath = posix(relative(projectRoot, abs));
-            const data = prepares.length === 0 ? frontmatter : await prepareEntry(frontmatter, {
-              id,
-              path: found.path,
-              slug: found.path.slice(found.path.lastIndexOf('/') + 1),
-              file: found.file,
-              filePath,
-              locale: found.file === 'index.md' ? undefined : locale,
-              collectionLocale: locale,
-              warn: (message: string) => {
-                const ids = warnings.get(message) ?? [];
-                if (!ids.includes(id)) ids.push(id);
-                warnings.set(message, ids);
-              },
-            });
-
-            // Avec `prepare`, le cache porte aussi sur le frontmatter préparé :
-            // une préparation qui change (repli retiré, nouvelle règle) revalide.
-            // Un résultat qui ne se sérialise pas n'est jamais tenu pour inchangé.
-            let prepared: string | null = '';
-            if (prepares.length > 0) {
-              try {
-                prepared = `\n${JSON.stringify(data)}`;
-              } catch {
-                prepared = null;
-              }
-            }
-            const digest = context.generateDigest(`${found.file}\n${contents}${prepared ?? ''}`);
-            const existing = context.store.get(id);
-            if (prepared !== null && existing !== undefined && existing.digest === digest && existing.filePath === filePath) {
-              // Ce que fait `glob()` pour une entrée inchangée : redéclarer ses
-              // images au graphe de modules. La méthode n'est pas dans le type
-              // public de `DataStore`, d'où l'appel optionnel.
-              const store = context.store as typeof context.store & {
-                addAssetImports?: (assets: string[], filePath: string) => void;
-              };
-              if (existing.assetImports?.length) store.addAssetImports?.(existing.assetImports, filePath);
-              continue;
-            }
-
-            const parsed = await context.parseData({ id, data, filePath: abs });
-            const rendered = render ? await context.renderMarkdown(content, { fileURL: pathToFileURL(abs) }) : undefined;
-            context.store.set({
-              id,
-              data: parsed,
-              body: content,
-              filePath,
-              digest,
-              ...(rendered !== undefined ? { rendered } : {}),
-              ...(rendered?.metadata?.imagePaths?.length ? { assetImports: rendered.metadata.imagePaths } : {}),
-            });
+            await processEntry(found, files[position] as string, seen, untouched, warnings);
           }
+          owners = new Map([...seen].map(([id, abs]) => [abs, id]));
         } finally {
-          for (const [message, ids] of warnings) {
-            context.logger.warn(`${message} — ${ids.length} entrée(s) : ${listSome(ids)}`);
-          }
+          flushWarnings(warnings);
         }
         for (const id of untouched) context.store.delete(id);
+      };
+
+      /**
+       * Met à jour **un seul** fichier index déjà connu (PERF-010) : on ne relit ni ne
+       * retraite les autres. Rend `false` quand ce n'est pas possible sans la
+       * synchronisation complète — fichier inconnu, illisible, rubrique écartée,
+       * identifiant devenu autre : l'appelant retombe alors sur `sync()`.
+       */
+      const syncOne = async (abs: string): Promise<boolean> => {
+        const id = owners.get(abs);
+        if (id === undefined) return false;
+        const contents = await readFile(abs, 'utf-8').catch(() => null);
+        if (contents === null) return false;
+        const dir = dirname(abs);
+        const found: Found = {
+          dir,
+          path: posix(relative(base, dir)).normalize('NFC'),
+          file: basename(abs),
+        };
+        const warnings = new Map<string, string[]>();
+        let outcome: Awaited<ReturnType<typeof processEntry>>;
+        try {
+          outcome = await processEntry(found, contents, new Map(), new Set(), warnings, id);
+        } finally {
+          flushWarnings(warnings);
+        }
+        return outcome === 'processed' || outcome === 'unchanged';
       };
 
       await sync();
@@ -435,14 +493,22 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
       const { watcher } = context;
       if (watcher === undefined) return;
       watcher.add(base);
-      const onChange = async (changed: string) => {
-        if (!changed.startsWith(base) || !changed.endsWith('.md')) return;
+      const relevant = (changed: string) => changed.startsWith(base) && changed.endsWith('.md');
+      const onStructureChange = async (changed: string) => {
+        if (!relevant(changed)) return;
         context.logger.info(`Contenu modifié : ${posix(relative(projectRoot, changed))} — rechargement`);
         await sync();
       };
-      watcher.on('add', onChange);
-      watcher.on('change', onChange);
-      watcher.on('unlink', onChange);
+      // Une édition de fichier connu ne retraite que ce fichier ; un ajout ou une
+      // suppression change la découverte, donc relance la synchronisation complète.
+      const onEdit = async (changed: string) => {
+        if (!relevant(changed)) return;
+        context.logger.info(`Contenu modifié : ${posix(relative(projectRoot, changed))} — rechargement`);
+        if (!(await syncOne(changed))) await sync();
+      };
+      watcher.on('add', onStructureChange);
+      watcher.on('change', onEdit);
+      watcher.on('unlink', onStructureChange);
     },
   };
 }
