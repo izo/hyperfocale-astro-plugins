@@ -42,11 +42,10 @@ prefixes:
 
 ## Review
 
-- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
-  Plus rien à coder. #136 est fusionnée (PR #159). Migration `videos[]` → `embeds[]` : **déjà faite** sur `laurenceguenoun.com` depuis le 12/08 (contenu, générateur et validateur ; #ARCH-002 du site). Reste le how-to `docs/deploiement.md` du site, corrigé en branche `docs/157-embeds-deploiement`, à relire et fusionner côté site. **À fermer** une fois cette branche fusionnée.
-
 ## Done
 
+- [x] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
+  > ✅ **Terminé** le 2026-10-31 — #136 fusionnée (PR #159) ; migration `embeds` déjà faite sur le site depuis le 12/08, how-to `docs/deploiement.md` corrigé (`izo/laurenceguenoun#20`)
 - [x] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
   > ✅ **Terminé** le 2026-10-31 — PR #159 : médias résolus, fournisseur d'image en fonction, galerie et lightbox en `<dialog>`, cartes, listes, pagination, lineup, filtre et recherche, manifeste en forme longue
 - [x] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
