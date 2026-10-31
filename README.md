@@ -1437,7 +1437,7 @@ Le webhook Dropbox n'est qu'un **déclencheur** : `dropboxChallenge(url)` répon
 
 ```ts
 import { readFile, writeFile } from 'node:fs/promises';
-import { createSnapshot, diffSnapshots, guardChangeSet, parseSnapshot, publishable, validateSnapshot } from '@regrets/hyperfocale/ingest';
+import { createSnapshot, diffSnapshots, guardChangeSet, memoizeRead, parseSnapshot, publishable, validateSnapshot } from '@regrets/hyperfocale/ingest';
 import { FilesystemProvider, materializeSnapshot } from '@regrets/hyperfocale/ingest/fs';
 import { DropboxClient, DropboxProvider } from '@regrets/hyperfocale/ingest/dropbox';
 
@@ -1447,6 +1447,9 @@ const source = new DropboxProvider({
   ignore: ['_todo/'],
 });
 const corpus = new FilesystemProvider({ root: 'content' }); // le dossier que lit le Content Layer
+// Validation et garde lisent les mêmes fichiers index de la source : une lecture
+// mémorisée les partage, chaque fichier n'est lu qu'une fois.
+const readSource = memoizeRead((path: string) => source.read(path));
 
 // 1. Dernier état publié (versionné avec le site) et état courant de la source.
 const base = parseSnapshot(await readFile('.hyperfocale/snapshot.json', 'utf-8'));
@@ -1462,9 +1465,9 @@ const target = await createSnapshot(listing.entries, {
 const published = await publishable(target);
 const changeSet = diffSnapshots(base, published);
 const diagnostics = [
-  ...(await validateSnapshot(target, { read: (path) => source.read(path), roots: [{ path: 'series' }] })),
+  ...(await validateSnapshot(target, { read: readSource, roots: [{ path: 'series' }] })),
   ...(await guardChangeSet(changeSet, base, target, {
-    read: (side, path) => (side === 'base' ? corpus.read(path) : source.read(path)),
+    read: (side, path) => (side === 'base' ? corpus.read(path) : readSource(path)),
     policy: { maxDeletedSeries: 5, maxDeletedMediaRatio: 0.2 },
   })),
 ];

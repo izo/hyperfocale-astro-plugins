@@ -13,6 +13,7 @@ npm run build        # tsup → dist/ (ESM + types)
 npm run typecheck    # tsc --noEmit (0 erreur attendu)
 npm test             # tous les tests (unit + e2e) — lent (~60s, build Astro inclus)
 npm run test:unit    # tests unitaires + rendu des composants (~20s)
+npm run test:coverage # couverture des tests unitaires (rapport, sans seuil) → coverage/
 npm run test:e2e     # tests e2e uniquement — buildent le plugin + demo-site
 npm run pack:dry     # vérifier le contenu du package avant publication
 npm run dev          # tsup --watch (développement)

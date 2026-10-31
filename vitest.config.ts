@@ -10,6 +10,15 @@ export default defineConfig({
     // Les tests e2e lancent un vrai build Astro — timeout plus long
     testTimeout: 180_000,
     hookTimeout: 180_000,
+    // Couverture (#158, CODE-009) : un rapport, pas un seuil. Mesure les tests
+    // unitaires (`npm run test:coverage`) ; les composants `.astro` ont leur propre
+    // config et ne sont pas instrumentés ici.
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      reporter: ['text-summary', 'lcov'],
+      reportsDirectory: 'coverage',
+    },
   },
   resolve: {
     alias: {
