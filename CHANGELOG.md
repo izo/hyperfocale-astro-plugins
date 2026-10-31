@@ -9,6 +9,8 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [Non publié]
 
+## [0.26.0] — 2026-10-31 — médias résolus, flux et sitemap, dette P2
+
 ### Ajouté
 
 - **Cache de hash du `FilesystemProvider`** (#158, PERF-007) : option `hashCache: true` (défaut `false`), qui réutilise l'empreinte d'un fichier d'un listing à l'autre quand `path`, `size` et `modifiedAt` sont tous identiques, comme le prévoit §4.4 (« Coût et cache », v2.17). Le snapshot est identique avec ou sans cache. `invalidateHashes(path?)` oublie les empreintes retenues, à appeler sur `entry-hash-mismatch`.
@@ -29,12 +31,16 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
   - Repli d'erreur des images réécrites par un `imageProvider` (`data-hf-fallback`, module `components/image-fallback`).
   - Table « Jetons par composant » dans le README, vérifiée par `tests/unit/tokens.test.ts`.
 - **`ResolvedImage`** gagne `srcset` et `sizes` ; helpers `isResolvedImage`, `applyImageProvider`, `fallbackSrc` dans `@regrets/hyperfocale/media`.
+- **Images résolues par l'appelant** (#136, P0) : `SeriesCard` accepte `coverImage` (`ResolvedImage`, sortie de `resolveSeriesMedia`) et `SeriesGallery` accepte des `ResolvedImage` dans `images` / `allImages`. Ces images sont rendues en `<img>` simple, sans `astro:assets` ni `import.meta.glob`. `ResolvedImage` gagne `srcset` et `sizes`.
+- **Fournisseur d'image par instance** (#136, P0) : prop `imageProvider` sur `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesMasonry` et `SeriesEmbeds` (poster), de type `ImageProvider` = `(image, { width, height? }) => ResolvedImage`. Il ne s'applique qu'aux images résolues ; un `ImageMetadata` d'Astro passe toujours par `astro:assets`. Helpers `isResolvedImage`, `applyImageProvider` et `fallbackSrc` dans `@regrets/hyperfocale/media`.
+- **Repli d'erreur des images réécrites** (#136, P0) : une image dont l'URL réécrite échoue retombe, une fois, sur son URL d'origine (`data-hf-fallback`, module client `components/image-fallback`).
+- `SeriesList` accepte `coverImages` (par `series.id`) et `SeriesMasonry` et `SeriesEmbeds` acceptent des images résolues. `SeriesLightbox` accepte le type, mais affiche toujours l'URL d'origine (pas de fournisseur avant P1).
+- Option `legacyPaginationRedirects` (défaut `true`) : `false` n'injecte pas la route de redirection de l'ancienne pagination `/{chemin}/{n}/` (PERF-003).
 
 ### Modifié
 
 - **Loader Content Layer** (#158, PERF-010) : sur un événement `change` d'un fichier index déjà connu, le watcher ne relit ni ne retraite que ce fichier. Un ajout, une suppression, un fichier inconnu, un identifiant devenu autre ou une rubrique écartée relancent la synchronisation complète.
 - **`SeriesLightbox`** (#158, PERF-004) : le JSON sérialisé à chaque page de galerie ne porte plus que `src` et `alt` — le script client n'emploie ni `width` ni `height`.
-
 - **`SeriesFilter`** : les filtres par défaut incluent désormais la recherche (`['search', 'tags', 'date', 'location']`). Passer `filters` explicitement retrouve l'ancien rendu.
 - **`SeriesLightbox`** : le balisage est une `<dialog>` (`div#hf-lightbox` avant). La classe `hf-lightbox--open` disparaît : l'ouverture se lit sur l'attribut `open`.
 - **Routes** `series-detail` et `series-page` : libellés et formats suivent `lang` de la série (français par défaut), au lieu d'un français figé.
@@ -42,18 +48,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 ### Corrigé
 
 - Routes injectées : « Toutes les séries », « Page {n} » et « Dans cette série » ne sont plus écrits en dur en français.
-
-- **Images résolues par l'appelant** (#136, P0) : `SeriesCard` accepte `coverImage` (`ResolvedImage`, sortie de `resolveSeriesMedia`) et `SeriesGallery` accepte des `ResolvedImage` dans `images` / `allImages`. Ces images sont rendues en `<img>` simple, sans `astro:assets` ni `import.meta.glob`. `ResolvedImage` gagne `srcset` et `sizes`.
-- **Fournisseur d'image par instance** (#136, P0) : prop `imageProvider` sur `SeriesCard`, `SeriesList`, `SeriesGallery`, `SeriesMasonry` et `SeriesEmbeds` (poster), de type `ImageProvider` = `(image, { width, height? }) => ResolvedImage`. Il ne s'applique qu'aux images résolues ; un `ImageMetadata` d'Astro passe toujours par `astro:assets`. Helpers `isResolvedImage`, `applyImageProvider` et `fallbackSrc` dans `@regrets/hyperfocale/media`.
-- **Repli d'erreur des images réécrites** (#136, P0) : une image dont l'URL réécrite échoue retombe, une fois, sur son URL d'origine (`data-hf-fallback`, module client `components/image-fallback`).
-- `SeriesList` accepte `coverImages` (par `series.id`) et `SeriesMasonry` et `SeriesEmbeds` acceptent des images résolues. `SeriesLightbox` accepte le type, mais affiche toujours l'URL d'origine (pas de fournisseur avant P1).
-
-### Corrigé
-
 - **Fichiers système de `media/`** (#155). `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) sont exclus du glob des documents joints — ils étaient proposés au téléchargement et copiés dans le build ; un `Icon\r` dans `media/` faisait même échouer `astro build` (nom de module invalide).
 - **`embeds[].url` et `files[].url` refusent `javascript:`, `data:` et tout schéma autre que `http(s)`** (#152, SEC-003) : schéma Zod, helpers (entrées de `images.json` hors Zod) et `href` des composants.
 - **`hyperfocale init` ne corrompt plus un `content.config.ts` existant** (#153, SEC-004) : fusion limitée à un objet `collections` sans imbrication, sauvegarde `content.config.ts.bak`, sinon lignes à ajouter affichées ; idempotence insensible à l'espacement et aux commentaires.
-
 - **Dette P2 de l'audit du 2026-10-29** (#158, en partie) :
   - `hyperfocale init --collection <nom>` (CODE-006) ; `pageSize` entier et `collectionName` restreint à `[A-Za-z0-9_-]` (CODE-005) ; chemin du thème injecté en chaîne JSON (CODE-013).
   - `querySeries({ sort: 'title' })` et `getSections()` suivent l'ordre canonique NFC (§1.6) ; `sort: 'random'` est un vrai mélange de Fisher-Yates, avec `seed` optionnelle (CODE-007). **`sort: 'title'` ne suit plus la collation de la locale** : « B » passe avant « a ».
@@ -61,14 +58,9 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
   - `WebDAVProvider` : `https://` exigé hors boucle locale, délai et plafonds de taille par défaut, entité XML hors Unicode sans exception (SEC-007). `DropboxProvider` : chemins contrôlés comme ceux des autres providers (SEC-008). `FilesystemProvider.read` : `O_NOFOLLOW`, ou reconfinement avec `followSymlinks` (SEC-009). Frontmatter plafonné à 256 Kio et 20 alias YAML (SEC-010).
   - `@types/js-yaml` retiré (CODE-010) ; un test lit le barrel construit `dist/components/index.js` (CODE-008) ; `CLAUDE.md` corrigé (CODE-004).
 
-### Ajouté
-
-- Option `legacyPaginationRedirects` (défaut `true`) : `false` n'injecte pas la route de redirection de l'ancienne pagination `/{chemin}/{n}/` (PERF-003).
-
 ### Performance
 
 - `getSubSeries` : table des enfants construite une fois par collection (PERF-002). `guardChangeSet` lit les index de base en parallèle (PERF-009). Rafraîchissement du jeton Dropbox partagé entre requêtes simultanées (PERF-011). Le loader lit les fichiers index en parallèle (PERF-010). README : ce que les globs lisent et copient, brouillons compris (PERF-006).
-
 - **`getSeriesImages`, `getSeriesAttachments` et la lecture d'`images.json` ne balaient plus tout le glob** (#151, PERF-001) : index `<collection>/<dirSlug>` construit une fois. 600 séries × 6 images : `astro build` 34,5 s → 18,0 s.
 
 ## [0.25.1] — 2026-10-27 — composants du barrel, types du module virtuel

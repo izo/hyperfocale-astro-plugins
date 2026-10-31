@@ -1,7 +1,7 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.25.1"
+version: "0.26.0"
 updated: 2026-10-31
 priorities:
   P0: Critique (bloquant)
