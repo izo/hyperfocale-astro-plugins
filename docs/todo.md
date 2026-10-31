@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.25.1"
-updated: 2026-10-30
+updated: 2026-10-31
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -28,12 +28,8 @@ prefixes:
 
 ## Backlog
 
-- [ ] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
-  Fournisseur d'image + `ResolvedImage` (reste de P0), galerie et lightbox (P1), cartes et listes (P2), filtre et recherche (P3). Détail et lots chiffrés : issue #136.
-- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
-  Suit #136, dont dépend mdr-monorepo.
 - [ ] #158 [P2] Dette P2 — audit 2026-10-29 #dette
-  Liste à cocher PERF-002 à PERF-012, SEC-006 à SEC-010, CODE-004 à CODE-013 : issue #158.
+  Trois tranches livrées (la dernière : PR #162 et #163). **Reste** : PERF-004 (la lightbox sert l'original : choix assumé, charge utile allégée), PERF-008 (lecture en flux : extension de contrat, issue `izo/hyperfocale-spec#60`), et trois cases informatives sans action : PERF-012, CODE-011, CODE-012. Détail : issue #158.
 
 ## Todo
 
@@ -43,13 +39,18 @@ prefixes:
 
 - [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
-- [ ] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
-  Fichiers système exclus : fait. **Reste** : décision de produit sur les flux (routes par défaut ou opt-in, dépendance à `site`, multilingue).
 
 ## Review
 
+- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
+  Plus rien à coder. #136 est fusionnée (PR #159). Migration `videos[]` → `embeds[]` : **déjà faite** sur `laurenceguenoun.com` depuis le 12/08 (contenu, générateur et validateur ; #ARCH-002 du site). Reste le how-to `docs/deploiement.md` du site, corrigé en branche `docs/157-embeds-deploiement`, à relire et fusionner côté site. **À fermer** une fois cette branche fusionnée.
+
 ## Done
 
+- [x] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
+  > ✅ **Terminé** le 2026-10-31 — PR #159 : médias résolus, fournisseur d'image en fonction, galerie et lightbox en `<dialog>`, cartes, listes, pagination, lineup, filtre et recherche, manifeste en forme longue
+- [x] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
+  > ✅ **Terminé** le 2026-10-31 — PR #160 : `feeds: true`, `site` obligatoire, un flux par langue, sitemap ; fichiers système exclus (#155, fecdf75)
 - [x] #CODE-002 #CODE-003 [P1] README remis à la spec 2.16, paragraphe fixtures, section « Layout du site » ; ce tableau régénéré #doc #effort-s
   > ✅ **Terminé** le 2026-10-30 — issue #156
 - [x] #SEC-003 [P1] `embeds[].url` et `files[].url` refusent `javascript:`, `data:` et tout schéma autre que `http(s)` #sécurité #effort-s
