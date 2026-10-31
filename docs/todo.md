@@ -39,13 +39,13 @@ prefixes:
 
 - [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
-- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
-  Suit #136, dont le code est terminé (PR #159, à fusionner). **Reste** : migrer `laurenceguenoun.com` de `videos[]` vers `embeds`, dans `izo/laurenceguenoun`. L'ajout de ce dépôt à la session a été refusé : il faut l'autoriser, ou faire la migration depuis ce dépôt.
 
 ## Review
 
 - [ ] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
   Code terminé : médias résolus, fournisseur d'image en fonction, galerie et lightbox, cartes et listes, pagination, lineup, filtre et recherche, manifeste en forme longue. En relecture : PR #159, qui fermera l'issue à la fusion.
+- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
+  Plus rien à coder. Suit #136 : code terminé, PR #159 à fusionner. Migration `videos[]` → `embeds[]` : **déjà faite** sur `laurenceguenoun.com` depuis le 12/08 (contenu, générateur et validateur ; #ARCH-002 du site). Reste le how-to `docs/deploiement.md` du site, corrigé en branche `docs/157-embeds-deploiement`. **À fermer** après la fusion de #159.
 - [ ] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
   Fichiers système exclus : fait. Flux et sitemap : fait (`feeds: true`, `site` obligatoire, un flux par langue). En relecture : PR #160, empilée sur #159 — ramener sa base sur `main` après la fusion de #159.
 
