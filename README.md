@@ -411,6 +411,31 @@ Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redime
 
 Le préfixe `/series` est configurable via l'option `prefix`. Les slugs hiérarchiques (`voyages/asie/tokyo-2024`) sont gérés par des routes catch-all. La pagination passe sous `page/` (spec §1.6) : sans cela, la page 2 de la galerie d'un conteneur et sa sous-série dont le slug est `2` auraient la même URL. Un dossier nommé `page` directement dans une série est donc réservé.
 
+**L'index n'est pas paginé** (#158, PERF-005). `/series/` rend toute la collection sur une page, ce qui reste raisonnable jusqu'à quelques centaines de séries. Au-delà, le plugin n'injecte pas de route paginée : un site qui en a besoin coupe la route d'index (`listRoute: false`) et écrit la sienne avec `querySeries`, `SeriesList` et `SeriesPagination` — la page 1 est `/series/`, les suivantes `/series/page/n/`, comme la galerie d'une série :
+
+```astro
+---
+// src/pages/series/page/[n].astro — la page 1 se rend de la même façon dans src/pages/series/index.astro
+import { querySeries } from '@regrets/hyperfocale/helpers';
+import { SeriesList, SeriesPagination } from '@regrets/hyperfocale/components';
+
+const PAGE_SIZE = 24;
+
+export async function getStaticPaths() {
+  const { pagination } = await querySeries({ limit: PAGE_SIZE });
+  return Array.from({ length: pagination.totalPages }, (_, i) => ({ params: { n: String(i + 1) } }));
+}
+
+const page = Number(Astro.params.n);
+const { items, pagination } = await querySeries({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
+---
+
+<SeriesList series={items} />
+<SeriesPagination page={page} totalPages={pagination.totalPages} baseUrl="/series" />
+```
+
+Pour un `SeriesFilter` sur une grande collection, ne rendre que quelques séries et laisser `indexUrl` charger le reste à la première interaction (voir *Composants → SeriesFilter*).
+
 ---
 
 ## Composants
