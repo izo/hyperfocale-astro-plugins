@@ -777,3 +777,14 @@ describe('coverFallback — repli de couverture sans lecture du corpus (#136)', 
   });
 });
 
+describe('SeriesLightbox — charge utile allégée (#158, PERF-004)', () => {
+  it('le JSON ne porte que src et alt : ni width ni height, que le script n\'emploie pas', async () => {
+    const html = await render(SeriesLightbox, { images: IMAGES });
+    const json = html.match(/<script type="application\/json" id="hf-lightbox-data"[^>]*>([\s\S]*?)<\/script>/)?.[1];
+    const list = JSON.parse(json ?? '[]') as Array<Record<string, unknown>>;
+    expect(list).toHaveLength(3);
+    for (const entry of list) expect(Object.keys(entry).every((key) => key === 'src' || key === 'alt')).toBe(true);
+    expect(list[0]).toEqual({ src: '/m/01.jpg', alt: 'Phare' });
+  });
+});
+

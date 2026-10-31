@@ -51,9 +51,11 @@ const rootAttrs = {
 // actif. `scriptJson` remplace `<` par `<`, échappement JSON valide.
 // Un `alt` n'est pas toujours écrit à la main : `images.json` (§1.5.1) est
 // produit par des outils qui lisent les métadonnées des fichiers.
-const lightboxData = scriptJson(
-  images.map((img) => ({ src: img.src, width: img.width, height: img.height, alt: img.alt })),
-);
+//
+// Seuls `src` et `alt` partent : le script client n'emploie ni `width` ni `height`,
+// et la liste complète de la série est sérialisée à chaque page de galerie
+// (PERF-004) — chaque octet ici est répété sur toutes les pages.
+const lightboxData = scriptJson(images.map((img) => ({ src: img.src, alt: img.alt })));
 ---
 
 <dialog class:list={['hf-lightbox', className]} id="hf-lightbox" {...rootAttrs}>

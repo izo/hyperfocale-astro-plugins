@@ -605,3 +605,120 @@ describe('seriesLoader — rejeu des corpus de la spec (#135)', () => {
     await expect(load('minimal', { sections: 'exclude' }, siteSchema)).rejects.toThrow(/series\/bretagne-2024/);
   });
 });
+
+describe('seriesLoader — rechargement incrémental du watcher (#158, PERF-010)', () => {
+  type Handler = (path: string) => Promise<void> | void;
+
+  /** Contexte avec un watcher qui garde ses écouteurs, pour émettre les événements à la main. */
+  function withWatcher(ctx: ReturnType<typeof makeContext>) {
+    const handlers = new Map<string, Handler[]>();
+    (ctx.context as unknown as { watcher: unknown }).watcher = {
+      add: vi.fn(),
+      on: (event: string, handler: Handler) => {
+        handlers.set(event, [...(handlers.get(event) ?? []), handler]);
+      },
+    };
+    return async (event: 'add' | 'change' | 'unlink', path: string) => {
+      for (const handler of handlers.get(event) ?? []) await handler(path);
+    };
+  }
+
+  const md = (title: string, extra = '') => `---\ntitle: ${title}\ndate: 2024-01-01\n${extra}---\n`;
+
+  function setup(files: Record<string, string>, options: Omit<SeriesLoaderOptions, 'base'> = {}) {
+    const dir = corpus(files);
+    const ctx = makeContext();
+    const prepared: string[] = [];
+    const prepare: SeriesPrepare = (data, { id }) => {
+      prepared.push(id);
+      return data;
+    };
+    const emit = withWatcher(ctx);
+    const loader = seriesLoader({ base: dir, prepare, ...options });
+    return { dir, ctx, emit, prepared, loader };
+  }
+
+  it('l\'édition d\'un fichier connu ne retraite que ce fichier', async () => {
+    const { dir, ctx, emit, prepared, loader } = setup({
+      'a/index.md': md('A'),
+      'b/index.md': md('B'),
+      'c/index.md': md('C'),
+    });
+    await loader.load(ctx.context);
+    expect(prepared).toEqual(['a', 'b', 'c']);
+
+    writeFileSync(join(dir, 'b/index.md'), md('B2'));
+    await emit('change', join(dir, 'b/index.md'));
+
+    expect(prepared).toEqual(['a', 'b', 'c', 'b']);
+    expect(ctx.entries.get('b')?.data.title).toBe('B2');
+    expect(ctx.entries.get('a')?.data.title).toBe('A');
+    expect([...ctx.entries.keys()].sort()).toEqual(['a', 'b', 'c']);
+  });
+
+  it('une édition sans effet sur le contenu ne revalide rien', async () => {
+    const { dir, ctx, emit, loader } = setup({ 'a/index.md': md('A') });
+    await loader.load(ctx.context);
+    const parsed = ctx.parseData.mock.calls.length;
+    await emit('change', join(dir, 'a/index.md'));
+    expect(ctx.parseData.mock.calls.length).toBe(parsed);
+  });
+
+  it('un ajout relance la synchronisation complète', async () => {
+    const { dir, ctx, emit, prepared, loader } = setup({ 'a/index.md': md('A') });
+    await loader.load(ctx.context);
+    mkdirSync(join(dir, 'n'));
+    writeFileSync(join(dir, 'n/index.md'), md('N'));
+    await emit('add', join(dir, 'n/index.md'));
+    expect([...ctx.entries.keys()].sort()).toEqual(['a', 'n']);
+    expect(prepared.filter((id) => id === 'a')).toHaveLength(2);
+  });
+
+  it('une suppression retire l\'entrée', async () => {
+    const { dir, ctx, emit, loader } = setup({ 'a/index.md': md('A'), 'b/index.md': md('B') });
+    await loader.load(ctx.context);
+    rmSync(join(dir, 'b'), { recursive: true });
+    await emit('unlink', join(dir, 'b/index.md'));
+    expect([...ctx.entries.keys()]).toEqual(['a']);
+  });
+
+  it('un identifiant qui change retombe sur la synchronisation complète : l\'ancien disparaît', async () => {
+    const { dir, ctx, emit, loader } = setup(
+      { 'a/index.md': md('A', 'slug_site: un\n') },
+      { generateId: ({ data }) => String(data.slug_site) },
+    );
+    await loader.load(ctx.context);
+    expect([...ctx.entries.keys()]).toEqual(['un']);
+    writeFileSync(join(dir, 'a/index.md'), md('A', 'slug_site: deux\n'));
+    await emit('change', join(dir, 'a/index.md'));
+    expect([...ctx.entries.keys()]).toEqual(['deux']);
+  });
+
+  it('une série devenue rubrique (sections: exclude) est retirée', async () => {
+    const { dir, ctx, emit, loader } = setup(
+      { 'a/index.md': md('A'), 'b/index.md': md('B') },
+      { sections: 'exclude' },
+    );
+    await loader.load(ctx.context);
+    writeFileSync(join(dir, 'b/index.md'), md('B', 'type: section\n'));
+    await emit('change', join(dir, 'b/index.md'));
+    expect([...ctx.entries.keys()]).toEqual(['a']);
+  });
+
+  it('un fichier hors collection ne déclenche rien de coûteux : événement ignoré', async () => {
+    const { dir, ctx, emit, prepared, loader } = setup({ 'a/index.md': md('A') });
+    await loader.load(ctx.context);
+    await emit('change', join(dir, 'a/notes.txt'));
+    expect(prepared).toEqual(['a']);
+  });
+
+  it('un fichier md inconnu (non retenu comme index) relance la synchronisation complète', async () => {
+    const { dir, ctx, emit, prepared, loader } = setup({
+      'a/index.md': md('A'),
+      'a/index.en.md': md('A en'),
+    });
+    await loader.load(ctx.context);
+    await emit('change', join(dir, 'a/index.en.md'));
+    expect(prepared.filter((id) => id === 'a')).toHaveLength(2);
+  });
+});

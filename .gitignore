@@ -7,3 +7,4 @@ dist/
 .claude/
 .ulk-reports/
 .ulk/
+coverage/

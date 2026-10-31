@@ -26,6 +26,30 @@ export async function mapConcurrent<T, R>(
   return results;
 }
 
+/**
+ * Mémorise une lecture par chemin (PERF-009). `validateSnapshot` et
+ * `guardChangeSet` lisent les mêmes fichiers index : leur passer la même lecture
+ * mémorisée évite de lire chaque fichier deux fois. Les lectures simultanées d'un
+ * même chemin partagent leur promesse ; un échec n'est pas retenu, la lecture
+ * suivante réessaie.
+ *
+ * À réserver aux fichiers texte que l'on relit — le cache garde le contenu : ne pas
+ * lui faire lire des médias.
+ */
+export function memoizeRead<T>(read: (path: string) => Promise<T>): (path: string) => Promise<T> {
+  const cache = new Map<string, Promise<T>>();
+  return (path) => {
+    const cached = cache.get(path);
+    if (cached !== undefined) return cached;
+    const pending = read(path).catch((error: unknown) => {
+      cache.delete(path);
+      throw error;
+    });
+    cache.set(path, pending);
+    return pending;
+  };
+}
+
 /** Attente interrompue dès que `signal` est levé, avec son motif. */
 export function abortableSleep(ms: number, signal?: AbortSignal): Promise<void> {
   return new Promise<void>((resolve, reject) => {
