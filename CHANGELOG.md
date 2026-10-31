@@ -14,7 +14,7 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 - **Dette P2, troisième tranche** (#158) :
   - `memoizeRead` (`@regrets/hyperfocale/ingest`) : une lecture mémorisée par chemin, que `validateSnapshot` et `guardChangeSet` partagent — chaque fichier index n'est lu qu'une fois (PERF-009). L'exemple d'orchestration du README l'emploie.
   - `npm run test:coverage` (`@vitest/coverage-v8`) : rapport de couverture des tests unitaires, sans seuil, publié en artefact par la CI (CODE-009). Un job e2e hebdomadaire (lundi), lançable à la main, rattrape une dérive d'Astro ou d'une dépendance.
-
+- **Flux de syndication et sitemap, Annexe E** (#155) : option `feeds: true` (défaut `false`). RSS 2.0 `/{prefix}/feed.xml`, JSON Feed 1.1 `/{prefix}/feed.json`, un flux par autre langue sous `/{prefix}/<lang>/`, et `/sitemap.xml`. Exige `site` dans la configuration Astro. Les brouillons sont exclus. Constructeurs purs dans `src/feeds.ts`.
 - **Lot P1-P4 de l'issue #136 (composants, médias résolus, thème)** :
   - `SeriesLightbox` en `<dialog>` natif, script client dans `components/lightbox-client.ts` : `loop`, `decorativeAlt`, légende depuis l'`alt`, précharge des voisins, événements `hf:lightbox-open` / `hf:lightbox-navigate`, API `window.hfLightbox` (`open`, `close`, `setImages`).
   - `SeriesGallery` : `columns`, `masonry`, `eagerCount`, `sizes`. Pagination déléguée à `SeriesPagination`.

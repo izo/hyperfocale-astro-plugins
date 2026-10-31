@@ -36,11 +36,16 @@ beforeAll(async () => {
   // 2. Installer les deps du demo-site (crée le symlink @regrets/hyperfocale → ../../)
   execFileSync('npm', ['install', '--prefer-offline'], { cwd: DEMO_SITE, stdio: 'pipe' });
 
-  // 3. Builder le demo-site (génère examples/demo-site/dist/)
+  // 3. Builder le demo-site (génère examples/demo-site/dist/). Vitest exporte
+  // `DEV`, `MODE`, `PROD`… dans l'environnement : Vite les lit au build, et un
+  // brouillon passerait alors pour une série en développement. On les retire
+  // pour que le build soit un vrai build de production.
+  const buildEnv: NodeJS.ProcessEnv = { ...process.env, NODE_ENV: 'production' };
+  for (const key of ['DEV', 'PROD', 'MODE', 'SSR', 'BASE_URL', 'TEST']) delete buildEnv[key];
   execFileSync('npm', ['run', 'build'], {
     cwd: DEMO_SITE,
     stdio: 'pipe',
-    env: { ...process.env, NODE_ENV: 'production' },
+    env: buildEnv,
   });
 }, 180_000);
 
@@ -329,13 +334,13 @@ describe('série conteneur et line-up (§1.8)', () => {
     // Que le build aboutisse est déjà une preuve : `image()` valide le chemin
     // au schéma, un cover irrésolu ferait échouer la collection. Reste à
     // vérifier que la card emprunte la branche `cover` et non le repli sur la
-    // première image — `data-image-component` marque le rendu par `<Image>`,
-    // là où le repli sert un `<img>` brut.
+    // première image — la couverture optimisée par `<Image>` est servie depuis
+    // `/_astro/…webp`, là où le repli sert le fichier d'origine.
     const list = htmlOf('series/index.html');
     const cards = [...list.matchAll(/<article class="hf-card[^"]*"[\s\S]*?<\/article>/g)].map((m) => m[0]);
     const card = cards.find((c) => c.includes('href="/series/festival-2024/"'));
     expect(card).toBeDefined();
-    expect(card).toContain('data-image-component');
+    expect(card).toMatch(/src="\/_astro\/[^"]+\.webp"/);
     expect(card).toContain('alt="Couverture de la série Festival 2024"');
     expect(card).not.toContain('hf-card__placeholder');
     // Le chemin relatif est résolu, pas servi tel quel.
@@ -747,5 +752,50 @@ describe('seriesLoader et resolveSeriesMedia dans un vrai build (#130)', () => {
     expect(media.source).toBe('manifest');
     expect(media.images.map((i: { path: string }) => i.path)).toEqual(['media/02.jpg', 'media/01.jpg']);
     expect(media.cover.path).toBe('media/02.jpg');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Flux de syndication et sitemap (Annexe E, #155) — feeds: true dans la démo
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('flux RSS, JSON Feed et sitemap (Annexe E, #155)', () => {
+  const SITE = 'https://demo.hyperfocale.example';
+
+  it('RSS 2.0 de la langue par défaut : URLs absolues, enclosure, pas de série étrangère', () => {
+    const xml = htmlOf('series/feed.xml');
+    expect(xml).toContain('<rss version="2.0"');
+    expect(xml).toContain(`<link>${SITE}/series/</link>`);
+    expect(xml).toContain(`<link>${SITE}/series/atelier-2026/</link>`);
+    expect(xml).toContain('<enclosure ');
+    expect(xml).not.toContain('English feed');
+  });
+
+  it('JSON Feed 1.1 de la langue par défaut', () => {
+    const feed = JSON.parse(htmlOf('series/feed.json'));
+    expect(feed.version).toBe('https://jsonfeed.org/version/1.1');
+    expect(feed.feed_url).toBe(`${SITE}/series/feed.json`);
+    expect(feed.items.length).toBeGreaterThan(0);
+  });
+
+  it('flux de la langue en : /series/en/feed.xml et .json, seulement ses séries', () => {
+    const xml = htmlOf('series/en/feed.xml');
+    expect(xml).toContain('<language>en</language>');
+    expect(xml.match(/<item>/g)).toHaveLength(1);
+    expect(xml).toContain('English feed');
+    const feed = JSON.parse(htmlOf('series/en/feed.json'));
+    expect(feed.items.map((i: { title: string }) => i.title)).toEqual(['English feed']);
+  });
+
+  it('sitemap : toutes les séries publiées, sans brouillon, URLs absolues', () => {
+    const xml = htmlOf('sitemap.xml');
+    expect(xml).toContain('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">');
+    expect(xml).toContain(`<loc>${SITE}/series/atelier-2026/</loc>`);
+    expect(xml).toContain(`<loc>${SITE}/series/feeds-en-2025/</loc>`);
+    expect(xml).not.toContain('feeds-brouillon-2025');
+  });
+
+  it('un brouillon n’a pas de page de détail', () => {
+    expect(fileExists('series/feeds-brouillon-2025/index.html')).toBe(false);
   });
 });

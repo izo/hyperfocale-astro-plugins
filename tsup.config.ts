@@ -25,6 +25,15 @@ export default defineConfig({
     'components/image-fallback': 'src/components/image-fallback.ts',
     // Script client de SeriesLightbox : dialog natif, API `window.hfLightbox` (#136, P1).
     'components/lightbox-client': 'src/components/lightbox-client.ts',
+    // Flux de syndication et sitemap (Annexe E, #155) : constructeurs purs, collecte,
+    // et les routes injectées par `feeds: true`.
+    feeds: 'src/feeds.ts',
+    'helpers/feeds': 'src/helpers/feeds.ts',
+    'routes/feed-rss': 'src/routes/feed-rss.ts',
+    'routes/feed-rss-lang': 'src/routes/feed-rss-lang.ts',
+    'routes/feed-json': 'src/routes/feed-json.ts',
+    'routes/feed-json-lang': 'src/routes/feed-json-lang.ts',
+    'routes/sitemap': 'src/routes/sitemap.ts',
     loader: 'src/loader.ts',
     // Contrat d'ingestion : sous-chemins additifs, jamais importés par
     // l'intégration. `ingest/index`, `ingest/dropbox` et `ingest/webdav`

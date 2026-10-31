@@ -33,7 +33,8 @@ src/
                        SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry,
                        SeriesPagination, SeriesLineup)
                        + runtime.ts (outils internes : attributs passés, headingLevel, pagination, JSON de script)
-  routes/           ← pages Astro injectées via injectRoute()
+  feeds.ts          ← constructeurs purs RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E, #155) ; helpers/feeds.ts collecte
+  routes/           ← pages Astro injectées via injectRoute() (+ endpoints feed-*.ts et sitemap.ts, avec `feeds: true`)
   theme/            ← base.css avec custom properties --hf-*
   ingest/           ← contrat d'ingestion (spec couche 4) : snapshot, diff, validation, garde,
                        providers fs/Dropbox/WebDAV — jamais importé par l'intégration
