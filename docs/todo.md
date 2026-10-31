@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.25.1"
-updated: 2026-10-30
+updated: 2026-10-31
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -28,12 +28,8 @@ prefixes:
 
 ## Backlog
 
-- [ ] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
-  Fournisseur d'image + `ResolvedImage` (reste de P0), galerie et lightbox (P1), cartes et listes (P2), filtre et recherche (P3). Détail et lots chiffrés : issue #136.
-- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
-  Suit #136, dont dépend mdr-monorepo.
 - [ ] #158 [P2] Dette P2 — audit 2026-10-29 #dette
-  Liste à cocher PERF-002 à PERF-012, SEC-006 à SEC-010, CODE-004 à CODE-013 : issue #158.
+  Dix cases ouvertes sur vingt-six : PERF-004, PERF-005, PERF-007, PERF-008, PERF-009 (en partie), PERF-010 (en partie), PERF-012, CODE-009, CODE-011, CODE-012. Détail : issue #158.
 
 ## Todo
 
@@ -43,10 +39,15 @@ prefixes:
 
 - [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
-- [ ] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
-  Fichiers système exclus : fait. **Reste** : décision de produit sur les flux (routes par défaut ou opt-in, dépendance à `site`, multilingue).
+- [ ] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
+  Suit #136, dont le code est terminé (PR #159, à fusionner). **Reste** : migrer `laurenceguenoun.com` de `videos[]` vers `embeds`, dans `izo/laurenceguenoun`. L'ajout de ce dépôt à la session a été refusé : il faut l'autoriser, ou faire la migration depuis ce dépôt.
 
 ## Review
+
+- [ ] #136 [P2] Composants utilisables avec des médias résolus hors `src/content` (R2, `public/content`) #composants
+  Code terminé : médias résolus, fournisseur d'image en fonction, galerie et lightbox, cartes et listes, pagination, lineup, filtre et recherche, manifeste en forme longue. En relecture : PR #159, qui fermera l'issue à la fusion.
+- [ ] #155 [P1] Conformité 2.16 : flux RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E) #spec
+  Fichiers système exclus : fait. Flux et sitemap : fait (`feeds: true`, `site` obligatoire, un flux par langue). En relecture : PR #160, empilée sur #159 — ramener sa base sur `main` après la fusion de #159.
 
 ## Done
 
