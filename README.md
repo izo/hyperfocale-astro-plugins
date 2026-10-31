@@ -411,7 +411,56 @@ Les fichiers de `media/` sont alors servis tels quels, sans conversion ni redime
 
 Le préfixe `/series` est configurable via l'option `prefix`. Les slugs hiérarchiques (`voyages/asie/tokyo-2024`) sont gérés par des routes catch-all. La pagination passe sous `page/` (spec §1.6) : sans cela, la page 2 de la galerie d'un conteneur et sa sous-série dont le slug est `2` auraient la même URL. Un dossier nommé `page` directement dans une série est donc réservé.
 
+**L'index n'est pas paginé** (#158, PERF-005). `/series/` rend toute la collection sur une page, ce qui reste raisonnable jusqu'à quelques centaines de séries. Au-delà, le plugin n'injecte pas de route paginée : un site qui en a besoin coupe la route d'index (`listRoute: false`) et écrit la sienne avec `querySeries`, `SeriesList` et `SeriesPagination` — la page 1 est `/series/`, les suivantes `/series/page/n/`, comme la galerie d'une série :
+
+```astro
 ---
+// src/pages/series/page/[n].astro — la page 1 se rend de la même façon dans src/pages/series/index.astro
+import { querySeries } from '@regrets/hyperfocale/helpers';
+import { SeriesList, SeriesPagination } from '@regrets/hyperfocale/components';
+
+const PAGE_SIZE = 24;
+
+export async function getStaticPaths() {
+  const { pagination } = await querySeries({ limit: PAGE_SIZE });
+  return Array.from({ length: pagination.totalPages }, (_, i) => ({ params: { n: String(i + 1) } }));
+}
+
+const page = Number(Astro.params.n);
+const { items, pagination } = await querySeries({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE });
+---
+
+<SeriesList series={items} />
+<SeriesPagination page={page} totalPages={pagination.totalPages} baseUrl="/series" />
+```
+
+Pour un `SeriesFilter` sur une grande collection, ne rendre que quelques séries et laisser `indexUrl` charger le reste à la première interaction (voir *Composants → SeriesFilter*).
+
+---
+
+## Flux de syndication et sitemap (Annexe E)
+
+Avec `feeds: true`, l'intégration injecte les flux de syndication recommandés par l'Annexe E de la spec, et un sitemap. Désactivé par défaut : rien ne change pour un site existant.
+
+```js
+export default defineConfig({
+  site: 'https://photos.example',   // obligatoire avec feeds: true
+  integrations: [hyperfocale({ feeds: true })],
+});
+```
+
+| URL | Contenu |
+|-----|---------|
+| `/{prefix}/feed.xml` | RSS 2.0, langue par défaut |
+| `/{prefix}/feed.json` | JSON Feed 1.1, langue par défaut |
+| `/{prefix}/<lang>/feed.xml`, `/{prefix}/<lang>/feed.json` | Les mêmes, pour chaque autre langue (champ `lang` des séries) |
+| `/sitemap.xml` | Toutes les séries publiées, toutes langues, URLs absolues |
+
+- **URLs absolues** : `site` est lu dans la configuration Astro. Sans lui, le build échoue avec un message qui le dit.
+- **Un flux par langue** : une série sans `lang` appartient à la langue par défaut (`fr`). Chaque flux ne contient que les séries de sa langue.
+- **Contenu** : les 20 séries les plus récentes, au plus. Chaque item a la description, la date, les mots-clés et la couverture (`enclosure` en RSS, `image` en JSON Feed). La taille de la couverture n'est pas connue du plugin : l'attribut `length` de l'enclosure vaut `0`.
+- **Brouillons** : une série `draft: true` n'apparaît dans aucun flux ni dans le sitemap en production (spec §1.6).
+- **Collision** : `/sitemap.xml` est une URL à la racine. Un site qui ajoute déjà `@astrojs/sitemap` doit choisir l'un des deux.
 
 ## Composants
 
@@ -466,6 +515,8 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 | `route.backToList` | Routes `series-detail`, `series-page` (lien de retour) | — | Toutes les séries | All series |
 | `route.page` | Route `series-page` (titre et en-tête) | `{n}` | Page {n} | Page {n} |
 | `lineup.heading` | SeriesLineup | — | Dans cette série | In this series |
+| `feed.title` | Flux RSS et JSON Feed (titre du canal) | — | Séries | Series |
+| `feed.description` | Flux RSS et JSON Feed (description du canal) | — | Les séries publiées | Published series |
 | `list.empty` | SeriesList | — | Aucune série disponible pour le moment. | No series available yet. |
 | `image.alt` | SeriesGallery, SeriesMasonry (`alt` de repli) | `{n}` | Photo {n} | Photo {n} |
 | `gallery.label` | SeriesGallery | — | Galerie photos | Photo gallery |
@@ -1441,7 +1492,7 @@ Le webhook Dropbox n'est qu'un **déclencheur** : `dropboxChallenge(url)` répon
 
 ```ts
 import { readFile, writeFile } from 'node:fs/promises';
-import { createSnapshot, diffSnapshots, guardChangeSet, parseSnapshot, publishable, validateSnapshot } from '@regrets/hyperfocale/ingest';
+import { createSnapshot, diffSnapshots, guardChangeSet, memoizeRead, parseSnapshot, publishable, validateSnapshot } from '@regrets/hyperfocale/ingest';
 import { FilesystemProvider, materializeSnapshot } from '@regrets/hyperfocale/ingest/fs';
 import { DropboxClient, DropboxProvider } from '@regrets/hyperfocale/ingest/dropbox';
 
@@ -1451,6 +1502,9 @@ const source = new DropboxProvider({
   ignore: ['_todo/'],
 });
 const corpus = new FilesystemProvider({ root: 'content' }); // le dossier que lit le Content Layer
+// Validation et garde lisent les mêmes fichiers index de la source : une lecture
+// mémorisée les partage, chaque fichier n'est lu qu'une fois.
+const readSource = memoizeRead((path: string) => source.read(path));
 
 // 1. Dernier état publié (versionné avec le site) et état courant de la source.
 const base = parseSnapshot(await readFile('.hyperfocale/snapshot.json', 'utf-8'));
@@ -1466,9 +1520,9 @@ const target = await createSnapshot(listing.entries, {
 const published = await publishable(target);
 const changeSet = diffSnapshots(base, published);
 const diagnostics = [
-  ...(await validateSnapshot(target, { read: (path) => source.read(path), roots: [{ path: 'series' }] })),
+  ...(await validateSnapshot(target, { read: readSource, roots: [{ path: 'series' }] })),
   ...(await guardChangeSet(changeSet, base, target, {
-    read: (side, path) => (side === 'base' ? corpus.read(path) : source.read(path)),
+    read: (side, path) => (side === 'base' ? corpus.read(path) : readSource(path)),
     policy: { maxDeletedSeries: 5, maxDeletedMediaRatio: 0.2 },
   })),
 ];
