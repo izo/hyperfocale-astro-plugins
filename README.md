@@ -1431,6 +1431,10 @@ L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur le
 
 Un pipeline ne suppose jamais une capacité absente : sans webhook, il réconcilie périodiquement ; sans incrémental, il relit le listing complet (`waitForQuiescence` compare alors des listings successifs).
 
+**Cache de hash du `FilesystemProvider`** (§4.4, « Coût et cache », #158 PERF-007). Sans provider d'API de hash, chaque `list()` relit tout le corpus. `new FilesystemProvider({ root, hashCache: true })` réutilise l'empreinte d'un fichier d'un listing à l'autre, sans relire ses octets, quand son chemin, sa taille et sa date de modification sont **tous** identiques — la règle de la spec. Le snapshot est le même, entrée par entrée, qu'avec un calcul complet. Le cache vit en mémoire, dans l'instance : il sert à un processus qui relie plusieurs fois le même corpus (un watcher, un daemon), pas à une commande qui ne liste qu'une fois.
+
+Il est **désactivé par défaut**, parce qu'une empreinte tenue pour juste d'après la date est un pari : un fichier réécrit à taille et date identiques passerait inaperçu. Il n'est jamais une source de vérité — `materializeSnapshot` vérifie toujours les octets lus contre l'empreinte du snapshot. Sur `entry-hash-mismatch`, appelez `provider.invalidateHashes()` (ou `invalidateHashes(path)`) avant de relister ; `write()` oublie déjà l'empreinte du chemin qu'il écrit.
+
 Le webhook Dropbox n'est qu'un **déclencheur** : `dropboxChallenge(url)` répond à la vérification, `verifyDropboxSignature(rawBody, header, appSecret)` authentifie la notification. Le Worker qui les appelle ne lit jamais Dropbox.
 
 ### Orchestration minimale

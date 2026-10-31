@@ -11,6 +11,8 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Ajouté
 
+- **Cache de hash du `FilesystemProvider`** (#158, PERF-007) : option `hashCache: true` (défaut `false`), qui réutilise l'empreinte d'un fichier d'un listing à l'autre quand `path`, `size` et `modifiedAt` sont tous identiques, comme le prévoit §4.4 (« Coût et cache », v2.17). Le snapshot est identique avec ou sans cache. `invalidateHashes(path?)` oublie les empreintes retenues, à appeler sur `entry-hash-mismatch`.
+
 - **Lot P1-P4 de l'issue #136 (composants, médias résolus, thème)** :
   - `SeriesLightbox` en `<dialog>` natif, script client dans `components/lightbox-client.ts` : `loop`, `decorativeAlt`, légende depuis l'`alt`, précharge des voisins, événements `hf:lightbox-open` / `hf:lightbox-navigate`, API `window.hfLightbox` (`open`, `close`, `setImages`).
   - `SeriesGallery` : `columns`, `masonry`, `eagerCount`, `sizes`. Pagination déléguée à `SeriesPagination`.

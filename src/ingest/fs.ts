@@ -114,6 +114,20 @@ export interface FilesystemProviderOptions {
    * listing, qui devient `complete: false` avec le motif dans `problems`.
    */
   readonly followSymlinks?: boolean;
+  /**
+   * Réutilise l'empreinte d'un fichier d'un listing à l'autre, sans relire ses
+   * octets, quand `path`, `size` et `modifiedAt` sont tous identiques (§4.4,
+   * « Coût et cache » ; ce provider n'a pas d'`identity`, qui compte donc comme
+   * absente). Le snapshot est le même, entrée par entrée, qu'avec un calcul
+   * complet. Le cache est propre à cette instance et à sa racine, et vit en
+   * mémoire : il sert à un processus qui relie plusieurs fois le même corpus.
+   *
+   * Défaut `false` : une empreinte tenue pour juste d'après la date de
+   * modification est un pari — un fichier réécrit à l'identique de taille et de
+   * date passerait inaperçu. Un cache n'est jamais une source de vérité : sur
+   * `entry-hash-mismatch`, appeler `invalidateHashes()` et relister.
+   */
+  readonly hashCache?: boolean;
 }
 
 /**
@@ -143,6 +157,9 @@ export class FilesystemProvider implements ContentProvider {
   private readonly algorithms: readonly LocalHashAlgorithm[];
   private readonly concurrency: number;
   private readonly followSymlinks: boolean;
+  private readonly useHashCache: boolean;
+  // Empreintes déjà calculées (§4.4) : vide tant que `hashCache` n'est pas activé.
+  private readonly hashes = new Map<string, { size: number; modifiedAt: string; hashes: HashMap }>();
   // Chemin sur le disque de chaque entrée du dernier listing — il peut différer
   // du chemin NFC du contrat sur un filesystem sensible à la normalisation.
   private onDisk = new Map<string, string>();
@@ -153,6 +170,7 @@ export class FilesystemProvider implements ContentProvider {
     this.algorithms = options.hashAlgorithms ?? ALL_ALGORITHMS;
     this.concurrency = options.concurrency ?? 8;
     this.followSymlinks = options.followSymlinks ?? false;
+    this.useHashCache = options.hashCache ?? false;
     this.capabilities = {
       localRead: true,
       localWrite: true,
@@ -230,8 +248,16 @@ export class FilesystemProvider implements ContentProvider {
     const entries = await mapConcurrent(files, this.concurrency, async ({ path, abs }) => {
       opts.signal?.throwIfAborted();
       try {
-        const [info, { size, hashes }] = await Promise.all([stat(abs), hashFile(abs, this.algorithms)]);
-        return { path, kind: classifyPath(path), size, hashes, modifiedAt: info.mtime.toISOString() } as SnapshotEntry;
+        const info = await stat(abs);
+        const modifiedAt = info.mtime.toISOString();
+        const cached = this.useHashCache ? this.hashes.get(path) : undefined;
+        if (cached !== undefined && cached.size === info.size && cached.modifiedAt === modifiedAt) {
+          return { path, kind: classifyPath(path), size: cached.size, hashes: { ...cached.hashes }, modifiedAt } as SnapshotEntry;
+        }
+        const { size, hashes } = await hashFile(abs, this.algorithms);
+        // Un fichier modifié pendant la lecture n'est pas retenu : sa taille a changé.
+        if (this.useHashCache && size === info.size) this.hashes.set(path, { size, modifiedAt, hashes: { ...hashes } });
+        return { path, kind: classifyPath(path), size, hashes, modifiedAt } as SnapshotEntry;
       } catch (err) {
         problems.push({ path, reason: `fichier illisible (${(err as Error).message})` });
         return null;
@@ -250,6 +276,8 @@ export class FilesystemProvider implements ContentProvider {
       listed.push(entry);
     }
     this.onDisk = new Map(files.map(({ path, abs }) => [path, abs]));
+    // Un fichier disparu n'a plus d'empreinte à garder.
+    for (const path of [...this.hashes.keys()]) if (!this.onDisk.has(path)) this.hashes.delete(path);
     problems.sort((a, b) => compareCanonical(a.path, b.path));
     return { entries: listed, complete: problems.length === 0, ...(problems.length > 0 ? { problems } : {}) };
   }
@@ -294,9 +322,19 @@ export class FilesystemProvider implements ContentProvider {
     }
   }
 
+  /**
+   * Oublie les empreintes retenues par `hashCache` : celle de `path`, ou toutes.
+   * À appeler sur `entry-hash-mismatch` (§4.4) avant de relister.
+   */
+  invalidateHashes(path?: string): void {
+    if (path === undefined) this.hashes.clear();
+    else this.hashes.delete(path);
+  }
+
   async write(path: string, bytes: Uint8Array): Promise<SnapshotEntry> {
     const abs = await this.confined(path);
     await writeAtomic(abs, bytes);
+    this.hashes.delete(path);
     const info = await stat(abs);
     return {
       path,
