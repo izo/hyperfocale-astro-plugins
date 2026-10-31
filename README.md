@@ -413,6 +413,30 @@ Le préfixe `/series` est configurable via l'option `prefix`. Les slugs hiérarc
 
 ---
 
+## Flux de syndication et sitemap (Annexe E)
+
+Avec `feeds: true`, l'intégration injecte les flux de syndication recommandés par l'Annexe E de la spec, et un sitemap. Désactivé par défaut : rien ne change pour un site existant.
+
+```js
+export default defineConfig({
+  site: 'https://photos.example',   // obligatoire avec feeds: true
+  integrations: [hyperfocale({ feeds: true })],
+});
+```
+
+| URL | Contenu |
+|-----|---------|
+| `/{prefix}/feed.xml` | RSS 2.0, langue par défaut |
+| `/{prefix}/feed.json` | JSON Feed 1.1, langue par défaut |
+| `/{prefix}/<lang>/feed.xml`, `/{prefix}/<lang>/feed.json` | Les mêmes, pour chaque autre langue (champ `lang` des séries) |
+| `/sitemap.xml` | Toutes les séries publiées, toutes langues, URLs absolues |
+
+- **URLs absolues** : `site` est lu dans la configuration Astro. Sans lui, le build échoue avec un message qui le dit.
+- **Un flux par langue** : une série sans `lang` appartient à la langue par défaut (`fr`). Chaque flux ne contient que les séries de sa langue.
+- **Contenu** : les 20 séries les plus récentes, au plus. Chaque item a la description, la date, les mots-clés et la couverture (`enclosure` en RSS, `image` en JSON Feed). La taille de la couverture n'est pas connue du plugin : l'attribut `length` de l'enclosure vaut `0`.
+- **Brouillons** : une série `draft: true` n'apparaît dans aucun flux ni dans le sitemap en production (spec §1.6).
+- **Collision** : `/sitemap.xml` est une URL à la racine. Un site qui ajoute déjà `@astrojs/sitemap` doit choisir l'un des deux.
+
 ## Composants
 
 ```ts
@@ -466,6 +490,8 @@ Les clés sont **stables** — en renommer ou en retirer une est un changement c
 | `route.backToList` | Routes `series-detail`, `series-page` (lien de retour) | — | Toutes les séries | All series |
 | `route.page` | Route `series-page` (titre et en-tête) | `{n}` | Page {n} | Page {n} |
 | `lineup.heading` | SeriesLineup | — | Dans cette série | In this series |
+| `feed.title` | Flux RSS et JSON Feed (titre du canal) | — | Séries | Series |
+| `feed.description` | Flux RSS et JSON Feed (description du canal) | — | Les séries publiées | Published series |
 | `list.empty` | SeriesList | — | Aucune série disponible pour le moment. | No series available yet. |
 | `image.alt` | SeriesGallery, SeriesMasonry (`alt` de repli) | `{n}` | Photo {n} | Photo {n} |
 | `gallery.label` | SeriesGallery | — | Galerie photos | Photo gallery |

@@ -362,3 +362,23 @@ describe('hyperfocale() — validation des options', () => {
     expect(JSON.parse(literal)).toMatch(/base\.css$/);
   });
 });
+
+describe('option feeds (#155)', () => {
+  it('rejette une valeur non booléenne', () => {
+    expect(() => hyperfocale({ feeds: 'oui' as any })).toThrowError(/feeds/);
+  });
+
+  it('exige `site` dans la configuration Astro, avec un message clair', () => {
+    const setup = hyperfocale({ feeds: true }).hooks['astro:config:setup'] as unknown as (args: unknown) => void;
+    const noop = () => undefined;
+    expect(() =>
+      setup({
+        config: { root: new URL('file:///tmp/hf-no-site/'), site: undefined },
+        logger: { info: noop, warn: noop, error: noop },
+        injectRoute: noop,
+        injectScript: noop,
+        updateConfig: noop,
+      }),
+    ).toThrowError(/exige "site"/);
+  });
+});
