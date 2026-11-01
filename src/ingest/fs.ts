@@ -9,7 +9,7 @@ import { createHash, randomBytes, type Hash } from 'node:crypto';
 import { constants, createReadStream } from 'node:fs';
 import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
-import { mapConcurrent } from './concurrency.js';
+import { mapConcurrent, mapConcurrentWeighted } from './concurrency.js';
 import { DROPBOX_BLOCK_SIZE } from './hash.js';
 import { classifyPath, compareCanonical, isExcluded, normalizePath } from './paths.js';
 import type { ExclusionRule } from './paths.js';
@@ -433,6 +433,9 @@ async function assertNoSymlink(root: string, path: string): Promise<void> {
   }
 }
 
+/** Budget d'octets lus simultanément par `materializeSnapshot`, par défaut. */
+const DEFAULT_MAX_IN_FLIGHT_BYTES = 256 * 1024 * 1024;
+
 /** Options de `materializeSnapshot`. */
 export interface MaterializeOptions {
   /** Dossier à mettre dans l'état de target. */
@@ -447,6 +450,16 @@ export interface MaterializeOptions {
   readonly verify?: boolean;
   /** Lectures simultanées. Défaut 4. */
   readonly concurrency?: number;
+  /**
+   * Octets lus en mémoire en même temps, au plus (PERF-008). `read` rend un
+   * fichier entier : sans plafond, le pic est `concurrency` × le plus gros
+   * fichier. La taille de chaque entrée est connue avant sa lecture, on ne lance
+   * donc la suivante que si le total en vol tient dans ce budget. Un fichier plus
+   * gros que le budget est lu **seul**, jamais refusé : le pic reste alors celui
+   * de ce fichier. Une entrée sans taille compte pour zéro.
+   * Défaut 256 Mio — des images de quelques Mo ne sont pas ralenties.
+   */
+  readonly maxInFlightBytes?: number;
 }
 
 /** Bilan d'une matérialisation. */
@@ -486,6 +499,7 @@ export async function materializeSnapshot(
   const { targetDir } = options;
   const verify = options.verify ?? true;
   const concurrency = options.concurrency ?? 4;
+  const maxInFlightBytes = options.maxInFlightBytes ?? DEFAULT_MAX_IN_FLIGHT_BYTES;
 
   // 1. Contrôle, avant toute écriture.
   const abs = (path: string) => resolveInside(targetDir, path);
@@ -514,18 +528,22 @@ export async function materializeSnapshot(
   const staging = join(targetDir, `.hyperfocale-materialize-${randomBytes(6).toString('hex')}`);
   await mkdir(staging, { recursive: true });
   try {
-    await mapConcurrent(toFetch, concurrency, async (entry, i) => {
-      const bytes = await options.read(entry.path);
-      if (verify) {
-        const expected = entry.hashes ?? {};
-        const algorithms = ALL_ALGORITHMS.filter((alg) => expected[alg] !== undefined);
-        const actual = hashBytes(bytes, algorithms);
-        for (const alg of algorithms) {
-          if (actual[alg] !== expected[alg]) throw new ContentMismatchError(entry.path, alg);
+    await mapConcurrentWeighted(
+      toFetch,
+      { limit: concurrency, maxWeight: maxInFlightBytes, weight: (entry) => entry.size ?? 0 },
+      async (entry, i) => {
+        const bytes = await options.read(entry.path);
+        if (verify) {
+          const expected = entry.hashes ?? {};
+          const algorithms = ALL_ALGORITHMS.filter((alg) => expected[alg] !== undefined);
+          const actual = hashBytes(bytes, algorithms);
+          for (const alg of algorithms) {
+            if (actual[alg] !== expected[alg]) throw new ContentMismatchError(entry.path, alg);
+          }
         }
-      }
-      await writeFile(join(staging, `in-${i}`), bytes);
-    });
+        await writeFile(join(staging, `in-${i}`), bytes);
+      },
+    );
   } catch (err) {
     await rm(staging, { recursive: true, force: true });
     throw err;
