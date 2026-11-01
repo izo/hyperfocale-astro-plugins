@@ -29,7 +29,7 @@ prefixes:
 ## Backlog
 
 - [ ] #158 [P2] Dette P2 — audit 2026-10-29 #dette
-  Trois tranches livrées (la dernière : PR #162 et #163). **Reste** : PERF-004 (la lightbox sert l'original : choix assumé, charge utile allégée), PERF-008 (lecture en flux : extension de contrat, issue `izo/hyperfocale-spec#60`), et trois cases informatives sans action : PERF-012, CODE-011, CODE-012. Détail : issue #158.
+  Quatre cases ouvertes sur vingt-six. PERF-004 : la lightbox sert l'original, choix assumé, charge utile allégée. PERF-008 : lecture en flux, extension de contrat, issue `izo/hyperfocale-spec#60`. CODE-011 et CODE-012 : leur texte est dans le rapport d'audit (`izo/Hyper-F`, privé). PERF-012 est faite (#167) : le parseur XML de WebDAV pouvait bloquer l'ingestion. Détail : issue #158.
 
 ## Todo
 
@@ -37,6 +37,8 @@ prefixes:
 
 ## Blocked
 
+- [ ] #RELEASE-0.26.0 [P1] Publier la 0.26.0 #publication
+  Prête sur `main` (version, CHANGELOG, paquet vérifié). **Reste** (humain) : pousser le tag sur le commit `19ad58d`, qui porte aussi le correctif PERF-012 : `git fetch origin && git tag v0.26.0 19ad58d && git push origin v0.26.0`. Une session Claude Code ne peut pas le faire (contrôle de permissions). Procédure : `docs/publication.md`.
 - [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
 
