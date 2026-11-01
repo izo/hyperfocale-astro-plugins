@@ -270,3 +270,58 @@ describe('WebDAVProvider — transport et bornes', () => {
     await expect(pending).rejects.toThrow(/annulé/);
   });
 });
+
+describe('WebDAVProvider — parseur XML linéaire (#158, PERF-012)', () => {
+  const multistatus = (body: string, prolog = '') =>
+    `<?xml version="1.0"?>${prolog}<d:multistatus xmlns:d="DAV:">${body}</d:multistatus>`;
+  const dirResponse = `<d:response><d:href>/dav/</d:href><d:propstat><d:prop><d:resourcetype><d:collection/></d:resourcetype></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
+  const providerFor = (body: string) =>
+    new WebDAVProvider({
+      url: 'https://dav.example.com/dav/',
+      timeoutMs: 0,
+      maxListingBytes: 64 * 1024 * 1024,
+      fetch: async () => new Response(body, { status: 207 }),
+    });
+
+  // Le tokenizer précédent mettait 15 s sur 8 Ko de `<!--` non fermés, plus d'une minute
+  // sur 20 Ko. La réponse hostile ne se referme pas : un `>` final laisserait l'ancienne
+  // expression tout avaler comme une seule balise, en temps linéaire. Avec elle, ce test
+  // ne se termine pas : l'expression est synchrone, le délai de vitest ne peut l'interrompre.
+  it.each([
+    ['commentaires', '<!--'],
+    ['instructions de traitement', '<?pi '],
+    ['sections CDATA', '<![CDATA['],
+    ['déclarations', '<!X '],
+    ['balises sans `>`', '<d:response '],
+  ])('%s jamais fermés : rendus en temps linéaire, sans lever', async (_label, fragment) => {
+    const hostile = `<?xml version="1.0"?><d:multistatus xmlns:d="DAV:">${dirResponse}${fragment.repeat(20_000)}`;
+    const start = performance.now();
+    await expect(providerFor(hostile).list()).resolves.toBeDefined();
+    expect(performance.now() - start).toBeLessThan(2_000);
+  }, 20_000);
+
+  it('une imbrication hors de toute mesure est refusée, sans parcours quadratique', async () => {
+    const start = performance.now();
+    await expect(providerFor(multistatus('<a>'.repeat(100_000))).list()).rejects.toThrow(/trop profonde/);
+    expect(performance.now() - start).toBeLessThan(10_000);
+  }, 20_000);
+
+  it('des balises fermantes qui ne correspondent à rien ne parcourent pas la pile à chaque fois', async () => {
+    const start = performance.now();
+    await expect(providerFor(multistatus('<a>'.repeat(200) + '</b>'.repeat(300_000))).list()).resolves.toBeDefined();
+    expect(performance.now() - start).toBeLessThan(10_000);
+  }, 20_000);
+
+  it('lit toujours ce qu\'un serveur réel envoie : prologue, DOCTYPE, commentaire, CDATA, balise autofermante avec espace', async () => {
+    const file =
+      `<!-- une note du serveur --><?cache ttl=0?>` +
+      `<d:response><d:href><![CDATA[/dav/a.md]]></d:href><d:propstat><d:prop>` +
+      `<d:resourcetype /><d:getcontentlength>3</d:getcontentlength><d:getetag foo="a/b">"e1"</d:getetag>` +
+      `</d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>`;
+    const body = multistatus(dirResponse + file, '<!DOCTYPE multistatus>');
+    const listing = await providerFor(body).list();
+    expect(listing.entries.map((entry) => entry.path)).toEqual(['a.md']);
+    expect(listing.entries[0]?.size).toBe(3);
+    expect(listing.entries[0]?.hashes).toEqual({ 'x-etag': '"e1"' });
+  });
+});
