@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.26.0"
-updated: 2026-10-31
+updated: 2026-11-01
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -28,9 +28,6 @@ prefixes:
 
 ## Backlog
 
-- [ ] #158 [P2] Dette P2 — audit 2026-10-29 #dette
-  Une case ouverte sur vingt-six : PERF-004. La lightbox sert l'original, choix assumé, charge utile allégée ; restent deux pistes de l'audit non retenues (variante par `getImage()`, ou ne sérialiser que la page courante et ses voisines). PERF-008 est traitée par le repli de l'audit (#169, `maxInFlightBytes`) ; la lecture en flux reste une extension de contrat : `izo/hyperfocale-spec#60`. CODE-011 et CODE-012 : sans action, lues dans le rapport d'audit. À fermer en assumant PERF-004, ou à rouvrir si le poids des originaux devient un problème réel. Détail : issue #158.
-
 ## Todo
 
 ## In Progress
@@ -45,6 +42,9 @@ prefixes:
 ## Review
 
 ## Done
+
+- [x] #158 [P2] Dette P2 — audit 2026-10-29 #dette
+  > ✅ **Terminé** le 2026-11-01 — vingt-six constats sur vingt-six : vingt-cinq corrigés (#162, #163, #167, #169, 91b4e8b), PERF-004 assumée et documentée au README (*SeriesLightbox → Poids*). Reste hors plugin : la lecture en flux, `izo/hyperfocale-spec#60`.
 
 - [x] #157 [P1] Médias résolus hors `src/content` et migration de `laurenceguenoun.com` vers `embeds` #composants
   > ✅ **Terminé** le 2026-10-31 — #136 fusionnée (PR #159) ; migration `embeds` déjà faite sur le site depuis le 12/08, how-to `docs/deploiement.md` corrigé (`izo/laurenceguenoun#20`)

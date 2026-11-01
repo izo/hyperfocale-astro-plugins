@@ -717,6 +717,16 @@ Visionneuse plein écran, en `<dialog>` natif (`showModal()`). S'ouvre au clic s
 
 La lightbox affiche toujours l'URL d'origine : un `imageProvider` ne s'y applique pas.
 
+**Poids — choix assumé** (audit PERF-004). Deux coûts, un seul traité :
+
+- *Charge utile* : le JSON sérialisé dans chaque page ne porte que `src` et `alt` de chaque image — mais pour **toute** la série, répété sur chaque page de galerie. Le coût croît avec la taille de la série.
+- *Poids des images* : la visionneuse charge l'original plein format, pas une variante redimensionnée. Les voisines sont préchargées, ce qui double ce coût.
+
+Ce choix est voulu : une visionneuse sert à voir l'image entière, et le plugin ne sait pas redimensionner pour un site qui ne passe pas par `astro:assets`. Si les originaux sont trop lourds pour vos visiteurs, redimensionnez-les à la source (le dossier `media/`) plutôt que dans la lightbox. Deux pistes ont été étudiées et écartées ; rouvrir si le poids devient un vrai problème :
+
+- une variante par `getImage()` — demanderait un fournisseur d'image dans la lightbox, donc de la sérialiser par image ;
+- ne sérialiser que la page courante et ses voisines — la navigation au-delà obligerait à charger la suite à la demande.
+
 ### `<SeriesMasonry images={imgs} columns={3} />`
 
 Galerie en maçonnerie (colonnes de hauteurs variables), alternative à `SeriesGallery`.
