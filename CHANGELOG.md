@@ -9,10 +9,6 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [Non publié]
 
-### Corrigé
-
-- **Parseur XML du `WebDAVProvider` : temps de calcul borné** (#158, PERF-012). Le tokenizer à expression régulière repartait de zéro à chaque commentaire, instruction, section CDATA ou balise non fermés : une réponse hostile de 8 Ko demandait 15 s, 20 Ko plus d'une minute, et `maxListingBytes` ne borne que la taille, pas ce temps. Un serveur WebDAV malveillant pouvait donc bloquer l'ingestion. Le parseur lit désormais la réponse en un seul passage ; une construction jamais fermée arrête la lecture, et une imbrication de plus de 256 niveaux est refusée. Une réponse de 31 Mio, le plafond par défaut, se lit en 0,3 s. Les listings réels se lisent à l'identique.
-
 ## [0.26.0] — 2026-10-31 — médias résolus, flux et sitemap, dette P2
 
 ### Ajouté
@@ -51,6 +47,7 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Corrigé
 
+- **Parseur XML du `WebDAVProvider` : temps de calcul borné** (#158, PERF-012). Le tokenizer à expression régulière repartait de zéro à chaque commentaire, instruction, section CDATA ou balise non fermés : une réponse hostile de 8 Ko demandait 15 s, 20 Ko plus d'une minute, et `maxListingBytes` ne borne que la taille, pas ce temps. Un serveur WebDAV malveillant pouvait donc bloquer l'ingestion. Le parseur lit désormais la réponse en un seul passage ; une construction jamais fermée arrête la lecture, et une imbrication de plus de 256 niveaux est refusée. Une réponse de 31 Mio, le plafond par défaut, se lit en 0,3 s. Les listings réels se lisent à l'identique.
 - Routes injectées : « Toutes les séries », « Page {n} » et « Dans cette série » ne sont plus écrits en dur en français.
 - **Fichiers système de `media/`** (#155). `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) sont exclus du glob des documents joints — ils étaient proposés au téléchargement et copiés dans le build ; un `Icon\r` dans `media/` faisait même échouer `astro build` (nom de module invalide).
 - **`embeds[].url` et `files[].url` refusent `javascript:`, `data:` et tout schéma autre que `http(s)`** (#152, SEC-003) : schéma Zod, helpers (entrées de `images.json` hors Zod) et `href` des composants.
