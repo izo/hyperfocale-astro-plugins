@@ -40,34 +40,96 @@ function decodeEntities(text: string): string {
   });
 }
 
-const TOKEN =
-  /<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<!DOCTYPE[^>]*>|<!\[CDATA\[([\s\S]*?)\]\]>|<(\/?)([^\s/>]+)[^>]*?(\/?)>|([^<]+)/g;
+/**
+ * Profondeur d'imbrication maximale. Une réponse PROPFIND en porte une dizaine ;
+ * au-delà, la réponse n'est pas celle d'un serveur WebDAV, et chaque balise
+ * fermante parcourt la pile — une borne garde ce parcours linéaire.
+ */
+const MAX_XML_DEPTH = 256;
+
+/** Un caractère qui termine le nom d'une balise : espace, `/` ou `>`. */
+function endsTagName(code: number): boolean {
+  return code === 62 || code === 47 || code === 32 || code === 9 || code === 10 || code === 13 || code === 12;
+}
 
 /**
  * Parseur XML minimal : suffisant pour une réponse `207 Multi-Status`. Les
  * espaces de noms sont ignorés — `D:href`, `d:href` et `href` se lisent pareil,
  * ce qui absorbe les préfixes variables des serveurs (Apache, Nextcloud, nginx).
+ *
+ * **Lecture linéaire** (#158, PERF-012) : un seul passage, à coups d'`indexOf`,
+ * jamais d'expression régulière à quantificateurs imbriqués. Le tokenizer
+ * précédent repartait de zéro à chaque `<!--` non fermé : une réponse hostile de
+ * 8 Ko prenait 15 s, 20 Ko plus d'une minute — et `maxListingBytes` ne borne que
+ * la taille, pas ce temps de calcul. Un commentaire, une instruction ou une
+ * section CDATA jamais fermés, ou une balise sans `>`, arrêtent la lecture : le
+ * reste n'est pas du XML lisible. Au-delà de `MAX_XML_DEPTH`, la réponse est
+ * refusée.
  */
 function parseXml(xml: string): XmlNode {
   const root: XmlNode = { name: '#document', children: [], text: '' };
   const stack: XmlNode[] = [root];
-  for (const match of xml.matchAll(TOKEN)) {
-    const [, cdata, closing, qname, selfClosing, text] = match;
+  const length = xml.length;
+  let i = 0;
+  while (i < length) {
     const current = stack[stack.length - 1] as XmlNode;
-    if (cdata !== undefined) {
-      current.text += cdata;
-    } else if (text !== undefined) {
-      current.text += decodeEntities(text);
-    } else if (qname !== undefined) {
+    if (xml.charCodeAt(i) !== 60) {
+      const next = xml.indexOf('<', i);
+      const end = next === -1 ? length : next;
+      current.text += decodeEntities(xml.slice(i, end));
+      i = end;
+      continue;
+    }
+    if (xml.startsWith('<!--', i)) {
+      const end = xml.indexOf('-->', i + 4);
+      if (end === -1) break;
+      i = end + 3;
+    } else if (xml.startsWith('<?', i)) {
+      const end = xml.indexOf('?>', i + 2);
+      if (end === -1) break;
+      i = end + 2;
+    } else if (xml.startsWith('<![CDATA[', i)) {
+      const end = xml.indexOf(']]>', i + 9);
+      if (end === -1) break;
+      current.text += xml.slice(i + 9, end);
+      i = end + 3;
+    } else if (xml.startsWith('<!', i)) {
+      // DOCTYPE et autres déclarations : ignorées.
+      const end = xml.indexOf('>', i + 2);
+      if (end === -1) break;
+      i = end + 1;
+    } else {
+      const close = xml.indexOf('>', i + 1);
+      if (close === -1) break;
+      const closing = xml.charCodeAt(i + 1) === 47;
+      const start = closing ? i + 2 : i + 1;
+      let end = start;
+      while (end < close && !endsTagName(xml.charCodeAt(end))) end++;
+      if (end === start) {
+        i += 1; // `<>` ou `< a>` : pas une balise, on passe le `<`.
+        continue;
+      }
+      const qname = xml.slice(start, end);
       const name = qname.slice(qname.indexOf(':') + 1);
-      if (closing === '/') {
-        const at = stack.map((n) => n.name).lastIndexOf(name);
-        if (at > 0) stack.length = at;
+      if (closing) {
+        for (let at = stack.length - 1; at > 0; at--) {
+          if ((stack[at] as XmlNode).name === name) {
+            stack.length = at;
+            break;
+          }
+        }
       } else {
         const node: XmlNode = { name, children: [], text: '' };
         current.children.push(node);
-        if (selfClosing !== '/') stack.push(node);
+        const selfClosing = close - 1 >= end && xml.charCodeAt(close - 1) === 47;
+        if (!selfClosing) {
+          if (stack.length > MAX_XML_DEPTH) {
+            throw new Error(`[hyperfocale] WebDAV : réponse XML trop profonde (plus de ${MAX_XML_DEPTH} niveaux).`);
+          }
+          stack.push(node);
+        }
       }
+      i = close + 1;
     }
   }
   return root;
