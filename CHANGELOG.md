@@ -9,6 +9,10 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [Non publié]
 
+### Ajouté
+
+- **`materializeSnapshot` : budget d'octets en vol** (#158, PERF-008). Option `maxInFlightBytes` (défaut 256 Mio) : `read` rend un fichier entier, donc le pic de mémoire était `concurrency` × le plus gros fichier. La taille de chaque entrée étant connue avant sa lecture, la suivante ne part que si le total en vol tient dans le budget ; un fichier plus gros que le budget est lu seul, jamais refusé. Sans effet sur des images de quelques Mo. La vraie lecture en flux reste une extension de contrat, en attente de la spec (`izo/hyperfocale-spec#60`).
+
 ## [0.26.0] — 2026-10-31 — médias résolus, flux et sitemap, dette P2
 
 ### Ajouté

@@ -466,3 +466,56 @@ describe('FilesystemProvider — cache de hash (§4.4, « Coût et cache », #15
   });
 });
 
+describe('materializeSnapshot — budget d\'octets en vol (#158, PERF-008)', () => {
+  /** Six fichiers de 1 000 octets à matérialiser dans un dossier vide ; rend le pic de lectures simultanées. */
+  async function run(options: { concurrency?: number; maxInFlightBytes?: number }) {
+    const baseDir = join(work, 'base');
+    const sourceDir = join(work, 'source');
+    mkdirSync(baseDir);
+    const files: Record<string, string> = {};
+    for (let i = 0; i < 6; i++) files[`s${i}/index.md`] = String(i).repeat(1000);
+    tree(sourceDir, files);
+    const provider = new FilesystemProvider({ root: sourceDir });
+    const target = await snapshotOf(sourceDir);
+    const changeSet = diffSnapshots(await snapshotOf(baseDir), target);
+    let active = 0;
+    let peak = 0;
+    const result = await materializeSnapshot(changeSet, {
+      targetDir: baseDir,
+      concurrency: options.concurrency ?? 4,
+      ...(options.maxInFlightBytes !== undefined ? { maxInFlightBytes: options.maxInFlightBytes } : {}),
+      read: async (path) => {
+        active++;
+        peak = Math.max(peak, active);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        const bytes = await provider.read(path);
+        active--;
+        return bytes;
+      },
+    });
+    const written = Object.keys(files).filter((path) => existsSync(join(baseDir, path)));
+    return { peak, result, written, files, baseDir };
+  }
+
+  it('par défaut (256 Mio), de petits fichiers ne sont pas ralentis : la limite de 4 lectures joue seule', async () => {
+    const { peak, result, written, files } = await run({});
+    expect(peak).toBe(4);
+    expect(result.written).toBe(6);
+    expect(written.sort()).toEqual(Object.keys(files).sort());
+  });
+
+  it('un budget plafonne les octets lus en même temps : 2 500 octets, deux fichiers de 1 000 à la fois', async () => {
+    const { peak, result, written, files, baseDir } = await run({ maxInFlightBytes: 2_500 });
+    expect(peak).toBe(2);
+    expect(result.written).toBe(6);
+    expect(written.sort()).toEqual(Object.keys(files).sort());
+    for (const [path, content] of Object.entries(files)) expect(readFileSync(join(baseDir, path), 'utf-8')).toBe(content);
+  });
+
+  it('un fichier plus gros que le budget est lu seul, jamais refusé', async () => {
+    const { peak, result } = await run({ maxInFlightBytes: 10 });
+    expect(peak).toBe(1);
+    expect(result.written).toBe(6);
+  });
+});
+
