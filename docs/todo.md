@@ -29,7 +29,7 @@ prefixes:
 ## Backlog
 
 - [ ] #158 [P2] Dette P2 — audit 2026-10-29 #dette
-  Quatre cases ouvertes sur vingt-six. PERF-004 : la lightbox sert l'original, choix assumé, charge utile allégée. PERF-008 : lecture en flux, extension de contrat, issue `izo/hyperfocale-spec#60`. CODE-011 et CODE-012 : leur texte est dans le rapport d'audit (`izo/Hyper-F`, privé). PERF-012 est faite (#167) : le parseur XML de WebDAV pouvait bloquer l'ingestion. Détail : issue #158.
+  Une case ouverte sur vingt-six : PERF-004. La lightbox sert l'original, choix assumé, charge utile allégée ; restent deux pistes de l'audit non retenues (variante par `getImage()`, ou ne sérialiser que la page courante et ses voisines). PERF-008 est traitée par le repli de l'audit (#169, `maxInFlightBytes`) ; la lecture en flux reste une extension de contrat : `izo/hyperfocale-spec#60`. CODE-011 et CODE-012 : sans action, lues dans le rapport d'audit. À fermer en assumant PERF-004, ou à rouvrir si le poids des originaux devient un problème réel. Détail : issue #158.
 
 ## Todo
 
