@@ -4,7 +4,7 @@
  * caractère de contrôle qu'un navigateur ignore, `//hôte`, antislash, `%2e`.
  */
 import { describe, expect, it } from 'vitest';
-import { isUnsafeReferenceText, referenceProblem, urlFieldProblem } from '../../src/url-forms.js';
+import { isEmbedId, isUnsafeReferenceText, referenceProblem, urlFieldProblem } from '../../src/url-forms.js';
 
 const SCHEME = 'url-scheme-forbidden';
 const UNSAFE = 'reference-unsafe';
@@ -202,4 +202,39 @@ describe('referenceProblem — ne juge que les références relatives', () => {
       expect(referenceProblem(value, () => true)).toBeNull();
     },
   );
+});
+
+describe('isEmbedId — identifiants d\'embed (§1.12)', () => {
+  it.each(['123831041', 'dQw4w9WgXcQ', 'a_b-C', '-', '_', 'a'.repeat(128)])('%j est admis', (id) => {
+    expect(isEmbedId(id)).toBe(true);
+  });
+
+  it.each([
+    ['vide', ''],
+    ['129 caractères', 'a'.repeat(129)],
+    ['remontée', '../x'],
+    ['séparateur de chemin', '1/2'],
+    ['antislash', '1\\2'],
+    ['requête', '1?autoplay=0'],
+    ['paramètre', '1&x=2'],
+    ['fragment', '1#t=30'],
+    ['espace', '1 2'],
+    ['espace de queue', '123 '],
+    ['saut de ligne final', '123\n'],
+    ['saut de ligne initial', '\n123'],
+    ['octet nul', '12\u00003'],
+    ['pourcentage', '%2e%2e'],
+    ['point', 'a.b'],
+    ['deux-points', 'javascript:1'],
+    ['lettre accentuée', 'vidéo'],
+    ['chiffre arabe-indien', '١٢٣'],
+    ['lettre pleine chasse', '\uFF56imeo'],
+    ['hors BMP', '\u{1F600}'],
+  ])('%s est refusé', (_, id) => {
+    expect(isEmbedId(id)).toBe(false);
+  });
+
+  it.each([undefined, null, 123, {}, ['1'], true])('%j (pas une chaîne) est refusé', (id) => {
+    expect(isEmbedId(id)).toBe(false);
+  });
 });

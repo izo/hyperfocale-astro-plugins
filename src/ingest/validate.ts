@@ -28,6 +28,7 @@ import {
 import type { UrlFieldOptions, UrlFieldProblem } from './paths.js';
 import { indexFolders, primaryIndex } from './series.js';
 import { entryStructureError, snapshotStructureError } from './snapshot.js';
+import { writtenDay } from '../written-date.js';
 import type { ContentSnapshot, Diagnostic, DiagnosticCode, ReadFn, Severity, SnapshotEntry } from './types.js';
 
 /** Racine de corpus soumise à validation (§4.10). */
@@ -56,7 +57,6 @@ export interface ValidateSnapshotOptions {
 }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
 
 // Règle de la spec invoquée par chaque code, reportée dans `Diagnostic.rule`.
 const RULES: Partial<Record<DiagnosticCode, string>> = {
@@ -128,18 +128,9 @@ function field(data: Record<string, unknown>, key: string): unknown {
   return data[key] === null ? undefined : data[key];
 }
 
-/** Date ISO 8601 valide au sens de §4.10, règle 7 — calendrier et horloge compris. */
+/** Date ISO 8601 valide au sens de §4.10, règle 8 — calendrier et horloge compris. */
 function isIsoDate(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  const m = ISO_DATE.exec(value);
-  if (m === null) return false;
-  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const calendar = new Date(Date.UTC(year, month - 1, day));
-  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day) {
-    return false;
-  }
-  const [hour, minute, second] = [m[4], m[5], m[6]].map((v) => (v === undefined ? 0 : Number(v))) as [number, number, number];
-  return hour <= 23 && minute <= 59 && second <= 59;
+  return typeof value === 'string' && writtenDay(value) !== null;
 }
 
 /** Clé qui ne diffère de `private` que par la casse, des espaces, `_` ou `-` (§4.10, règle 7). */

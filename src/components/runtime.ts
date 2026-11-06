@@ -8,6 +8,9 @@
 import type { HeadingLevel } from '../i18n.js';
 import type { Attachment } from '../schema.js';
 import { isSafeLinkUrl } from '../ingest/paths.js';
+import { isEmbedId } from '../url-forms.js';
+
+export { isEmbedId };
 
 /**
  * Valeur d'un `href` : l'URL, ou `undefined` (attribut omis) si son schéma n'est

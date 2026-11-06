@@ -102,3 +102,15 @@ export function urlFieldProblem(value: string, options: UrlFieldOptions = {}): U
   if (unsafe !== null) return unsafe;
   return value.startsWith(' ') ? 'url-scheme-forbidden' : null;
 }
+
+const EMBED_ID = /^[A-Za-z0-9_-]{1,128}$/;
+
+/**
+ * Un identifiant d'embed peut-il entrer dans une URL de lecture (§1.12,
+ * *Identifiants d'embed*) ? Seuls `A-Z a-z 0-9 _ -`, de 1 à 128 caractères : tout
+ * autre texte (séparateur, `%`, espace, saut de ligne, caractère non ASCII)
+ * oblige l'adaptateur à se rabattre sur le lien.
+ */
+export function isEmbedId(id: unknown): id is string {
+  return typeof id === 'string' && EMBED_ID.test(id);
+}

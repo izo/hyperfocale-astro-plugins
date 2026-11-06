@@ -1,0 +1,135 @@
+{
+  "description": "Parent d'une série (§1.8) : son plus proche dossier ancêtre qui est une série. Un dossier de rangement (sans `index.md`) et une page de section (§1.10) ne le sont pas. `folders` liste les dossiers qui portent un fichier index, avec leur nature ; `expected` donne le parent de chaque série (`null` : aucun), dont les sections sont exclues.",
+  "cases": [
+    {
+      "name": "conteneur-simple",
+      "description": "Un conteneur et ses sous-séries : le parent est le conteneur (§1.8).",
+      "folders": [
+        {
+          "path": "festival",
+          "kind": "series"
+        },
+        {
+          "path": "festival/a",
+          "kind": "series"
+        },
+        {
+          "path": "festival/b",
+          "kind": "series"
+        }
+      ],
+      "expected": {
+        "festival": null,
+        "festival/a": "festival",
+        "festival/b": "festival"
+      }
+    },
+    {
+      "name": "rangement",
+      "description": "Un dossier de rangement (sans `index.md`, donc absent de `folders`) entre un conteneur et une sous-série : la sous-série garde le conteneur pour parent (§1.8, v2.15). Une série rangée sous des dossiers sans `index.md` n'a pas de parent (§1.2).",
+      "folders": [
+        {
+          "path": "festival",
+          "kind": "series"
+        },
+        {
+          "path": "festival/lots/a",
+          "kind": "series"
+        },
+        {
+          "path": "archives/2010/b",
+          "kind": "series"
+        }
+      ],
+      "expected": {
+        "festival": null,
+        "festival/lots/a": "festival",
+        "archives/2010/b": null
+      }
+    },
+    {
+      "name": "section-transparente",
+      "description": "Une page de section (`type: section`, §1.10) est transparente pour le parent (§1.8, v2.16) : `festival/rubrique/a` a pour parent `festival`, non `rubrique`. Une série directement sous une section n'a pas de parent.",
+      "folders": [
+        {
+          "path": "festival",
+          "kind": "series"
+        },
+        {
+          "path": "festival/rubrique",
+          "kind": "section"
+        },
+        {
+          "path": "festival/rubrique/a",
+          "kind": "series"
+        },
+        {
+          "path": "musique",
+          "kind": "section"
+        },
+        {
+          "path": "musique/b",
+          "kind": "series"
+        }
+      ],
+      "expected": {
+        "festival": null,
+        "festival/rubrique/a": "festival",
+        "musique/b": null
+      }
+    },
+    {
+      "name": "section-racine",
+      "description": "Un `index.md` à la racine du corpus (chemin `\"\"`) déclare `type: section` (§1.10, v2.15) : il ne devient le parent de personne.",
+      "folders": [
+        {
+          "path": "",
+          "kind": "section"
+        },
+        {
+          "path": "a",
+          "kind": "series"
+        },
+        {
+          "path": "a/b",
+          "kind": "series"
+        }
+      ],
+      "expected": {
+        "a": null,
+        "a/b": "a"
+      }
+    },
+    {
+      "name": "plus-proche-ancetre",
+      "description": "Le parent est le plus proche ancêtre qui est une série, même à travers section et rangement.",
+      "folders": [
+        {
+          "path": "f",
+          "kind": "series"
+        },
+        {
+          "path": "f/s1",
+          "kind": "section"
+        },
+        {
+          "path": "f/s1/lots/g",
+          "kind": "series"
+        },
+        {
+          "path": "f/s1/lots/g/s2",
+          "kind": "section"
+        },
+        {
+          "path": "f/s1/lots/g/s2/h",
+          "kind": "series"
+        }
+      ],
+      "expected": {
+        "f": null,
+        "f/s1/lots/g": "f",
+        "f/s1/lots/g/s2/h": "f/s1/lots/g"
+      }
+    }
+  ]
+}

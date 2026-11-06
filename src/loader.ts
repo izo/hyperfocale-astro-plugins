@@ -40,6 +40,7 @@ import { mapConcurrent } from './ingest/concurrency.js';
 import { compareCanonical, isExcluded } from './ingest/paths.js';
 import type { ExclusionRule } from './ingest/paths.js';
 import type { MediaFile } from './media.js';
+import { writtenDate } from './written-date.js';
 
 export type { ExclusionRule } from './ingest/paths.js';
 
@@ -257,6 +258,23 @@ function unreadable(filePath: string, reason: string, cause?: unknown): Error {
   );
 }
 
+/** Ligne `date:` de premier niveau, valeur sans guillemets ni commentaire. */
+const DATE_LINE = /^date:[ \t]+([^\s#][^#\r\n]*?)[ \t\r]*(?:#.*)?$/m;
+
+/**
+ * Le jour écrit de `date` (§1.3), à minuit UTC, ou `null`. Le parseur d'Astro lit
+ * un horodatage non guillemeté en `Date` : l'instant garde son jour UTC, pas le
+ * jour que l'auteur a écrit (`2026-06-15T23:30:00-05:00` tombe le 16). Le texte de
+ * la ligne `date:` de premier niveau le redonne — une seconde ne passerait pas le
+ * parseur, qui refuse les clés dupliquées et les continuations non indentées — s'il
+ * est une date ISO 8601 valide. Le loader n'a pas de parseur YAML à lui : il ne
+ * charge que Node et `astro/markdown`.
+ */
+function writtenFrontmatterDate(raw: string): Date | null {
+  const text = DATE_LINE.exec(raw)?.[1];
+  return text === undefined ? null : writtenDate(text);
+}
+
 /**
  * Frontmatter et corps d'un fichier index. Les bornes de §1.12 jugent la valeur
  * lue avant tout usage — `prepare`, sérialisation, schéma — : une bombe d'alias,
@@ -274,6 +292,10 @@ function readFrontmatter(contents: string, filePath: string): ReturnType<typeof 
   }
   const violation = measureStructure(parsed.frontmatter);
   if (violation !== null) throw unreadable(filePath, BOUND_MESSAGES[violation]);
+  if (parsed.frontmatter['date'] instanceof Date) {
+    const day = writtenFrontmatterDate(parsed.rawFrontmatter);
+    if (day !== null) parsed.frontmatter['date'] = day;
+  }
   return parsed;
 }
 

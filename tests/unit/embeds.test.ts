@@ -119,6 +119,26 @@ describe('getSeriesEmbeds', () => {
     expect((await getSeriesEmbeds('demo', series))[0]?.playable).toBe(false);
   });
 
+  it.each([
+    ['remontée', '../../admin'],
+    ['espace', '123 456'],
+    ['129 caractères', 'a'.repeat(129)],
+    ['non ASCII', 'vidéo'],
+    ['saut de ligne final', '123\n'],
+  ])("n'est pas playable avec un id refusé (§1.12) : %s", async (_, id) => {
+    resetSeriesCache();
+    const series = makeSeries([{ url: 'https://vimeo.com/1', platform: 'vimeo', id }]);
+    const embed = (await getSeriesEmbeds('demo', series))[0];
+    expect(embed?.playable).toBe(false);
+    expect(embed?.url).toBe('https://vimeo.com/1');
+  });
+
+  it('reste playable à 128 caractères', async () => {
+    resetSeriesCache();
+    const series = makeSeries([{ url: 'https://vimeo.com/1', platform: 'vimeo', id: 'a'.repeat(128) }]);
+    expect((await getSeriesEmbeds('demo', series))[0]?.playable).toBe(true);
+  });
+
   it("n'est pas playable sur une plateforme inconnue", async () => {
     resetSeriesCache();
     const series = makeSeries([{ url: 'https://peertube.test/w/a', platform: 'peertube', id: 'a' }]);

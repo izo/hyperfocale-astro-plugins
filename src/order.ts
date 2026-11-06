@@ -19,11 +19,10 @@ export function compareNFC(a: string, b: string): number {
  * Jour calendaire (`AAAA-MM-JJ`) d'une date de frontmatter, ou `null` si elle
  * est absente ou invalide.
  *
- * Le schéma coerce `date` en `Date` : un `AAAA-MM-JJ` devient minuit UTC, dont le
- * jour UTC est exactement le jour écrit. Pour une date écrite **avec** heure et
- * fuseau, le jour UTC peut différer du jour écrit (23:30-05:00 donne le lendemain) :
- * la valeur brute n'est plus disponible ici. Limite connue, sans effet sur les
- * dates sans heure.
+ * Le jour est celui qui est **écrit** (§1.3), jamais converti d'un fuseau. Le
+ * schéma et le loader livrent déjà `date` à minuit UTC du jour écrit : son jour
+ * UTC est ce jour. Un `Date` construit ailleurs — un horodatage que le parseur
+ * YAML a converti en instant — a perdu son fuseau d'écriture, et se lit en UTC.
  */
 export function calendarDay(value: unknown): string | null {
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) return null;

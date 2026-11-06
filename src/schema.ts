@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { SchemaContext } from 'astro:content';
 import { isUnsafeReferenceText, urlFieldProblem } from './url-forms.js';
 import type { UrlFieldOptions } from './url-forms.js';
+import { writtenDate } from './written-date.js';
 
 /**
  * Options de génération du schéma series.
@@ -257,6 +258,19 @@ const embedSchema = z.object({
 });
 
 /**
+ * `date` du core (§1.3) : le jour **écrit**, sans conversion de fuseau. Une
+ * chaîne ISO 8601 valide devient ce jour à minuit UTC — l'heure est ignorée —,
+ * là où `z.coerce.date()` en ferait un instant dont le jour UTC peut être la
+ * veille ou le lendemain (`2026-06-15T23:30:00-05:00` est le 15 juin). Toute
+ * autre valeur garde la coercion de Zod. Un `Date` déjà construit a perdu son
+ * fuseau d'écriture : il est pris tel quel.
+ */
+const frontmatterDate = z.preprocess(
+  (value) => (typeof value === 'string' ? (writtenDate(value) ?? value) : value),
+  z.coerce.date(),
+);
+
+/**
  * Schéma de base sans `cover` — utilisable sans `SchemaContext` (#DATA-004).
  *
  * Permet aux sites consommateurs d'étendre le schéma sans dépendance
@@ -287,7 +301,7 @@ export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
     // là où une série l'est. Un champ ne pouvant être requis conditionnellement
     // dans un shape Zod, l'arbitrage se fait après coup — et `.check()` survit
     // à `.extend()`, ce dont dépend l'API d'extension (#DATA-004).
-    date: z.coerce.date().optional(),
+    date: frontmatterDate.optional(),
     description: z.string().optional(),
     location: z.string().optional(),
     lang: z.string().optional(),
@@ -444,7 +458,8 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
  * `poster` est résolu : `ImageMetadata` pour un fichier de `media/` traité par
  * Astro, chaîne pour une URL distante, `undefined` si absent ou introuvable.
  * `playable` dit si un lecteur peut être construit — c'est-à-dire si `platform`
- * est connue **et** `id` présent. Faux, le consommateur rend un lien.
+ * est connue **et** `id` conforme à `^[A-Za-z0-9_-]{1,128}$` (§1.12). Faux, le
+ * consommateur rend un lien.
  */
 export interface Embed {
   url: string;

@@ -193,6 +193,12 @@ Texte libre affiché avant la galerie de photos.
 
 La série apparaît automatiquement sur `/series/`. Formats acceptés : `.jpg` `.jpeg` `.png` `.webp` `.avif`
 
+#### Dates de frontmatter
+
+Le jour d'une série est celui que l'auteur a **écrit** (§1.3, §1.6) : les dix premiers caractères, sans conversion de fuseau. `date: 2026-06-15T23:30:00-05:00` est le 15 juin, alors que son instant tombe le 16 en UTC ; le tri, les flux, le sitemap et le filtre par année suivent ce jour. Le schéma ramène une date ISO 8601 valide à **minuit UTC du jour écrit** : l'heure et le fuseau sont écartés, §1.3 les ignore.
+
+Astro lit pourtant un horodatage **non guillemeté** en `Date`, et perd son fuseau d'écriture avant que le schéma ne le voie. `seriesLoader` le rétablit depuis le texte du fichier. Avec `glob()`, guillemetez une date qui porte une heure et un fuseau (`date: "2026-06-15T23:30:00-05:00"`) : une date sans heure, ou à fuseau `Z`, n'en a pas besoin.
+
 ### Champs du frontmatter
 
 Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est toujours requis ; `date` l'est sauf si `dateRequired: false` ou `type: section`. Le schéma est en mode `looseObject` — vos champs custom passent sans configuration.
@@ -502,7 +508,7 @@ import { HF_LABELS, resolveLabels, formatDate, formatFileSize } from '@regrets/h
 // aussi exportés par '@regrets/hyperfocale/components'
 ```
 
-Résolution d'un libellé : `labels` de l'instance → langue de la locale (`en-GB` → `en`) → `en` → `fr`. Une langue sans dictionnaire (`es`, `ja`, `ko`…) affiche donc les libellés anglais, mais ses dates, nombres et pluriels suivent bien la locale : passez `labels` pour traduire le texte. Les dates de frontmatter sont lues en UTC (une date `2024-03-01` ne recule pas d'un jour à l'ouest de Greenwich).
+Résolution d'un libellé : `labels` de l'instance → langue de la locale (`en-GB` → `en`) → `en` → `fr`. Une langue sans dictionnaire (`es`, `ja`, `ko`…) affiche donc les libellés anglais, mais ses dates, nombres et pluriels suivent bien la locale : passez `labels` pour traduire le texte. Les dates de frontmatter se lisent au jour **écrit** (§1.3) : `2024-03-01` ne recule pas d'un jour à l'ouest de Greenwich, et `2024-03-01T23:30:00-05:00` reste le 1er mars. Le jour est affiché en UTC, sur une date ramenée à minuit UTC de ce jour (voir *Dates de frontmatter*).
 
 Les clés sont **stables** — en renommer ou en retirer une est un changement cassant. Les valeurs sont des gabarits à paramètres `{nom}` ; les clés plurielles prennent un objet indexé par catégorie CLDR (`one`, `other`… — `other` obligatoire).
 
@@ -974,7 +980,7 @@ const docs = await getSeriesAttachments('bretagne-2024', serie);
 
 ### `getSeriesEmbeds(slug, series?)`
 
-Contenus embarqués d'une série (`Embed[]`), **dans l'ordre du tableau** — aucun tri. Chaque entrée reçoit un `playable` calculé : `platform` reconnue **et** `id` présent.
+Contenus embarqués d'une série (`Embed[]`), **dans l'ordre du tableau** — aucun tri. Chaque entrée reçoit un `playable` calculé : `platform` reconnue **et** `id` conforme à `^[A-Za-z0-9_-]{1,128}$` (§1.12) — sans quoi l'embed se rend en lien, sans erreur.
 
 ```ts
 const embeds = await getSeriesEmbeds('documentaire-2024', serie);
@@ -1571,6 +1577,8 @@ Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingesti
 npm run fixtures:sync -- --ref <ref>   # recopie les fixtures d'une ref de izo/hyperfocale-spec et l'épingle dans SOURCE
 npm run fixtures:check                 # vérifie la copie octet pour octet contre le commit épinglé
 ```
+
+Les fixtures de la couche 1 (`fixtures/format/` : tri des séries, parent d'une série, routes) sont copiées au même commit sous `tests/fixtures/spec-format/`, avec leur propre `SOURCE`, par les mêmes commandes. `tests/unit/format-conformance.test.ts` en rejoue le tri et le parent ; les routes ne le sont pas (le routage est celui d'Astro, le plugin n'expose aucune fonction pure de résolution d'URL).
 
 ---
 

@@ -47,6 +47,7 @@ tests/
   components/       ← rendu des 11 composants (API container d'Astro, vitest.components.config.ts)
   e2e/              ← tests routes via astro build statique
   fixtures/spec-ingestion/ ← copie épinglée des fixtures de la spec (npm run fixtures:sync / fixtures:check)
+  fixtures/spec-format/    ← copie épinglée des fixtures de la couche 1 (même commit, mêmes commandes) ; rejouées par unit/format-conformance.test.ts
 examples/demo-site/ ← site consommateur pour tester le plugin en conditions réelles
 dist/               ← build tsup (gitignored)
 ```
@@ -113,7 +114,7 @@ Les **vocabulaires** du schéma — `CONTENT_TYPES`, `ATTACHMENT_KINDS`, `EMBED_
 ## Ingestion — invariants
 
 - **Frontières** : `./ingest`, `./ingest/dropbox` et `./ingest/webdav` n'importent aucun module `node:*` (importables dans un Worker) ; seul `./ingest/fs` touche Node. L'entrée racine n'importe rien de `src/ingest/`. `tests/unit/ingest/exports.test.ts` le vérifie sur les sources et sur `dist/` — tsup retire le préfixe `node:` au bundle, le test regarde aussi les noms nus.
-- **La spec fait foi** (`izo/hyperfocale-spec`, couche 4, §4.1–4.13) et ses fixtures sont normatives : `tests/unit/ingest/conformance.test.ts` les parcourt toutes. Une évolution du contrat se fait dans la spec, puis `npm run fixtures:sync -- --ref <ref>` ; ne jamais éditer `tests/fixtures/spec-ingestion/` à la main (`npm run fixtures:check` le détecte).
+- **La spec fait foi** (`izo/hyperfocale-spec`, couche 4, §4.1–4.13) et ses fixtures sont normatives : `tests/unit/ingest/conformance.test.ts` les parcourt toutes. Une évolution du contrat se fait dans la spec, puis `npm run fixtures:sync -- --ref <ref>` ; ne jamais éditer `tests/fixtures/spec-ingestion/` ni `tests/fixtures/spec-format/` à la main (`npm run fixtures:check` le détecte).
 - **Diagnostics** : triplet `code` + `severity` + `path` (`""` pour le snapshot entier), un seul par couple `(code, path)`. Un contrôle hors contrat se code `x-*` et reste **optionnel** : `x-schema-invalid` (violations de `baseSeriesSchema`) n'est produit qu'avec `astroSchema: true`, sinon la sortie diverge des fixtures et des autres implémentations.
 - **Frontmatter** : YAML 1.2 *core* (une date reste une chaîne), pas le schéma par défaut de js-yaml qu'emploie Astro — la validation juge le texte écrit.
 - **Originaux** (§1.9, v2.11) : la liste fermée vit en trois endroits — `ORIGINAL_EXTENSIONS` de `schema.ts`, sa copie dans `ingest/paths.ts` (le sous-chemin n'importe pas zod) et le motif littéral du glob des documents joints dans `helpers/index.ts` (Vite n'accepte qu'un littéral), écrit sous forme insensible à la casse — une classe par lettre, `[rR][aA][fF]` : Vite compare à la casse près, et nommer `raf` et `RAF` laissait passer `.Raf` (#125). `tests/unit/originals.test.ts` vérifie que les trois concordent avec la spec, et que le motif est exactement la forme dérivée de la liste. L'exclusion se fait dans le glob : filtré au rendu seulement, un `.RAF` serait quand même émis au build.

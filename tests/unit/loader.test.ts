@@ -869,3 +869,87 @@ describe('seriesLoader — index.mdx interdit (§1.2, §1.12, v2.17)', () => {
     expect(ctx.parseData.mock.calls.length).toBe(parsed);
   });
 });
+
+describe('seriesLoader — `date` au jour écrit (§1.3)', () => {
+  const index = (date: string) => `---\ntitle: T\ndate: ${date}\n---\n`;
+  const dayOf = async (date: string, schema?: Schema) => {
+    const { entries } = await load2({ 'a/index.md': index(date) }, schema);
+    return (entries.get('a')!.data.date as Date).toISOString();
+  };
+  const load2 = async (files: Record<string, string>, schema?: Schema) => {
+    const ctx = makeContext(ROOT, schema);
+    await seriesLoader({ base: corpus(files) }).load(ctx.context);
+    return ctx;
+  };
+
+  it.each([
+    ['2024-06-01T23:30:00-05:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T00:30:00+02:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T22:00:00-02:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T23:30:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T23:30:00Z', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01', '2024-06-01T00:00:00.000Z'],
+    ['"2024-06-01T23:30:00-05:00"', '2024-06-01T00:00:00.000Z'],
+    ["'2024-06-01T00:30:00+02:00'", '2024-06-01T00:00:00.000Z'],
+  ])('date: %s est le jour écrit', async (written, instant) => {
+    expect(await dayOf(written)).toBe(instant);
+  });
+
+  it('un site qui a son propre schéma `z.coerce.date()` reçoit le jour écrit', async () => {
+    const own = z.object({ title: z.string(), date: z.coerce.date() });
+    expect(await dayOf('2024-06-01T23:30:00-05:00', own as Schema)).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('`prepare` reçoit la date au jour écrit', async () => {
+    const seen: unknown[] = [];
+    const ctx = makeContext();
+    const prepare: SeriesPrepare = (frontmatter) => {
+      seen.push(frontmatter.date);
+      return frontmatter;
+    };
+    await seriesLoader({ base: corpus({ 'a/index.md': index('2024-06-01T23:30:00-05:00') }), prepare }).load(ctx.context);
+    expect(seen).toEqual([new Date('2024-06-01T00:00:00Z')]);
+  });
+
+  it('seule `date` est réécrite : les autres dates du frontmatter restent des instants', async () => {
+    const files = { 'a/index.md': '---\ntitle: T\ndate: 2024-06-01T23:30:00-05:00\nupdated: 2024-06-01T23:30:00-05:00\n---\n' };
+    const { entries } = await load2(files);
+    expect((entries.get('a')!.data.updated as Date).toISOString()).toBe('2024-06-02T04:30:00.000Z');
+  });
+
+  it('une clé `date` imbriquée n\'est pas prise pour la date de la série', async () => {
+    const files = { 'a/index.md': '---\ntitle: T\ndate: 2024-06-01T23:30:00-05:00\nproject:\n  date: 2030-01-01\n---\n' };
+    const { entries } = await load2(files);
+    expect((entries.get('a')!.data.date as Date).toISOString()).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it.each([
+    ['un commentaire', '2024-06-01T23:30:00-05:00 # écrit à Lima'],
+    ['des espaces autour', '   2024-06-01T23:30:00-05:00   '],
+  ])('date: %s', async (_, written) => {
+    expect(await dayOf(written)).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('fins de ligne CRLF', async () => {
+    const { entries } = await load2({ 'a/index.md': '---\r\ntitle: T\r\ndate: 2024-06-01T23:30:00-05:00\r\n---\r\n' });
+    expect((entries.get('a')!.data.date as Date).toISOString()).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('une `date:` dans le corps d\'un texte indenté n\'est pas lue', async () => {
+    const files = {
+      'a/index.md': '---\ntitle: T\ndescription: |\n  date: 2030-01-01\ndate: 2024-06-01T23:30:00-05:00\n---\n',
+    };
+    const { entries } = await load2(files);
+    expect((entries.get('a')!.data.date as Date).toISOString()).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('hors de la grammaire ISO 8601 de §4.10, la valeur lue par le parseur est laissée telle quelle', async () => {
+    expect(await dayOf('2024-06-01 23:30:00 -05:00')).toBe('2024-06-02T04:30:00.000Z');
+  });
+
+  it('une entrée sans `date` reste sans `date`', async () => {
+    const ctx = makeContext(ROOT, baseSeriesSchema({ dateRequired: false }));
+    await seriesLoader({ base: corpus({ 'a/index.md': '---\ntitle: T\n---\n' }) }).load(ctx.context);
+    expect(ctx.entries.get('a')!.data.date).toBeUndefined();
+  });
+});

@@ -5,6 +5,7 @@ import type { Attachment, AttachmentKind, Embed } from '../schema.js';
 import { isExcluded, isSafeLinkUrl } from '../ingest/paths.js';
 import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf, type ResolvedImage } from '../media.js';
 import { compareNFC, compareSeriesOrder } from '../order.js';
+import { isEmbedId } from '../url-forms.js';
 import type { ImageManifest, ManifestImage } from '../media.js';
 
 // Primitives pures, tenues par `/media` (importable hors runtime Astro) et
@@ -646,8 +647,9 @@ export async function getSeriesAttachments(slug: string, series?: Series): Promi
  * d'un CDN à soi reste un attachment.
  *
  * Chaque entrée reçoit un `playable` calculé : `platform` reconnue **et** `id`
- * présent. Faux, le consommateur rend un lien — c'est la dégradation prévue par
- * la spec, et elle vaut aussi pour un hébergeur que le plugin ne connaît pas.
+ * conforme à `^[A-Za-z0-9_-]{1,128}$` (§1.12). Faux, le consommateur rend un
+ * lien — c'est la dégradation prévue par la spec, et elle vaut aussi pour un
+ * hébergeur que le plugin ne connaît pas.
  *
  * Le `poster` est résolu comme une entrée de manifeste (§1.5.1) : un chemin
  * relatif est cherché dans `media/` et rendu en `ImageMetadata` optimisable,
@@ -689,7 +691,7 @@ export async function getSeriesEmbeds(slug: string, series?: Series): Promise<Em
 
       return {
         url: entry.url,
-        playable: known && typeof entry.id === 'string' && entry.id !== '',
+        playable: known && isEmbedId(entry.id),
         ...(platform !== undefined && { platform }),
         ...(entry.id !== undefined && { id: entry.id }),
         ...(entry.title !== undefined && { title: entry.title }),

@@ -1,0 +1,185 @@
+{
+  "description": "Résolution d'une URL de la collection `series` (préfixe `/series`, §1.6, *URLs*) en série, page de galerie ou rien. `series` donne les chemins des séries (relatifs à la racine de la collection) ; chaque requête a une URL à barre finale. La redirection de l'ancienne forme (`/<slug>/<page>/`) est optionnelle (« DEVRAIT ») : hors fixture.",
+  "cases": [
+    {
+      "name": "basique",
+      "description": "Route d'une série et pagination de sa galerie (§1.6) : `page/<n>`, n ≥ 2.",
+      "series": [
+        "bretagne-2024",
+        "archives/2010/foo"
+      ],
+      "requests": [
+        {
+          "url": "/series/bretagne-2024/",
+          "expected": {
+            "kind": "series",
+            "path": "bretagne-2024"
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/page/2/",
+          "expected": {
+            "kind": "gallery",
+            "path": "bretagne-2024",
+            "page": 2
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/page/12/",
+          "expected": {
+            "kind": "gallery",
+            "path": "bretagne-2024",
+            "page": 12
+          }
+        },
+        {
+          "url": "/series/archives/2010/foo/",
+          "expected": {
+            "kind": "series",
+            "path": "archives/2010/foo"
+          }
+        },
+        {
+          "url": "/series/archives/2010/foo/page/3/",
+          "expected": {
+            "kind": "gallery",
+            "path": "archives/2010/foo",
+            "page": 3
+          }
+        },
+        {
+          "url": "/series/archives/2010/",
+          "expected": {
+            "kind": "none"
+          }
+        },
+        {
+          "url": "/series/inconnue/",
+          "expected": {
+            "kind": "none"
+          }
+        }
+      ]
+    },
+    {
+      "name": "page-1-et-formes-invalides",
+      "description": "`/page/1/` n'est pas une route ; ni `/page/0/`, `/page/02/` ni `/page/x/` (§1.6).",
+      "series": [
+        "bretagne-2024"
+      ],
+      "requests": [
+        {
+          "url": "/series/bretagne-2024/page/1/",
+          "expected": {
+            "kind": "none"
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/page/0/",
+          "expected": {
+            "kind": "none"
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/page/02/",
+          "expected": {
+            "kind": "none"
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/page/x/",
+          "expected": {
+            "kind": "none"
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/page/",
+          "expected": {
+            "kind": "none"
+          }
+        }
+      ]
+    },
+    {
+      "name": "sous-serie-numerique",
+      "description": "Le segment `page` sépare la pagination des sous-séries, dont le slug peut être un nombre (§1.6) : `/festival/2/` est la sous-série `festival/2`, `/festival/page/2/` la page 2 de `festival`.",
+      "series": [
+        "festival",
+        "festival/2"
+      ],
+      "requests": [
+        {
+          "url": "/series/festival/2/",
+          "expected": {
+            "kind": "series",
+            "path": "festival/2"
+          }
+        },
+        {
+          "url": "/series/festival/page/2/",
+          "expected": {
+            "kind": "gallery",
+            "path": "festival",
+            "page": 2
+          }
+        },
+        {
+          "url": "/series/festival/2/page/2/",
+          "expected": {
+            "kind": "gallery",
+            "path": "festival/2",
+            "page": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "segment-page-reserve",
+      "description": "Une série rangée sous `<série>/page/2/` aurait la route de la page 2 de `<série>` (§1.6, segment réservé) : la page de galerie l'emporte, la série est inaccessible — d'où le lint de l'Annexe A.",
+      "series": [
+        "festival",
+        "festival/page/2"
+      ],
+      "requests": [
+        {
+          "url": "/series/festival/page/2/",
+          "expected": {
+            "kind": "gallery",
+            "path": "festival",
+            "page": 2
+          }
+        }
+      ]
+    },
+    {
+      "name": "identite-chemin",
+      "description": "Une route se construit sur le chemin, jamais sur le slug seul (§1.6, *Identité*) : deux séries de même slug sous deux rangements ont deux routes.",
+      "series": [
+        "concerts/bretagne-2024",
+        "festivals/bretagne-2024"
+      ],
+      "requests": [
+        {
+          "url": "/series/concerts/bretagne-2024/",
+          "expected": {
+            "kind": "series",
+            "path": "concerts/bretagne-2024"
+          }
+        },
+        {
+          "url": "/series/festivals/bretagne-2024/",
+          "expected": {
+            "kind": "series",
+            "path": "festivals/bretagne-2024"
+          }
+        },
+        {
+          "url": "/series/bretagne-2024/",
+          "expected": {
+            "kind": "none"
+          }
+        }
+      ]
+    }
+  ]
+}
