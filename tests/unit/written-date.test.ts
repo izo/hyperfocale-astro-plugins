@@ -111,9 +111,49 @@ describe('baseSeriesSchema — `date` au jour écrit', () => {
     }
   });
 
-  it('un texte qui n\'est pas une date ISO garde la coercion de Zod', () => {
+  it('un texte libre qui n\'a pas la forme ISO garde la lecture de Date', () => {
     expect(parse('June 1, 2024 12:00:00 UTC')).toEqual(new Date('2024-06-01T12:00:00Z'));
     expect(schema.safeParse({ title: 'T', date: 'pas-une-date' }).success).toBe(false);
+  });
+
+  // Constat F3 : le schéma et `date-invalid` (§4.10, règle 8) ne lisaient pas une date de la même façon.
+  it.each([
+    ['un jour absent du calendrier', '2024-02-30'],
+    ['un 31 février avec heure', '2024-02-31T10:00:00Z'],
+    ['une heure hors horloge', '2024-02-15T25:00:00Z'],
+    ['un nombre', 20240101],
+    ['un booléen', true],
+  ])('refuse %s au lieu de le lire comme un autre jour', (_label, date) => {
+    expect(schema.safeParse({ title: 'T', date }).success).toBe(false);
+  });
+
+  it('`date: null` vaut absente (règle 7) : requise → refusée, optionnelle → absente', () => {
+    expect(schema.safeParse({ title: 'T', date: null }).success).toBe(false);
+    const optional = baseSeriesSchema({ dateRequired: false }).safeParse({ title: 'T', date: null });
+    expect(optional.success).toBe(true);
+    if (optional.success) expect(optional.data.date).toBeUndefined();
+  });
+
+  it('une clé `null` vaut absente pour les autres champs du core (règle 7)', () => {
+    const result = baseSeriesSchema({ dateRequired: false }).safeParse({
+      title: 'T',
+      type: null,
+      draft: null,
+      private: null,
+      tags: null,
+      images: null,
+      description: null,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).toMatchObject({ type: 'series', draft: false, private: false, tags: [] });
+      expect(result.data.images).toBeUndefined();
+      expect(result.data.description).toBeUndefined();
+    }
+  });
+
+  it('`title: null` reste refusé : le titre est requis', () => {
+    expect(baseSeriesSchema({ dateRequired: false }).safeParse({ title: null }).success).toBe(false);
   });
 
   it('un Date déjà construit est pris tel quel', () => {
@@ -183,5 +223,22 @@ describe('tri et flux au jour écrit', () => {
     const sitemap = await renderSitemap();
     expect(sitemap).toContain('<loc>https://site.test/series/a/</loc>\n    <lastmod>2024-06-01</lastmod>');
     expect(sitemap).toContain('<loc>https://site.test/series/b/</loc>\n    <lastmod>2024-06-02</lastmod>');
+  });
+});
+
+describe('baseSeriesSchema — images[].src.src (§1.12)', () => {
+  const schema = baseSeriesSchema({ dateRequired: false });
+
+  it.each(['javascript:alert(1)', 'data:text/html,<script>', '//evil.example/x.jpg', '/\\evil.example/x.jpg'])(
+    'refuse src.src %j comme tout champ d\'URL',
+    (src) => {
+      expect(schema.safeParse({ title: 'T', images: [{ src: { src } }] }).success).toBe(false);
+    },
+  );
+
+  it('admet un chemin servi par le site et une URL https', () => {
+    for (const src of ['/_astro/01.abc123.jpg', 'https://cdn.example.com/01.jpg']) {
+      expect(schema.safeParse({ title: 'T', images: [{ src: { src, width: 10, height: 10, format: 'jpg' } }] }).success, src).toBe(true);
+    }
   });
 });

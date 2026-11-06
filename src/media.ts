@@ -378,7 +378,7 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
     if (typeof value !== 'string') return false;
     const problem = urlFieldProblem(value, { ...options, escapesRoot });
     if (problem === null) return false;
-    report(problem, `${label} ${JSON.stringify(value)} : ${REFUSED[problem]}`);
+    report(problem, `${label} ${JSON.stringify(truncate(value))} : ${REFUSED[problem]}`);
     return true;
   };
 
@@ -440,7 +440,7 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
           } else if (isImagePath(name) && (listing === null || listing.has(name))) {
             image = { src: url(target), path: target, ...dimensions(entry) };
           }
-        } else if (isRecord(entry.src) && typeof entry.src.src === 'string') {
+        } else if (isRecord(entry.src) && typeof entry.src.src === 'string' && !refused(entry.src.src, `\`images[${i}].src.src\``)) {
           image = { src: entry.src.src, ...dimensions(entry.src), ...dimensions(entry) };
         }
       }
@@ -487,8 +487,8 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
         if (!notImage && !missing) cover = matched?.image ?? { src: url(target), path: target };
       }
     }
-  } else if (isRecord(coverField) && typeof coverField.src === 'string') {
-    // `cover` déjà traité par `image()` d'Astro.
+  } else if (isRecord(coverField) && typeof coverField.src === 'string' && !refused(coverField.src, '`cover.src`')) {
+    // `cover` déjà traité par `image()` d'Astro. Valeur refusée (§1.12) : repli sur la première image.
     cover = { src: coverField.src, ...dimensions(coverField) };
   }
 

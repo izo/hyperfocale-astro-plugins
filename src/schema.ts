@@ -131,7 +131,8 @@ const localFileImageSchema = z.object({
  * garantie ici : le reste (width, height, format) transite en passthrough.
  */
 const localAssetImageSchema = z.object({
-  src: z.looseObject({ src: z.string() }),
+  // `src.src` est un chemin servi par le site (`/_astro/…`) ou une URL : §1.12 le juge comme tout champ d'URL.
+  src: z.looseObject({ src: urlField() }),
   alt: z.string().optional(),
 });
 
@@ -279,16 +280,38 @@ const embedSchema = z.object({
 });
 
 /**
+ * Règle 7 de §4.10 : une clé de valeur `null` vaut absente (`private:` sans
+ * valeur, `date: null`). Sans cela, le build refuse `private: null` que
+ * l'ingestion accepte, et — pire — `date: null` devient le 1er janvier 1970 au
+ * lieu de manquer.
+ */
+const absentIfNull = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === null ? undefined : value), schema);
+
+/**
  * `date` du core (§1.3) : le jour **écrit**, sans conversion de fuseau. Une
  * chaîne ISO 8601 valide devient ce jour à minuit UTC — l'heure est ignorée —,
  * là où `z.coerce.date()` en ferait un instant dont le jour UTC peut être la
- * veille ou le lendemain (`2026-06-15T23:30:00-05:00` est le 15 juin). Toute
- * autre valeur garde la coercion de Zod. Un `Date` déjà construit a perdu son
- * fuseau d'écriture : il est pris tel quel.
+ * veille ou le lendemain (`2026-06-15T23:30:00-05:00` est le 15 juin). Un `Date`
+ * déjà construit a perdu son fuseau d'écriture : il est pris tel quel.
+ *
+ * Refusés, comme `date-invalid` (§4.10, règle 8) les refuse à l'ingestion : une
+ * chaîne de forme ISO que le calendrier n'a pas (`2024-02-30`, que
+ * `z.coerce.date()` lisait le 1er mars) et un nombre (`20240101`, lu le 5
+ * janvier 1970). `null` vaut absente (règle 7, `absentIfNull`), non 1970. Un texte libre qui n'a pas la
+ * forme ISO (`June 1, 2024 12:00:00 UTC`) garde la lecture de `Date`, pour ne
+ * pas casser un site qui s'y fie : la validation d'ingestion, elle, le refuse.
  */
 const frontmatterDate = z.preprocess(
-  (value) => (typeof value === 'string' ? (writtenDate(value) ?? value) : value),
-  z.coerce.date(),
+  (value) => {
+    if (typeof value !== 'string') return value;
+    const written = writtenDate(value);
+    if (written !== null) return written;
+    // Forme `AAAA-MM-JJ…` que le calendrier ou l'horloge refuse : jamais relue comme un autre jour.
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+    return new Date(value);
+  },
+  z.date({ error: 'La date doit être une date ISO 8601 valide du calendrier, par exemple 2024-06-15 (§1.3).' }),
 );
 
 /**
@@ -315,44 +338,44 @@ const frontmatterDate = z.preprocess(
 export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
   const { dateRequired = true } = options;
   const schema = z.looseObject({
-    type: z.enum(CONTENT_TYPES).default('series'),
+    type: absentIfNull(z.enum(CONTENT_TYPES).default('series')),
     title: z.string(),
     // `date` est déclarée optionnelle ici, puis rendue obligatoire par le
     // `check` ci-dessous : une page d'index de section (§1.10) n'est pas datée,
     // là où une série l'est. Un champ ne pouvant être requis conditionnellement
     // dans un shape Zod, l'arbitrage se fait après coup — et `.check()` survit
     // à `.extend()`, ce dont dépend l'API d'extension (#DATA-004).
-    date: frontmatterDate.optional(),
-    description: z.string().optional(),
-    location: z.string().optional(),
-    lang: z.string().optional(),
+    date: absentIfNull(frontmatterDate.optional()),
+    description: absentIfNull(z.string().optional()),
+    location: absentIfNull(z.string().optional()),
+    lang: absentIfNull(z.string().optional()),
     // `published` est déprécié : `published: false` fait exactement ce que fait
     // `draft: true`, en logique inverse. La spec §0.5 le relève depuis la v2.1
     // comme « extension plugin, redondant avec `draft`, à arbitrer » ; l'arbitrage
     // est fait. Le champ reste accepté et agissant — un site qui l'emploie ne
     // casse pas — avec un avertissement au build, et sera retiré en 1.0.
-    published: z.boolean().default(true),
-    draft: z.boolean().default(false),
-    featured: z.boolean().default(false),
-    tags: z.array(z.string()).default([]),
+    published: absentIfNull(z.boolean().default(true)),
+    draft: absentIfNull(z.boolean().default(false)),
+    featured: absentIfNull(z.boolean().default(false)),
+    tags: absentIfNull(z.array(z.string()).default([])),
     // Tri d'une sous-série dans le line-up de son conteneur (spec §1.8).
     // Absent, la sous-série se range par date décroissante.
-    lineup_order: z.number().optional(),
-    alt_description: z.string().optional(),
-    private: z.boolean().default(false),
-    download: z.boolean().default(false),
-    iptc: iptcSchema.optional(),
-    images: z.array(imageEntrySchema).optional(),
-    attachments: z.array(attachmentMetaSchema).optional(),
-    files: z.array(remoteFileSchema).optional(),
+    lineup_order: absentIfNull(z.number().optional()),
+    alt_description: absentIfNull(z.string().optional()),
+    private: absentIfNull(z.boolean().default(false)),
+    download: absentIfNull(z.boolean().default(false)),
+    iptc: absentIfNull(iptcSchema.optional()),
+    images: absentIfNull(z.array(imageEntrySchema).optional()),
+    attachments: absentIfNull(z.array(attachmentMetaSchema).optional()),
+    files: absentIfNull(z.array(remoteFileSchema).optional()),
     // Médias hébergés chez un tiers et joués dans la page (spec §1.11). À ne pas
     // confondre avec `attachments`/`files`, qui désignent des fichiers dont on
     // sert l'octet : la frontière est l'emplacement du fichier, pas la nature
     // du média.
-    embeds: z.array(embedSchema).optional(),
+    embeds: absentIfNull(z.array(embedSchema).optional()),
     // Données de gestion du profil Projet (spec G.12). Un dossier de travail
     // ne se publie pas tel quel : un adaptateur web ne DOIT PAS rendre ce bloc.
-    project: projectSchema.optional(),
+    project: absentIfNull(projectSchema.optional()),
   });
 
   if (!dateRequired) return schema;

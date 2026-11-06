@@ -321,6 +321,35 @@ describe('valeurs refusées (§1.12) — jamais rendues, signalées', () => {
     expect(r.cover?.path).toBe('media/01.jpg');
   });
 
+  // Constat F5 : les formes objet (`image()` d'Astro déjà passé) échappaient à §1.12.
+  it.each(HOSTILE)('cover objet {src: %j} : refusé comme la chaîne, repli sur la première image', (src) => {
+    const r = resolveWith({ frontmatter: { cover: { src } }, mediaFiles: ['01.jpg'] });
+    expect(detail(r)).toEqual([['url-scheme-forbidden', 'error']]);
+    expect(r.cover?.path).toBe('media/01.jpg');
+    expect(strings({ images: r.images, cover: r.cover })).not.toContain(src);
+  });
+
+  it.each(HOSTILE)('images[].src.src %j : refusé, aucune image rendue pour cette entrée', (src) => {
+    const r = resolveWith({ frontmatter: { images: [{ src: { src } }] } });
+    expect(detail(r)).toEqual([['url-scheme-forbidden', 'error']]);
+    expect(r.images).toEqual([]);
+  });
+
+  it('formes objet admises : un chemin `/_astro/…` et une URL https passent', () => {
+    for (const src of ['/_astro/01.abc123.jpg', 'https://cdn.example.com/01.jpg']) {
+      const r = resolveWith({ frontmatter: { cover: { src }, images: [{ src: { src } }] } });
+      expect(r.diagnostics, src).toEqual([]);
+      expect(r.cover?.src, src).toBe(src);
+      expect(r.images[0]?.src, src).toBe(src);
+    }
+  });
+
+  it('un diagnostic ne recopie pas une valeur de 100 000 caractères', () => {
+    const cover = `javascript:${'a'.repeat(100_000)}`;
+    const message = resolveWith({ frontmatter: { cover }, mediaFiles: ['01.jpg'] }).diagnostics[0]?.message ?? '';
+    expect(message.length).toBeLessThan(400);
+  });
+
   it('cover refusé sans aucune image : pas de couverture', () => {
     const r = resolveWith({ frontmatter: { cover: 'javascript:alert(1)' } });
     expect(r.cover).toBeUndefined();
