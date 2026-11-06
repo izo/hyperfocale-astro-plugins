@@ -28,6 +28,9 @@ prefixes:
 
 ## Backlog
 
+- [ ] #EP-03-SPEC-PRIVE [P1] Série privée dont l'index disparaît, `media/` laissé en place : la garde se tait #spec
+  Constat F6 de la revue d'EP-03. Depuis la 2.17, un lien symbolique est ignoré (`entry-symlink`, avertissement) et non plus `snapshot-incomplete`. Combiné à « la suppression d'une série privée n'est pas une exposition » (§4.11), remplacer l'`index.md` d'une série `private: true` par un lien, le supprimer ou le renommer `Index.md` laisse `a/media/` dans `target` sans fichier index : `guardChangeSet` rend `[]`, `validateSnapshot` rend seulement `media-orphan` (avertissement). Avant la 2.17, le lien bloquait. À porter dans `izo/hyperfocale-spec` (§4.11, définition de l'exposition) : un dossier privé en base dont le fichier index disparaît alors qu'il reste des entrées sous son `media/` doit être une erreur de la garde. Le plugin ne la code pas d'avance (« la spec fait foi ») ; en attendant, un consumer traite `entry-symlink` sur un chemin présent en base comme bloquant. Reproduit avec des snapshots en mémoire (base `a/index.md` privé + `a/media/01.jpg`, target sans `a/index.md`).
+
 - [ ] #EP-03-RESTE [P2] Conformité 2.17 : ce que les fixtures n'exercent pas #spec
   Non couvert par #EP-03, à décider ou à relever : assainissement du HTML rendu depuis le body (§1.12) ; récupération d'URL au build — liste blanche d'hôtes vide par défaut, adresse résolue vérifiée (§1.12) —, dont les fixtures `fixtures/security/` que `fixtures:sync` ne copie pas encore ; exigences de §4.0 sur les providers (portée en lecture seule, secrets, webhook : signature en temps constant, horodatage refusé au-delà de 5 minutes), à revérifier ; `routes.json` de la couche 1, non rejoué faute de fonction pure de résolution d'URL. À la release, relever §0.5 et le README de `izo/hyperfocale-spec`.
 
