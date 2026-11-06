@@ -1,3 +1,4 @@
+import { MAX_READ_BYTES } from './bounds.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { parseFrontmatter } from './frontmatter.js';
@@ -129,13 +130,14 @@ export async function guardChangeSet(
     const entries = { base: new Map(base.entries.map((e) => [e.path, e])), target: new Map(target.entries.map((e) => [e.path, e])) };
     // Une série est privée si l'un de ses fichiers index déclare
     // `private: true` (booléen, pas la chaîne). Un index illisible — non
-    // matérialisé, octets divergents, frontmatter qui ne se lit pas — rend la
-    // série privée côté base (fail-closed) et ne déclare rien côté target.
+    // matérialisé, de plus de 1 Mio (jamais lu, §1.12), octets divergents,
+    // frontmatter qui ne se lit pas — rend la série privée côté base
+    // (fail-closed) et ne déclare rien côté target.
     const isPrivate = async (side: GuardSide, indexPaths: readonly string[]): Promise<boolean> => {
       const unreadable = side === 'base';
       for (const path of indexPaths) {
         const entry = entries[side].get(path) as SnapshotEntry;
-        if ((entry.state ?? 'materialized') !== 'materialized') {
+        if ((entry.state ?? 'materialized') !== 'materialized' || entry.size > MAX_READ_BYTES) {
           if (unreadable) return true;
           continue;
         }

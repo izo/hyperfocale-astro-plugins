@@ -31,9 +31,11 @@
 
 import type { Loader, LoaderContext } from 'astro/loaders';
 import { parseFrontmatter } from 'astro/markdown';
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { readdir, stat } from 'node:fs/promises';
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { BOUND_MESSAGES, MAX_READ_BYTES, measureStructure } from './ingest/bounds.js';
 import { mapConcurrent } from './ingest/concurrency.js';
 import { compareCanonical, isExcluded } from './ingest/paths.js';
 import type { ExclusionRule } from './ingest/paths.js';
@@ -238,6 +240,44 @@ function pickIndex(files: ReadonlySet<string>, locale: string | undefined, fallb
 const READ_CONCURRENCY = 16;
 
 /**
+ * Lit un fichier, jamais au-delà de `MAX_READ_BYTES + 1` octets : un fichier
+ * plus gros est reconnu à l'octet de trop, sans que le reste soit lu (§1.12).
+ */
+async function readCapped(path: string): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of createReadStream(path, { start: 0, end: MAX_READ_BYTES })) chunks.push(chunk as Buffer);
+  return Buffer.concat(chunks);
+}
+
+/** Erreur d'un fichier index que les bornes de lecture ou le YAML rendent illisible (§1.12). */
+function unreadable(filePath: string, reason: string, cause?: unknown): Error {
+  return new Error(
+    `[hyperfocale] seriesLoader : frontmatter illisible dans ${filePath} — ${reason}.`,
+    cause === undefined ? undefined : { cause },
+  );
+}
+
+/**
+ * Frontmatter et corps d'un fichier index. Les bornes de §1.12 jugent la valeur
+ * lue avant tout usage — `prepare`, sérialisation, schéma — : une bombe d'alias,
+ * une imbrication de plus de 32 collections ou un alias circulaire rendent le
+ * fichier illisible, comme un YAML invalide. Le parseur d'Astro partage les
+ * références des alias, `measureStructure` ne les développe donc pas.
+ */
+function readFrontmatter(contents: string, filePath: string): ReturnType<typeof parseFrontmatter> {
+  let parsed: ReturnType<typeof parseFrontmatter>;
+  try {
+    parsed = parseFrontmatter(contents);
+  } catch (error) {
+    const reason = error instanceof Error ? error.message.split('\n')[0] : undefined;
+    throw unreadable(filePath, reason || 'YAML illisible', error);
+  }
+  const violation = measureStructure(parsed.frontmatter);
+  if (violation !== null) throw unreadable(filePath, BOUND_MESSAGES[violation]);
+  return parsed;
+}
+
+/**
  * Parcourt `root` : tout dossier porteur d'un fichier index pour la locale est
  * un contenu (§1.2), à toute profondeur. On ne descend ni dans `media/` (plat,
  * §1.2), ni dans un dossier exclu, ni à travers un lien symbolique.
@@ -339,6 +379,15 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
         return data;
       };
 
+      /** Texte d'un fichier index ; au-delà de `MAX_READ_BYTES`, il est illisible et n'est pas lu en entier. */
+      const readIndex = async (abs: string): Promise<string> => {
+        const bytes = await readCapped(abs);
+        if (bytes.length > MAX_READ_BYTES) {
+          throw unreadable(posix(relative(projectRoot, abs)), `fichier de plus de ${MAX_READ_BYTES} octets, non lu`);
+        }
+        return bytes.toString('utf-8');
+      };
+
       /** Fichier index retenu → identifiant, tel que le dernier `sync()` complet l'a établi. */
       let owners = new Map<string, string>();
 
@@ -361,7 +410,8 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
         expectedId?: string,
       ): Promise<'skipped' | 'diverged' | 'unchanged' | 'processed'> => {
         const abs = join(found.dir, found.file);
-        const { frontmatter, content } = parseFrontmatter(contents);
+        const filePath = posix(relative(projectRoot, abs));
+        const { frontmatter, content } = readFrontmatter(contents, filePath);
         // §1.10 : le discriminant est `type`, tel qu'écrit dans le fichier.
         if (sections === 'exclude' && frontmatter.type === 'section') return 'skipped';
         const id = generateId?.({ path: found.path, file: found.file, data: frontmatter }) ?? (found.path === '' ? 'index' : found.path);
@@ -373,7 +423,6 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
         seen.set(id, abs);
         untouched.delete(id);
 
-        const filePath = posix(relative(projectRoot, abs));
         const data = prepares.length === 0 ? frontmatter : await prepareEntry(frontmatter, {
           id,
           path: found.path,
@@ -449,7 +498,7 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
           // Lectures en parallèle (PERF-010) : le reste de la boucle reste ordonné
           // — détection des collisions d'identifiant, avertissements, `store.set`.
           const files = await mapConcurrent(discovered, READ_CONCURRENCY, (found) =>
-            readFile(join(found.dir, found.file), 'utf-8'),
+            readIndex(join(found.dir, found.file)),
           );
           for (const [position, found] of discovered.entries()) {
             await processEntry(found, files[position] as string, seen, untouched, warnings);
@@ -470,7 +519,7 @@ export function seriesLoader(options: SeriesLoaderOptions): Loader {
       const syncOne = async (abs: string): Promise<boolean> => {
         const id = owners.get(abs);
         if (id === undefined) return false;
-        const contents = await readFile(abs, 'utf-8').catch(() => null);
+        const contents = await readIndex(abs).catch(() => null);
         if (contents === null) return false;
         const dir = dirname(abs);
         const found: Found = {
@@ -535,7 +584,7 @@ export interface SeriesMediaListing {
  */
 export async function readSeriesMedia(seriesDir: string | URL): Promise<SeriesMediaListing> {
   const dir = seriesDir instanceof URL ? fileURLToPath(seriesDir) : seriesDir;
-  const manifest = await readFile(join(dir, 'images.json'), 'utf-8').catch(() => null);
+  const manifest = await readCapped(join(dir, 'images.json')).then((bytes) => bytes.toString('utf-8'), () => null);
   const mediaDir = join(dir, 'media');
   const entries = await readdir(mediaDir, { withFileTypes: true }).catch(() => null);
   if (entries === null) return { manifest, mediaFiles: null };

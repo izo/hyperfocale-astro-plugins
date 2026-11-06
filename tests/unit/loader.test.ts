@@ -14,9 +14,11 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { LoaderContext } from 'astro/loaders';
 import { z } from 'zod';
-import { fallbackField, seriesLoader, stringifyTags } from '../../src/loader.js';
+import { fallbackField, readSeriesMedia, seriesLoader, stringifyTags } from '../../src/loader.js';
 import type { SeriesLoaderOptions, SeriesPrepare, SeriesPrepareContext } from '../../src/loader.js';
 import { baseSeriesSchema } from '../../src/schema.js';
+import { MAX_NESTING_DEPTH, MAX_NODES, MAX_READ_BYTES } from '../../src/ingest/bounds.js';
+import { resolveSeriesMedia } from '../../src/media.js';
 import { parseFrontmatter as parseCore } from '../../src/ingest/frontmatter.js';
 
 const FIXTURES = resolve(__dirname, '../fixtures/spec-ingestion');
@@ -557,6 +559,9 @@ function indexFolders(root: string, rel = ''): string[] {
 
 const CORPORA = readdirSync(join(FIXTURES, 'corpora')).filter((n) => statSync(join(FIXTURES, 'corpora', n)).isDirectory()).sort();
 
+/** Corpus dont un fichier index a un YAML illisible : le loader refuse de les lire. */
+const UNREADABLE = ['edge-duplicate-key', 'invalid-frontmatter-invalid'];
+
 describe('seriesLoader — rejeu des corpus de la spec (#135)', () => {
   it.each(CORPORA)('%s : exclude retire exactement les `type: section`, que prepare ne voit jamais', async (name) => {
     const root = join(FIXTURES, 'corpora', name);
@@ -569,12 +574,11 @@ describe('seriesLoader — rejeu des corpus de la spec (#135)', () => {
     }
     const sections = [...all].filter(([, s]) => s).map(([id]) => id);
 
+    // Seul un frontmatter illisible empêche la lecture (§4.10 frontmatter-invalid),
+    // clé dupliquée comprise (règle 6) — et il l'empêche toujours.
     const include = await load(name, {}, permissive).catch(() => null);
-    if (include === null) {
-      // Seul un frontmatter illisible empêche la lecture (§4.10 frontmatter-invalid).
-      expect(name).toBe('invalid-frontmatter-invalid');
-      return;
-    }
+    expect(include === null).toBe(UNREADABLE.includes(name));
+    if (include === null) return;
     expect([...include.entries.keys()].sort()).toEqual([...all.keys()].sort());
 
     const prepared: string[] = [];
@@ -720,5 +724,82 @@ describe('seriesLoader — rechargement incrémental du watcher (#158, PERF-010)
     await loader.load(ctx.context);
     await emit('change', join(dir, 'a/index.en.md'));
     expect(prepared.filter((id) => id === 'a')).toHaveLength(2);
+  });
+});
+
+describe('seriesLoader — bornes de lecture (§1.12)', () => {
+  const head = '---\ntitle: A\ndate: 2024-01-01\n';
+
+  /** Charge un corpus d'un seul fichier index ; `prepare` rend l'identifiant vu. */
+  async function loadIndex(yaml: string, body = '') {
+    const dir = corpus({ 'a/index.md': `${head}${yaml}---\n${body}` });
+    const ctx = makeContext(ROOT, permissive);
+    const prepare = vi.fn<SeriesPrepare>((data) => data);
+    await seriesLoader({ base: dir, prepare }).load(ctx.context);
+    return { ctx, prepare };
+  }
+
+  const flowDeep = (collections: number) => `deep: ${'['.repeat(collections - 1)}${']'.repeat(collections - 1)}\n`;
+  // Une ancre de 20 collections, réutilisée sous `nesting` autres : chaque ligne reste sous la borne, pas leur somme.
+  const reuse = (nesting: number) =>
+    `deep: &d ${'['.repeat(20)}${']'.repeat(20)}\nlater: ${'['.repeat(nesting)}*d${']'.repeat(nesting)}\n`;
+
+  it('32 collections passent, 33 refusent le fichier avant que prepare ne le voie', async () => {
+    const { ctx } = await loadIndex(flowDeep(MAX_NESTING_DEPTH));
+    expect([...ctx.entries.keys()]).toEqual(['a']);
+
+    const dir = corpus({ 'a/index.md': `${head}${flowDeep(MAX_NESTING_DEPTH + 1)}---\n` });
+    const prepare = vi.fn<SeriesPrepare>((data) => data);
+    const failing = makeContext(ROOT, permissive);
+    await expect(seriesLoader({ base: dir, prepare }).load(failing.context)).rejects.toThrow(
+      /frontmatter illisible dans .*a\/index\.md — imbrication de plus de 32 collections/,
+    );
+    expect(prepare).not.toHaveBeenCalled();
+    expect(failing.entries.size).toBe(0);
+  });
+
+  it('la profondeur se mesure à travers les alias : une ancre réutilisée plus bas ne la contourne pas', async () => {
+    // racine + 11 + 20 = 32 collections, puis 33.
+    const { ctx } = await loadIndex(reuse(11));
+    expect(ctx.entries.size).toBe(1);
+    await expect(loadIndex(reuse(12))).rejects.toThrow(/imbrication de plus de 32 collections/);
+  });
+
+  it('plus de 100 000 nœuds : illisible, sans qu\'aucun alias y soit pour rien', async () => {
+    const flat = (count: number) => `a: [${Array(count).fill(1).join(',')}]\n`;
+    await expect(loadIndex(flat(MAX_NODES))).rejects.toThrow(/plus de 100000 nœuds/);
+  });
+
+  it('la bombe de la spec est refusée en quelques millisecondes, avec le chemin du fichier', async () => {
+    const names = 'abcdefghij';
+    const lines = [`a: &a [${Array(9).fill('"x"').join(',')}]`];
+    for (let i = 1; i < 10; i++) lines.push(`${names[i]}: &${names[i]} [${Array(9).fill(`*${names[i - 1]}`).join(',')}]`);
+    const started = performance.now();
+    await expect(loadIndex(`${lines.join('\n')}\n`)).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it('un alias circulaire et une clé dupliquée sont illisibles, chemin du fichier à l\'appui', async () => {
+    await expect(loadIndex('a: &a [*a]\n')).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+    await expect(loadIndex('title: B\n')).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+  });
+
+  it('plus de 1 Mio : illisible, quel que soit le poids du frontmatter', async () => {
+    await expect(loadIndex('', 'x'.repeat(MAX_READ_BYTES))).rejects.toThrow(
+      new RegExp(`frontmatter illisible dans .*a/index\\.md — fichier de plus de ${MAX_READ_BYTES} octets, non lu`),
+    );
+    const exact = `${head}---\n`;
+    const { ctx } = await loadIndex('', 'x'.repeat(MAX_READ_BYTES - exact.length));
+    expect(ctx.entries.size).toBe(1);
+  });
+
+  it('readSeriesMedia ne lit pas un images.json de plus de 1 Mio en entier ; le résolveur le déclare illisible', async () => {
+    const dir = corpus({ 'a/index.md': `${head}---\n`, 'a/media/01.jpg': 'jpg' });
+    writeFileSync(join(dir, 'a/images.json'), `{"images":["./media/01.jpg"],"pad":"${'x'.repeat(3 * MAX_READ_BYTES)}"}`);
+    const media = await readSeriesMedia(join(dir, 'a'));
+    expect(media.manifest).toHaveLength(MAX_READ_BYTES + 1);
+    const resolved = resolveSeriesMedia({ frontmatter: {}, ...media });
+    expect(resolved.diagnostics.map((d) => d.code)).toEqual(['images-json-invalid']);
+    expect(resolved.images.map((i) => i.path)).toEqual(['media/01.jpg']);
   });
 });

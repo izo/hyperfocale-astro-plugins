@@ -88,6 +88,7 @@ const MANIFEST_PROBLEMS: Readonly<Record<ManifestProblem, string>> = {
   json: "n'est pas un JSON valide",
   'not-object': 'ne contient pas un objet',
   images: ': la clé "images" est absente ou n\'est pas un tableau',
+  limits: 'dépasse les bornes de lecture (1 Mio, 32 niveaux d\'imbrication, §1.12)',
 };
 
 /**

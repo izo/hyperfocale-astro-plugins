@@ -1,9 +1,17 @@
 import { CORE_SCHEMA, load } from 'js-yaml';
+import { BOUND_MESSAGES, exceedsReadBytes, MAX_NESTING_DEPTH, MAX_READ_BYTES, measureStructure } from './bounds.js';
 
-/** Taille maximale du bloc de frontmatter lu, en octets (SEC-010). */
+/**
+ * Taille maximale du bloc de frontmatter lu, en octets (SEC-010). Plus stricte
+ * que la borne de la spec sur le fichier entier (`MAX_READ_BYTES`, §1.12).
+ */
 export const MAX_FRONTMATTER_BYTES = 256 * 1024;
-/** Nombre maximal d'alias YAML (`*ref`) par frontmatter (SEC-010). */
-const MAX_ALIASES = 20;
+
+// Garde-fou de pile du parseur, volontairement plus large que la borne de §1.12 :
+// son décompte de profondeur varie d'un style à l'autre (bloc, flux), et un
+// fichier de 32 collections licite ne doit pas être refusé. La borne exacte est
+// jugée par `measureStructure`.
+const PARSER_MAX_DEPTH = 2 * MAX_NESTING_DEPTH;
 
 // `fatal` : des octets qui ne forment pas de l'UTF-8 valide rendent le fichier
 // illisible (§4.10, règle 3) au lieu d'être remplacés par U+FFFD en silence.
@@ -35,14 +43,22 @@ export type FrontmatterResult =
  *
  * - `missing` : la première ligne ne vaut pas exactement `---`, ou aucune ligne
  *   suivante ne vaut exactement `---` pour refermer le bloc ;
- * - `invalid` : UTF-8 invalide, YAML illisible (clé dupliquée comprise), bloc
+ * - `invalid` : UTF-8 invalide, YAML illisible (clé dupliquée comprise), bornes
+ *   de lecture franchies (§1.12 : fichier de plus de 1 Mio, 32 collections
+ *   imbriquées, 100 000 nœuds après expansion des alias, alias circulaire), bloc
  *   vide, ou racine qui n'est pas un mapping.
  *
  * Le YAML s'interprète en schéma 1.2 *core* : une date non guillemetée reste
  * une chaîne. La validation juge ainsi le texte écrit, et non ce qu'en ferait
  * le schéma par défaut — qui convertit sans broncher `2024-02-30` en 1er mars.
+ *
+ * Les bornes de lecture s'appliquent avant toute exploitation du résultat : la
+ * taille avant le décodage, puis la profondeur, les nœuds et les alias
+ * circulaires par une mesure qui ne développe pas les alias
+ * (`measureStructure`) — le parseur partage les références d'un alias.
  */
 export function parseFrontmatter(content: Uint8Array | string): FrontmatterResult {
+  if (exceedsReadBytes(content)) return { status: 'invalid', reason: `fichier de plus de ${MAX_READ_BYTES} octets` };
   const text = decodeUtf8(content);
   if (text === null) return { status: 'invalid', reason: 'octets UTF-8 invalides' };
 
@@ -52,18 +68,18 @@ export function parseFrontmatter(content: Uint8Array | string): FrontmatterResul
   if (end === -1) return { status: 'missing' };
 
   const block = lines.slice(1, end).join('\n');
-  // Plafonds contre un YAML hostile (SEC-010) : une « bombe » d'alias partage ses
-  // références en mémoire et ne devient exponentielle qu'à la sérialisation.
   if (new TextEncoder().encode(block).length > MAX_FRONTMATTER_BYTES) {
     return { status: 'invalid', reason: `frontmatter de plus de ${MAX_FRONTMATTER_BYTES / 1024} Kio` };
   }
 
   let data: unknown;
   try {
-    data = load(block, { schema: CORE_SCHEMA, maxAliases: MAX_ALIASES });
+    data = load(block, { schema: CORE_SCHEMA, maxDepth: PARSER_MAX_DEPTH });
   } catch (err) {
     return { status: 'invalid', reason: (err as Error).message.split('\n')[0] ?? 'YAML illisible' };
   }
+  const violation = measureStructure(data);
+  if (violation !== null) return { status: 'invalid', reason: BOUND_MESSAGES[violation] };
   if (data === undefined || data === null) return { status: 'invalid', reason: 'bloc de frontmatter vide' };
   if (typeof data !== 'object' || Array.isArray(data)) {
     return { status: 'invalid', reason: 'la racine du frontmatter n\'est pas un mapping' };

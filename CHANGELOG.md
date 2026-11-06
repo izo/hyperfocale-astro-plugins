@@ -11,7 +11,12 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ### Ajouté
 
+- **Bornes de lecture de la spec 2.17** (§1.12, §4.10 règles 4 et 6). Un fichier index ou un `images.json` de plus de 1 Mio n'est jamais lu : la validation s'en tient à la `size` du snapshot (`frontmatter-invalid` ou `images-json-invalid`), la garde le tient pour illisible — fail-closed côté base —, et le loader comme `readSeriesMedia` ne lisent que 1 Mio + 1 octet. Un YAML de plus de 32 collections imbriquées (racine comprise), de plus de 100 000 nœuds une fois les alias développés ou à alias circulaire est illisible, de même qu'un JSON de plus de 32 niveaux. La mesure (`measureStructure`) exploite le partage des références d'un alias : un parcours mémoïsé par identité d'objet, arrêté à la première borne franchie, qui ne développe jamais l'arbre — la bombe de la spec (359 octets, 9¹⁰ nœuds) est refusée en quelques millisecondes. Elle s'applique aussi au loader (`seriesLoader`), dont le parseur d'Astro accepte 33 collections : le fichier est refusé avant `prepare` et avant le schéma, avec son chemin dans l'erreur. `MAX_READ_BYTES`, `MAX_NESTING_DEPTH`, `MAX_NODES`, `measureStructure`, `exceedsReadBytes` et `jsonExceedsDepth` sont exportés de `@regrets/hyperfocale/ingest`.
 - **`materializeSnapshot` : budget d'octets en vol** (#158, PERF-008). Option `maxInFlightBytes` (défaut 256 Mio) : `read` rend un fichier entier, donc le pic de mémoire était `concurrency` × le plus gros fichier. La taille de chaque entrée étant connue avant sa lecture, la suivante ne part que si le total en vol tient dans le budget ; un fichier plus gros que le budget est lu seul, jamais refusé. Sans effet sur des images de quelques Mo. La vraie lecture en flux reste une extension de contrat, en attente de la spec (`izo/hyperfocale-spec#60`).
+
+### Modifié
+
+- **`parseFrontmatter` : la borne est l'arbre développé, non le nombre d'alias.** Le plafond de 20 alias (SEC-010) refusait un frontmatter licite qui en répète davantage ; il laisse la place aux bornes de §1.12, qui protègent de la même bombe. Le plafond de 256 Kio sur le bloc de frontmatter reste, plus strict que la borne de 1 Mio sur le fichier. `ManifestProblem` gagne `limits`. Un frontmatter illisible dans `seriesLoader` lève désormais une erreur qui nomme le fichier, au lieu de l'erreur brute du parseur.
 
 ## [0.26.0] — 2026-10-31 — médias résolus, flux et sitemap, dette P2
 

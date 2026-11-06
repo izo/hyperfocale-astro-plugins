@@ -1,3 +1,4 @@
+import { MAX_READ_BYTES } from './bounds.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
@@ -271,6 +272,8 @@ export async function validateSnapshot(
   // ── Lecture ───────────────────────────────────────────────────────────────
   // Seules les entrées matérialisées se lisent, et leurs octets se vérifient.
   const readable = (path: string) => (byPath.get(path)?.state ?? 'materialized') === 'materialized';
+  // Borne de §1.12, jugée sur la taille déclarée : un fichier trop gros n'est pas lu.
+  const oversize = (path: string) => (byPath.get(path) as SnapshotEntry).size > MAX_READ_BYTES;
   const readVerified = async (path: string): Promise<Uint8Array | string | null> => {
     const content = await options.read(path);
     if (await verifyEntryBytes(byPath.get(path) as SnapshotEntry, content)) return content;
@@ -280,6 +283,10 @@ export async function validateSnapshot(
   const indexPaths = [...folders.values()].flat();
   const parsed = await mapConcurrent(indexPaths, concurrency, async (path): Promise<ParsedIndex> => {
     const folder = dirname(path);
+    if (readable(path) && oversize(path)) {
+      push('frontmatter-invalid', path, `Frontmatter illisible : fichier de plus de ${MAX_READ_BYTES} octets, non lu (§1.12).`);
+      return { path, folder, data: null };
+    }
     const content = readable(path) ? await readVerified(path) : null;
     if (content === null) return { path, folder, data: null };
     const result = parseFrontmatter(content);
@@ -298,12 +305,19 @@ export async function validateSnapshot(
   const manifests = new Map<string, readonly unknown[] | null>();
   const manifestPaths = scoped.filter((e) => basename(e.path) === 'images.json' && readable(e.path)).map((e) => e.path);
   await mapConcurrent(manifestPaths, concurrency, async (path) => {
-    const content = await readVerified(path);
-    if (content === null) return;
-    const images = parseManifest(content);
+    let images: readonly unknown[] | null = null;
+    if (!oversize(path)) {
+      const content = await readVerified(path);
+      if (content === null) return;
+      images = parseManifest(content);
+    }
     manifests.set(dirname(path), images);
     if (images === null) {
-      push('images-json-invalid', path, 'JSON illisible, racine non objet, ou clé `images` absente ou non tableau.');
+      push(
+        'images-json-invalid',
+        path,
+        'JSON illisible, bornes de lecture franchies (§1.12), racine non objet, ou clé `images` absente ou non tableau.',
+      );
     }
   });
 

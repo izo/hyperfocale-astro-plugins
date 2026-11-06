@@ -79,3 +79,12 @@ export { memoizeRead } from './concurrency.js';
 export type { QuiescenceOptions, QuiescenceResult } from './quiescence.js';
 export { parseFrontmatter } from './frontmatter.js';
 export type { FrontmatterResult } from './frontmatter.js';
+export {
+  MAX_NESTING_DEPTH,
+  MAX_NODES,
+  MAX_READ_BYTES,
+  exceedsReadBytes,
+  jsonExceedsDepth,
+  measureStructure,
+} from './bounds.js';
+export type { BoundViolation, MeasureOptions } from './bounds.js';
