@@ -589,6 +589,60 @@ describe('validateSnapshot — précision des coordonnées (§1.12, règle 18)',
   });
 });
 
+describe('validateSnapshot — Annexe A : bornes GPS et code pays (astroSchema)', () => {
+  const iptc = (body: string) => ({ 'a/index.md': fm(`iptc:\n  ${body}`) });
+  const refused = [['x-schema-invalid', 'error', 'a/index.md']];
+
+  it('le §4.10 ne les code pas : sans astroSchema, la sortie reste celle de la spec', async () => {
+    expect(await validate(iptc('gps: { lat: 91, lng: 181 }\n  country_code: fr'))).toEqual([]);
+  });
+
+  it('latitude ou longitude hors bornes : x-schema-invalid, un seul par fichier', async () => {
+    expect(await validate(iptc('gps: { lat: 91, lng: 2 }'), undefined, true)).toEqual(refused);
+    expect(await validate(iptc('gps: { lat: 2, lng: -181 }'), undefined, true)).toEqual(refused);
+    expect(await validate(iptc('gps: { lat: 91, lng: 181 }'), undefined, true)).toEqual(refused);
+  });
+
+  it('les bornes incluses sont admises', async () => {
+    expect(await validate(iptc('gps: { lat: 90, lng: 180 }'), undefined, true)).toEqual([]);
+    expect(await validate(iptc('gps: { lat: -90, lng: -180 }'), undefined, true)).toEqual([]);
+  });
+
+  it('une valeur hors bornes et précise cumule le warning de la règle 18 et x-schema-invalid', async () => {
+    expect(await validate(iptc('gps: { lat: 91.123, lng: 2 }'), undefined, true)).toEqual([
+      ['gps-precision-excessive', 'warning', 'a/index.md'],
+      ['x-schema-invalid', 'error', 'a/index.md'],
+    ]);
+  });
+
+  it('le diagnostic nomme la coordonnée fautive', async () => {
+    const { snap, read } = await corpus(iptc('gps: { lat: 2, lng: 999 }'));
+    const [diagnostic] = await validateSnapshot(snap, { read, astroSchema: true });
+    expect(diagnostic?.message).toContain('iptc.gps.lng');
+    expect(diagnostic?.message).not.toContain('iptc.gps.lat');
+  });
+
+  it.each(['fr', 'FRA', 'UK', 'XX', '""', '" FR"'])('country_code %s : x-schema-invalid', async (code) => {
+    expect(await validate(iptc(`country_code: ${code}`), undefined, true)).toEqual(refused);
+  });
+
+  it.each(['FR', '"FR"', 'GB', 'US'])('country_code %s est admis', async (code) => {
+    expect(await validate(iptc(`country_code: ${code}`), undefined, true)).toEqual([]);
+  });
+
+  it('vaut aussi pour une page de section et un index.<lang>.md', async () => {
+    const files = {
+      's/index.md': '---\ntype: section\ntitle: S\niptc: { country_code: xx }\n---\n',
+      's/a/index.md': fm('iptc: { country_code: FR }'),
+      's/a/index.en.md': fm('iptc: { gps: { lat: 200, lng: 0 } }', 'EN'),
+    };
+    expect(await validate(files, undefined, true)).toEqual([
+      ['x-schema-invalid', 'error', 's/a/index.en.md'],
+      ['x-schema-invalid', 'error', 's/index.md'],
+    ]);
+  });
+});
+
 describe('validateSnapshot — `private` strictement booléen (§1.12, règle 7)', () => {
   it.each(['true', 'True', 'TRUE', 'false', 'False', 'FALSE', '~', 'null', 'Null', ''])('private: %j est accepté (booléen YAML, ou null = absent)', async (value) => {
     expect(await validate({ 'a/index.md': fm(`private: ${value}`) })).toEqual([]);

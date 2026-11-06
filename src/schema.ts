@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { SchemaContext } from 'astro:content';
+import { isIsoCountryCode } from './iso-countries.js';
 import { isUnsafeReferenceText, urlFieldProblem } from './url-forms.js';
 import type { UrlFieldOptions } from './url-forms.js';
 import { writtenDate } from './written-date.js';
@@ -29,6 +30,26 @@ export const CONTENT_TYPES = ['series', 'section'] as const;
 /** Nature d'un contenu (spec §1.10). */
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
+const LAT_MESSAGE = 'La latitude est comprise entre -90 et 90 (spec Annexe A).';
+const LNG_MESSAGE = 'La longitude est comprise entre -180 et 180 (spec Annexe A).';
+
+/** `iptc.gps` : bornes de l'Annexe A, incluses (`z.number()` refuse déjà `NaN` et l'infini). */
+const gpsSchema = z.object({
+  lat: z.number().min(-90, LAT_MESSAGE).max(90, LAT_MESSAGE),
+  lng: z.number().min(-180, LNG_MESSAGE).max(180, LNG_MESSAGE),
+});
+
+/** `iptc.country_code` : un code ISO 3166-1 alpha-2 attribué, en majuscules (spec §1.3, Annexe A). */
+const countryCodeSchema = z.string().check((ctx) => {
+  if (!isIsoCountryCode(ctx.value)) {
+    ctx.issues.push({
+      code: 'custom',
+      input: ctx.value,
+      message: 'Code pays ISO 3166-1 alpha-2 attendu, en majuscules : `FR`, non `fr`, `FRA` ni `UK` (spec Annexe A).',
+    });
+  }
+});
+
 /** Schéma du bloc `iptc.*` (spec §1.3). */
 const iptcSchema = z.looseObject({
   creator: z.string().optional(),
@@ -38,14 +59,14 @@ const iptcSchema = z.looseObject({
   city: z.string().optional(),
   province: z.string().optional(),
   country: z.string().optional(),
-  country_code: z.string().optional(),
+  country_code: countryCodeSchema.optional(),
   camera: z.string().optional(),
   lens: z.string().optional(),
   film: z.string().optional(),
   headline: z.string().optional(),
   instructions: z.string().optional(),
   source: z.string().optional(),
-  gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
+  gps: gpsSchema.optional(),
 });
 
 const URL_MESSAGES = {

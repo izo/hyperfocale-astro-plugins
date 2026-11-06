@@ -65,6 +65,12 @@ describe('jetons CSS', () => {
     }
   });
 
+  it("--hf-lightbox-bg (Annexe D) : alias de l'overlay par défaut, avec l'overlay pour repli dans la lightbox", () => {
+    expect(theme).toMatch(/--hf-lightbox-bg:\s*var\(--hf-color-overlay\);/);
+    const lightbox = styleOf(read('src/components/SeriesLightbox.astro'));
+    expect(lightbox).toMatch(/::backdrop\s*\{[^}]*background:\s*var\(--hf-lightbox-bg,\s*var\(--hf-color-overlay\)\);/);
+  });
+
   it('chaque longueur ou police lue par attachments.css garde un repli (site en theme: none)', () => {
     const css = read('src/theme/attachments.css');
     const bare = [...css.matchAll(/var\((--hf-(?!color-)[\w-]+)\)/g)].map((m) => m[1]);

@@ -236,7 +236,7 @@ Le schéma Zod complet (`seriesSchema`) accepte 19 champs. Seul `title` est touj
 
 **Bloc `iptc`** (tous optionnels, mode `looseObject`) : `creator`, `credit`, `copyright`, `keywords[]`, `city`, `province`, `country`, `country_code`, `camera`, `lens`, `film`, `headline`, `instructions`, `source`, `gps: { lat, lng }`.
 
-Le champ `iptc.gps` alimente `<SeriesMap>`.
+Le champ `iptc.gps` alimente `<SeriesMap>`. Le schéma en refuse une latitude hors de -90…90 ou une longitude hors de -180…180, et `iptc.country_code` doit être un code ISO 3166-1 alpha-2 attribué, en majuscules (`FR` : ni `fr`, ni `FRA`, ni `UK`, ni `XK`). Ces deux contrôles de l'Annexe A n'ont pas de code de diagnostic dans le §4.10 : `hyperfocale validate --astro-schema` les rend en `x-schema-invalid`.
 
 ---
 
@@ -1278,7 +1278,8 @@ Depuis la 0.23.0, **aucun composant ne porte de couleur en dur** : toute couleur
 | `--hf-color-accent` | Accent : focus, page courante, tag coché, marqueur | `#0066ff` |
 | `--hf-color-on-accent` | Texte posé sur l'accent | `#ffffff` |
 | `--hf-color-border` | Bordures, fond des vignettes en chargement | `#e0e0e0` |
-| `--hf-color-overlay` | Fond de la lightbox, pastille de lecture | `rgba(0,0,0,.85)` |
+| `--hf-color-overlay` | Pastille de lecture ; fond de la lightbox tant que `--hf-lightbox-bg` n'est pas surchargé | `rgba(0,0,0,.85)` |
+| `--hf-lightbox-bg` | Fond de la lightbox seule (Annexe D de la spec) | `var(--hf-color-overlay)` |
 | `--hf-color-text-overlay` | Texte et icônes sur l'overlay | `#ffffff` |
 | `--hf-color-text-overlay-muted` | Compteur de la lightbox | `rgba(255,255,255,.75)` |
 | `--hf-color-btn-overlay-hover` | Survol des boutons de la lightbox | `rgba(255,255,255,.15)` |
@@ -1318,7 +1319,7 @@ Depuis la 0.23.0, **aucun composant ne porte de couleur en dur** : toute couleur
 | `--hf-lineup-gap` | Écart du line-up (routes) | `3rem` |
 | `--hf-lineup-heading-size` | Titre du line-up (routes) | `1.3rem` |
 
-**Site à ses propres jetons et à son propre dark mode** (`theme: 'none'`, `.dark` par classe…) : déclarez les jetons `--hf-*` comme alias des vôtres, sur l'élément qui porte la classe de thème (`:root` si c'est `<html>`). Une `var()` se résout là où elle est déclarée : la bascule de vos jetons entraîne celle des `--hf-*` sans rien dupliquer. Exemple complet : *Composants → Exemple — bouton de téléchargement*. Rendez-vous au moins les jetons de couleur des composants que vous affichez — la lightbox, sans `--hf-color-overlay`, aurait un fond transparent.
+**Site à ses propres jetons et à son propre dark mode** (`theme: 'none'`, `.dark` par classe…) : déclarez les jetons `--hf-*` comme alias des vôtres, sur l'élément qui porte la classe de thème (`:root` si c'est `<html>`). Une `var()` se résout là où elle est déclarée : la bascule de vos jetons entraîne celle des `--hf-*` sans rien dupliquer. Exemple complet : *Composants → Exemple — bouton de téléchargement*. Rendez-vous au moins les jetons de couleur des composants que vous affichez — la lightbox, sans `--hf-lightbox-bg` ni `--hf-color-overlay` (son repli), aurait un fond transparent.
 
 ### Feuilles des composants et cascade layers
 
@@ -1360,7 +1361,7 @@ Pour un site qui écrit son propre thème, voici les jetons `--hf-*` que chaque 
 | `SeriesEmbeds` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-overlay`, `--hf-color-scrim`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted`, `--hf-color-text-overlay` | `--hf-attachments-bg`, `--hf-attachments-gap`, `--hf-card-radius`, `--hf-embeds-gap`, `--hf-embeds-item-gap`, `--hf-embeds-radius`, `--hf-font-sans`, `--hf-transition` |
 | `SeriesFilter` | `--hf-card-shadow`, `--hf-color-accent`, `--hf-color-bg`, `--hf-color-border`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted` | `--hf-card-radius`, `--hf-filter-bg`, `--hf-filter-border`, `--hf-filter-radius`, `--hf-font-sans`, `--hf-transition` |
 | `SeriesGallery` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text` | `--hf-card-radius`, `--hf-font-sans`, `--hf-gallery-gap`, `--hf-transition` |
-| `SeriesLightbox` | `--hf-color-btn-overlay-hover`, `--hf-color-overlay`, `--hf-color-text-overlay`, `--hf-color-text-overlay-muted` | `--hf-font-sans`, `--hf-transition` |
+| `SeriesLightbox` | `--hf-color-btn-overlay-hover`, `--hf-color-overlay`, `--hf-color-text-overlay`, `--hf-color-text-overlay-muted`, `--hf-lightbox-bg` | `--hf-font-sans`, `--hf-transition` |
 | `SeriesLineup` | `--hf-color-text` | `--hf-lineup-gap`, `--hf-lineup-heading-size` |
 | `SeriesList` | `--hf-color-text-muted` | `--hf-font-sans`, `--hf-gallery-gap` |
 | `SeriesMap` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-text`, `--hf-color-text-muted`, `--hf-map-bg`, `--hf-map-marker-hover`, `--hf-map-stroke` | `--hf-card-radius`, `--hf-filter-border`, `--hf-font-sans`, `--hf-map-marker`, `--hf-transition` |
