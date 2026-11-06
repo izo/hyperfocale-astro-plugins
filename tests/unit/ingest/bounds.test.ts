@@ -5,6 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   BOUND_MESSAGES,
+  MAX_EXPANDED_TEXT,
   MAX_NESTING_DEPTH,
   MAX_NODES,
   MAX_READ_BYTES,
@@ -244,3 +245,64 @@ describe('parseFrontmatter — clé dupliquée (§4.10, règle 6)', () => {
     expect(parseFrontmatter(doc('title: A\nTitle: B')).status).toBe('ok');
   });
 });
+
+describe('measureStructure — poids du texte après expansion des alias', () => {
+  it('un alias vers une longue chaîne pèse sa longueur à chaque rencontre, sans qu\'elle soit copiée', () => {
+    const long = 'a'.repeat(100_000);
+    const hostile = { s: long, type: Array(30_000).fill(long) };
+    const started = performance.now();
+    expect(measureStructure(hostile)).toBe('weight');
+    expect(performance.now() - started).toBeLessThan(100);
+  });
+
+  it('le poids se somme à travers les ancres de collection, mémoïsées', () => {
+    const level = Array(1000).fill('x'.repeat(1000));
+    const nested = { a: level, b: [level, level], c: [[level, level], [level, level]] };
+    expect(measureStructure(nested)).toBe('weight');
+  });
+
+  it('les clés comptent comme les valeurs', () => {
+    expect(measureStructure({ ['k'.repeat(MAX_EXPANDED_TEXT)]: 1 })).toBeNull();
+    expect(measureStructure({ ['k'.repeat(MAX_EXPANDED_TEXT)]: 'v' })).toBe('weight');
+  });
+
+  it('la limite est exacte : MAX_EXPANDED_TEXT caractères passent, un de plus non', () => {
+    expect(measureStructure(['x'.repeat(MAX_EXPANDED_TEXT)])).toBeNull();
+    expect(measureStructure(['x'.repeat(MAX_EXPANDED_TEXT), 'y'])).toBe('weight');
+  });
+
+  it('un nombre, un booléen ou une date ne pèsent rien', () => {
+    expect(measureStructure(Array(MAX_NODES / 2 - 1).fill(1.5))).toBeNull();
+    expect(measureStructure(Array(5000).fill(new Date(0)))).toBeNull();
+  });
+
+  it('un YAML ordinaire, même riche en alias, ne s\'en approche pas', () => {
+    const many = ['base: &b [one, two]', ...Array.from({ length: 1000 }, (_, i) => `k${i}: *b`)];
+    expect(parseFrontmatter(doc(many.join('\n'))).status).toBe('ok');
+  });
+
+  it('plafond de 1 Mio de texte : la borne propre au plugin n\'est jamais plus large que la lecture', () => {
+    expect(MAX_EXPANDED_TEXT).toBeLessThanOrEqual(MAX_READ_BYTES);
+  });
+});
+
+describe('parseFrontmatter — amplification par alias de chaîne (R3)', () => {
+  const amplified = (refs: number) => `title: T\ns: &s ${'a'.repeat(100_000)}\ntype: [${Array(refs).fill('*s').join(',')}]`;
+
+  it('190 Kio de YAML qui développent 3 Go de texte sont illisibles, en quelques millisecondes', () => {
+    const started = performance.now();
+    const result = parseFrontmatter(doc(amplified(30_000)));
+    expect(performance.now() - started).toBeLessThan(500);
+    expect(result).toEqual({ status: 'invalid', reason: BOUND_MESSAGES.weight });
+  });
+
+  it('quelques références à la même chaîne passent', () => {
+    expect(parseFrontmatter(doc(amplified(5))).status).toBe('ok');
+  });
+
+  it('une liste de tags qui répète une chaîne par alias est jugée sur son poids', () => {
+    const tags = `title: T\ns: &s ${'a'.repeat(100_000)}\ntags: [${Array(2500).fill('*s').join(',')}]`;
+    expect(parseFrontmatter(doc(tags))).toEqual({ status: 'invalid', reason: BOUND_MESSAGES.weight });
+  });
+});
+

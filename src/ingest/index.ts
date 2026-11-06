@@ -85,6 +85,7 @@ export type { QuiescenceOptions, QuiescenceResult } from './quiescence.js';
 export { parseFrontmatter } from './frontmatter.js';
 export type { FrontmatterResult } from './frontmatter.js';
 export {
+  MAX_EXPANDED_TEXT,
   MAX_NESTING_DEPTH,
   MAX_NODES,
   MAX_READ_BYTES,

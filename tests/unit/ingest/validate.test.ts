@@ -988,3 +988,63 @@ describe('validateSnapshot — références non sûres (§1.12, règle 17)', () 
     expect(await validate(files, undefined, true)).toEqual([[UNSAFE, 'error', 'a/index.md']]);
   });
 });
+
+describe('validateSnapshot — clé de fusion YAML 1.1 (§1.12, règle 6)', () => {
+  // Le build lit `<<: *g` comme les clés de `g` ; la validation ne les voyait pas.
+  const merged = (hidden: string) => `---\ntitle: T\ndate: 2024-06-15\nx: &g\n  ${hidden}\n<<: *g\n---\n`;
+
+  it.each([
+    ['private: true'],
+    ['cover: ../../../etc/x.jpg'],
+    ['cover: "javascript:alert(1)"'],
+    ['type: section'],
+    ['iptc: {gps: {lat: 48.123456, lng: -4.123456}}'],
+  ])('« %s » caché par `<<` rend le fichier illisible', async (hidden) => {
+    expect(await validate({ 'a/index.md': merged(hidden) })).toEqual([['frontmatter-invalid', 'error', 'a/index.md']]);
+  });
+
+  it('le diagnostic dit pourquoi', async () => {
+    const files = { 'a/index.md': merged('private: true') };
+    const { snap, read } = await corpus(files);
+    const [diagnostic] = await validateSnapshot(snap, { read });
+    expect(diagnostic?.message).toMatch(/fusion/);
+  });
+});
+
+describe('validateSnapshot — une valeur lue ne gonfle ni ne fait échouer un message (R3)', () => {
+  const long = 'a'.repeat(100_000);
+  const messages = async (files: Record<string, string>) => {
+    const { snap, read } = await corpus(files);
+    return validateSnapshot(snap, { read });
+  };
+
+  it.each([
+    ['type', `title: T\ndate: 2024-06-15\ntype: ${long}`, 'type-invalid'],
+    ['date', `title: T\ndate: ${long}`, 'date-invalid'],
+  ])('un `%s` de 100 000 caractères : message tronqué', async (_field, yaml, code) => {
+    const found = (await messages({ 'a/index.md': `---\n${yaml}\n---\n` })).filter((d) => d.code === code);
+    expect(found).toHaveLength(1);
+    expect(found[0]?.message.length).toBeLessThan(300);
+    expect(found[0]?.message).toContain('…');
+  });
+
+  it('une pièce jointe de 100 000 caractères : message tronqué', async () => {
+    const files = { 'a/index.md': `---\ntitle: T\ndate: 2024-06-15\nattachments:\n  - file: ${long}\n---\n` };
+    const found = (await messages(files)).filter((d) => d.code === 'attachment-not-found');
+    expect(found).toHaveLength(1);
+    expect(found[0]?.message.length).toBeLessThan(300);
+  });
+
+  it('une valeur non textuelle reste lisible, sans être interpolée en entier', async () => {
+    const files = { 'a/index.md': '---\ntitle: T\ndate: 2024-06-15\ntype: [a, b, c]\n---\n' };
+    const [diagnostic] = (await messages(files)).filter((d) => d.code === 'type-invalid');
+    expect(diagnostic?.message).toMatch(/liste/);
+  });
+
+  it('une amplification par alias de chaîne est un frontmatter illisible, jamais une exception', async () => {
+    const yaml = `title: T\ndate: 2024-06-15\ns: &s ${long}\ntype: [${Array(30_000).fill('*s').join(',')}]`;
+    const found = await messages({ 'a/index.md': `---\n${yaml}\n---\n` });
+    expect(found.map((d) => [d.code, d.severity, d.path])).toEqual([['frontmatter-invalid', 'error', 'a/index.md']]);
+  });
+});
+

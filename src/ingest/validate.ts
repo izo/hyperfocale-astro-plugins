@@ -28,6 +28,7 @@ import {
 import type { UrlFieldOptions, UrlFieldProblem } from './paths.js';
 import { indexFolders, primaryIndex } from './series.js';
 import { entryStructureError, snapshotStructureError } from './snapshot.js';
+import { preview, truncate } from '../preview.js';
 import { writtenDay } from '../written-date.js';
 import type { ContentSnapshot, Diagnostic, DiagnosticCode, ReadFn, Severity, SnapshotEntry } from './types.js';
 
@@ -160,7 +161,7 @@ const URL_PROBLEMS: Readonly<Record<UrlFieldProblem, string>> = {
 
 /** Diagnostic d'une valeur de champ d'URL — message et valeur écrite, sans la décoder. */
 function urlProblemMessage(label: string, value: string, problem: UrlFieldProblem): string {
-  return `${label} ${JSON.stringify(value)} : ${URL_PROBLEMS[problem]}`;
+  return `${label} ${JSON.stringify(truncate(value))} : ${URL_PROBLEMS[problem]}`;
 }
 
 /** Chemin d'une valeur dans le frontmatter, pour le message : `images[2].url`. */
@@ -433,7 +434,7 @@ export async function validateSnapshot(
 
     const type = field(data, 'type');
     if (type !== undefined && type !== 'series' && type !== 'section') {
-      push('type-invalid', path, `\`type\` vaut « ${String(type)} » : attendu \`series\` ou \`section\`.`);
+      push('type-invalid', path, `\`type\` vaut « ${preview(type)} » : attendu \`series\` ou \`section\`.`);
     }
     const section = type === 'section';
     const privateValue = field(data, 'private');
@@ -455,7 +456,7 @@ export async function validateSnapshot(
         push('date-missing', path, '`date` requise pour une série (une section se déclare `type: section`).');
       }
     } else if (!section && !isIsoDate(date)) {
-      push('date-invalid', path, `\`date\` n'est pas une date ISO 8601 valide : « ${String(date)} ».`);
+      push('date-invalid', path, `\`date\` n'est pas une date ISO 8601 valide : « ${preview(date)} ».`);
     }
 
     // Règles 15 et 17 : une valeur refusée ne subit aucun autre contrôle, et un
@@ -480,13 +481,13 @@ export async function validateSnapshot(
       const target = resolveReference(folder, cover);
       const manifest = manifests.get(folder);
       if (!isImagePath(cover)) {
-        push('cover-not-image', path, `\`cover\` « ${cover} » ne désigne pas une image.`);
+        push('cover-not-image', path, `\`cover\` « ${truncate(cover)} » ne désigne pas une image.`);
       }
       if (
         target === null ||
         (!byPath.has(target) && !(Array.isArray(manifest) && manifestReferences(manifest, folder, target)))
       ) {
-        push('cover-not-found', path, `\`cover\` « ${cover} » introuvable.`);
+        push('cover-not-found', path, `\`cover\` « ${truncate(cover)} » introuvable.`);
       }
     }
 
@@ -519,11 +520,11 @@ export async function validateSnapshot(
         }
         const target = typeof file === 'string' && isRelativeReference(file) ? resolveReference(folder, file) : null;
         if (target === null || dirname(target) !== mediaDir || !byPath.has(target)) {
-          push('attachment-not-found', path, `Pièce jointe « ${String(file)} » absente de \`media/\`.`);
+          push('attachment-not-found', path, `Pièce jointe « ${preview(file)} » absente de \`media/\`.`);
         } else if (isOriginalPath(target)) {
           // Un original n'est pas un document joint (§1.9, règle 12) : le
           // fichier existe, mais l'entrée ne désigne rien de publiable.
-          push('attachment-not-found', path, `Pièce jointe « ${String(file)} » : un original n'est pas un document joint.`);
+          push('attachment-not-found', path, `Pièce jointe « ${preview(file)} » : un original n'est pas un document joint.`);
         }
       }
     }

@@ -286,3 +286,23 @@ describe('guardChangeSet — private se lit en booléen strict (§4.11)', () => 
     expect(diagnostics.map((d) => [d.code, d.path])).toEqual([['guard-private-exposed', 'apres']]);
   });
 });
+
+describe('guardChangeSet — clé de fusion YAML 1.1 (§1.12)', () => {
+  const exposed = (path: string) => [['guard-private-exposed', 'error', path]];
+  const merged = fm('s', 'x: &g\n  private: true\n<<: *g\n');
+
+  it('une clé de fusion qui cache `private: true` dans base rend l\'index illisible : privée par prudence', async () => {
+    expect(await guard({ 's/index.md': merged }, { 's/index.md': fm('s') }, OFF)).toEqual(exposed('s'));
+  });
+
+  it('dans target, elle ne déclare rien : `private: true` caché n\'empêche pas l\'exposition', async () => {
+    const base = { 's/index.md': fm('s', 'private: true\n') };
+    expect(await guard(base, { 's/index.md': merged }, OFF)).toEqual(exposed('s'));
+  });
+
+  it('une série sans clé de fusion n\'est pas touchée', async () => {
+    const files = { 's/index.md': fm('s', 'private: true\n') };
+    expect(await guard(files, files, OFF)).toEqual([]);
+  });
+});
+
