@@ -10,8 +10,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import {
   classifyPath,
   collisionKey,
@@ -57,7 +58,7 @@ describe('fixtures de la spec — présence', () => {
     expect(source).toMatch(/^commit=[0-9a-f]{40}$/m);
   });
 
-  it.each(['corpora', 'snapshots', 'publishable', 'validation', 'diff', 'guard', 'snapshot-id', 'paths', 'hashes'])('%s/ est présent', (dir) => {
+  it.each(['corpora', 'snapshots', 'providers', 'publishable', 'validation', 'diff', 'guard', 'snapshot-id', 'paths', 'hashes'])('%s/ est présent', (dir) => {
     expect(existsSync(join(FIXTURES, dir))).toBe(true);
   });
 });
@@ -139,6 +140,48 @@ describe('fixtures — snapshots/ ← corpora/ (§4.5)', () => {
   }
 });
 
+describe('fixtures — providers/ (§4.0)', () => {
+  // Un dépôt, une archive ou un checkout Windows ne conservent pas les liens :
+  // le test crée l'arbre, et saute le cas où la plateforme ne sait pas en créer.
+  const canSymlink = (() => {
+    const probe = mkdtempSync(join(tmpdir(), 'hf-symlink-probe-'));
+    try {
+      symlinkSync('cible', join(probe, 'lien'));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      rmSync(probe, { recursive: true, force: true });
+    }
+  })();
+
+  for (const [name, fixture] of cases('providers')) {
+    it.skipIf(!canSymlink)(`${name} — ${fixture.description}`, async () => {
+      const dir = mkdtempSync(join(tmpdir(), 'hf-provider-fixture-'));
+      try {
+        const write = (base: string, files: Array<{ path: string; content: string }>) => {
+          for (const { path, content } of files) {
+            mkdirSync(dirname(join(base, path)), { recursive: true });
+            writeFileSync(join(base, path), content);
+          }
+        };
+        const corpus = join(dir, 'corpus');
+        mkdirSync(corpus);
+        write(corpus, fixture.files);
+        write(join(dir, 'outside'), fixture.outside ?? []);
+        for (const { path, target } of fixture.symlinks as Array<{ path: string; target: string }>) {
+          symlinkSync(target, join(corpus, ...path.split('/')));
+        }
+        const listing = await new FilesystemProvider({ root: corpus }).list();
+        expect(listing.entries.map((entry) => entry.path)).toEqual(fixture.expected.entries);
+        expect(triples(listing.diagnostics ?? [])).toEqual(fixture.expected.diagnostics);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
 describe('fixtures — publishable/ (§4.11)', () => {
   for (const [name, fixture] of cases('publishable')) {
     it(`${name} — ${fixture.description}`, async () => {
@@ -147,7 +190,11 @@ describe('fixtures — publishable/ (§4.11)', () => {
           ? readFileSync(join(FIXTURES, 'snapshots', `${fixture.corpus}.json`), 'utf-8')
           : fixture.snapshot,
       );
-      expect(comparable(await publishable(snapshot))).toEqual(comparable(parseSnapshot(fixture.expected)));
+      const projection = await publishable(snapshot);
+      const expected = parseSnapshot(fixture.expected);
+      expect(comparable(projection)).toEqual(comparable(expected));
+      expect(Object.hasOwn(projection, 'source')).toBe(false);
+      expect(projection.entries.map((entry) => entry.identity)).toEqual(expected.entries.map((entry) => entry.identity));
     });
   }
 });

@@ -124,6 +124,7 @@ export type DiagnosticCode =
   | 'entry-not-materialized'
   | 'entry-hash-mismatch'
   | 'entry-conflict'
+  | 'entry-symlink'
   | 'slug-invalid'
   | 'media-nested'
   | 'media-orphan'
@@ -214,6 +215,12 @@ export interface ProviderListing {
   readonly complete: boolean;
   /** Motifs de l'incomplétude, quand le provider sait les nommer. */
   readonly problems?: readonly ListingProblem[];
+  /**
+   * Diagnostics produits à l'énumération, hors validation d'un snapshot : un
+   * lien symbolique ignoré (`entry-symlink`, §4.0). Ils ne rendent pas le
+   * listing incomplet.
+   */
+  readonly diagnostics?: readonly Diagnostic[];
   /** Point de reprise pour `changes()`, si le provider est incrémental. */
   readonly cursor?: string;
   /** Révision opaque de la source. */

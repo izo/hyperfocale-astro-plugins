@@ -7,8 +7,10 @@ import {
   compareEntryContent,
   computeSnapshotId,
   createSnapshot,
+  diffSnapshots,
   dropboxContentHash,
   parseSnapshot,
+  publishable,
   sha256Hex,
 } from '../../../src/ingest/index.js';
 import type { SnapshotEntry } from '../../../src/ingest/index.js';
@@ -191,5 +193,87 @@ describe('applyDelta', () => {
   it('hérite de l\'incomplétude de l\'état de départ', () => {
     const next = applyDelta({ entries: [], complete: false }, { deletions: [], upserts: [entry('a.md')], cursor: 'c' });
     expect(next.complete).toBe(false);
+  });
+});
+
+describe('publishable — la projection ne porte pas `source` (§4.11, §4.0)', () => {
+  const SOURCE = { provider: 'dropbox', revision: 'AAAAAAAAB3n', root: '/MDR Content' } as const;
+  const withSource = async (entries: SnapshotEntry[], source: object = SOURCE) =>
+    createSnapshot(entries, { complete: true, createdAt: '1970-01-01T00:00:00.000Z', source });
+  const index = (extra: Partial<SnapshotEntry> = {}) => entry('s/index.md', '---\ntitle: T\n---\n', extra);
+
+  it('sans original : même `id`, même contenu, sans `source`', async () => {
+    const target = await withSource([index(), entry('s/media/01.jpg')]);
+    const projection = await publishable(target);
+    expect(Object.hasOwn(projection, 'source')).toBe(false);
+    expect(projection.id).toBe(target.id);
+    expect(projection).toEqual({ ...target, source: undefined });
+  });
+
+  it('avec originaux : sans `source` et sans originaux, `id` recalculé sur les entrées restantes', async () => {
+    const jpg = entry('s/media/01.jpg');
+    const target = await withSource([index(), jpg, entry('s/media/DSCF0001.RAF')]);
+    const projection = await publishable(target);
+    expect(Object.hasOwn(projection, 'source')).toBe(false);
+    expect(projection.entries.map((e) => e.path)).toEqual(['s/index.md', 's/media/01.jpg']);
+    expect(projection.id).toBe(await computeSnapshotId([index(), jpg]));
+    expect(projection.id).not.toBe(target.id);
+  });
+
+  it('ne modifie pas le snapshot reçu : la source de l\'éditeur garde sa provenance', async () => {
+    const target = await withSource([index(), entry('s/media/DSCF0001.RAF')]);
+    const before = structuredClone(target);
+    await publishable(target);
+    expect(target).toEqual(before);
+    expect(target.source).toEqual(SOURCE);
+  });
+
+  it('garde format, version, createdAt, complete, champs inconnus, identity et modifiedAt', async () => {
+    const entries = [index({ identity: 'id:a', modifiedAt: '2026-09-28T08:00:00Z' }), entry('s/media/01.jpg', 's', { identity: 'id:b' })];
+    const target = { ...(await withSource(entries)), 'x-runner': 'mac-mini' };
+    const projection = await publishable(target);
+    expect(projection).toMatchObject({
+      format: 'hyperfocale.snapshot',
+      version: 1,
+      createdAt: '1970-01-01T00:00:00.000Z',
+      complete: true,
+      'x-runner': 'mac-mini',
+    });
+    expect(projection.entries).toEqual(entries);
+  });
+
+  it('idempotente : projeter une projection ne change rien', async () => {
+    const once = await publishable(await withSource([index(), entry('s/media/DSCF0001.RAF')]));
+    expect(await publishable(once)).toEqual(once);
+  });
+
+  it('une `source` vide, indéfinie ou à extensions `x-*` ne laisse aucune trace, même sérialisée', async () => {
+    for (const source of [{}, undefined, { ...SOURCE, 'x-host': 'mac-mini.local' }]) {
+      const target = { ...(await snapshot([index()])), source } as Parameters<typeof publishable>[0];
+      const projection = await publishable(target);
+      expect(Object.hasOwn(projection, 'source')).toBe(false);
+      const json = JSON.stringify(projection);
+      for (const secret of ['MDR Content', 'AAAAAAAAB3n', 'mac-mini.local', 'dropbox"']) expect(json).not.toContain(secret);
+    }
+  });
+
+  it('`identity` survit à la projection : le diff résout un déplacement que le contenu laisse ambigu', async () => {
+    const same = 'même contenu';
+    const base = await snapshot([
+      index({ identity: 'id:i' }),
+      entry('a/media/01.jpg', same, { identity: 'id:1' }),
+      entry('a/media/02.jpg', same, { identity: 'id:2' }),
+    ]);
+    const target = await withSource([
+      index({ identity: 'id:i' }),
+      entry('b/media/01.jpg', same, { identity: 'id:1' }),
+      entry('b/media/02.jpg', same, { identity: 'id:2' }),
+    ]);
+    const { moved, diagnostics } = diffSnapshots(base, await publishable(target));
+    expect(moved.map((m) => [m.from, m.to])).toEqual([
+      ['a/media/01.jpg', 'b/media/01.jpg'],
+      ['a/media/02.jpg', 'b/media/02.jpg'],
+    ]);
+    expect(diagnostics.filter((d) => d.code === 'move-ambiguous')).toEqual([]);
   });
 });

@@ -18,6 +18,7 @@ import {
   validateSnapshot,
 } from '../ingest/index.js';
 import type { ContentSnapshot, Diagnostic, ValidationRoot } from '../ingest/index.js';
+import { finalizeDiagnostics } from '../ingest/diff.js';
 import { FilesystemProvider } from '../ingest/fs.js';
 import { EXIT, type CliIO } from './io.js';
 
@@ -103,17 +104,18 @@ async function snapshotDirectory(dir: string, ignore: readonly string[]) {
     complete: listing.complete,
     source: { provider: 'filesystem' },
   });
-  return { provider, snapshot };
+  return { provider, snapshot, listed: listing.diagnostics ?? [] };
 }
 
 async function validate(args: Parsed, io: CliIO): Promise<number> {
   const dir = resolve(io.cwd, args.positional[0] as string);
-  const { provider, snapshot } = await snapshotDirectory(dir, args.ignore);
-  const diagnostics = await validateSnapshot(snapshot, {
+  const { provider, snapshot, listed } = await snapshotDirectory(dir, args.ignore);
+  const validated = await validateSnapshot(snapshot, {
     read: (path) => provider.read(path),
     ...(args.roots.length > 0 ? { roots: args.roots } : {}),
     astroSchema: args.astroSchema,
   });
+  const diagnostics = finalizeDiagnostics([...listed, ...validated]);
   if (args.json) {
     io.stdout(
       `${JSON.stringify({ snapshot: snapshot.id, complete: snapshot.complete, entries: snapshot.entries.length, diagnostics }, null, 2)}\n`,
@@ -131,7 +133,7 @@ async function validate(args: Parsed, io: CliIO): Promise<number> {
 }
 
 async function snapshot(args: Parsed, io: CliIO): Promise<number> {
-  const { snapshot } = await snapshotDirectory(resolve(io.cwd, args.positional[0] as string), args.ignore);
+  const { snapshot, listed } = await snapshotDirectory(resolve(io.cwd, args.positional[0] as string), args.ignore);
   const json = `${JSON.stringify(snapshot, null, 2)}\n`;
   if (args.output === undefined) {
     io.stdout(json);
@@ -144,6 +146,7 @@ async function snapshot(args: Parsed, io: CliIO): Promise<number> {
         : `[hyperfocale] ✓ ${args.output} — ${snapshot.entries.length} entrées, ${snapshot.id}\n`,
     );
   }
+  if (listed.length > 0) io.stderr(formatDiagnostics(listed));
   if (!snapshot.complete) {
     io.stderr('[hyperfocale] ✗ snapshot-incomplete : une lecture a échoué, le snapshot est impubliable.\n');
     return EXIT.diagnostics;

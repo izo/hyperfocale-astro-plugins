@@ -7,15 +7,17 @@
 
 import { createHash, randomBytes, type Hash } from 'node:crypto';
 import { constants, createReadStream } from 'node:fs';
-import { lstat, mkdir, open, readdir, realpath, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, relative, sep } from 'node:path';
+import { lstat, mkdir, open, readdir, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
+import { dirname, join, sep } from 'node:path';
 import { mapConcurrent, mapConcurrentWeighted } from './concurrency.js';
+import { finalizeDiagnostics } from './diff.js';
 import { DROPBOX_BLOCK_SIZE } from './hash.js';
 import { classifyPath, compareCanonical, isExcluded, normalizePath } from './paths.js';
 import type { ExclusionRule } from './paths.js';
 import type {
   ContentChangeSet,
   ContentProvider,
+  Diagnostic,
   HashMap,
   ListingProblem,
   MovedEntry,
@@ -109,9 +111,9 @@ export interface FilesystemProviderOptions {
   /** Fichiers hachés simultanément. Défaut 8. */
   readonly concurrency?: number;
   /**
-   * Suit les liens symboliques dont la cible reste sous `root` (chemin réel).
-   * Défaut `false` : tout lien, vers un fichier ou un dossier, est écarté du
-   * listing, qui devient `complete: false` avec le motif dans `problems`.
+   * @deprecated Sans effet depuis la spec 2.17 : un provider filesystem ne suit
+   * jamais un lien symbolique (§4.0), même sous `root`. Le lien est ignoré et
+   * signalé par `entry-symlink` dans `ProviderListing.diagnostics`.
    */
   readonly followSymlinks?: boolean;
   /**
@@ -138,16 +140,16 @@ export interface FilesystemProviderOptions {
  * - Chemins normalisés NFC — APFS rend les noms tels qu'écrits, souvent NFD
  *   depuis le Finder. Un chemin invalide au sens du §4.1 (`\` dans un nom sous
  *   Linux) est listé tel quel : c'est à `validateSnapshot` de le signaler.
- * - Liens symboliques : écartés par défaut, le listing devenant incomplet — un
- *   lien peut faire entrer dans le corpus ce qui n'est pas sous `root`. Avec
- *   `followSymlinks`, seuls sont suivis ceux dont le chemin réel reste sous
- *   `root` ; les autres, et les cycles, rendent le listing incomplet.
+ * - Liens symboliques (§4.0) : jamais suivis — fichiers, dossiers, cassés, en
+ *   cycle, que la cible soit dans le corpus ou non. Le lien est ignoré, sans
+ *   entrée au snapshot, et signalé par `entry-symlink` (`warning`) dans
+ *   `diagnostics`, sur le chemin du lien ; le listing reste complet. Un lien
+ *   dont le chemin est exclu (§4.2) reste muet.
  * - Une erreur de lecture n'interrompt pas le parcours : l'entrée manque, et
  *   le listing est déclaré `complete: false` — donc impubliable. `problems`
  *   dit pourquoi.
  * - `read` et `write` refusent tout chemin qui sortirait de `root` : segment
- *   `..`, ou lien symbolique (hors du chemin réel de `root` avec
- *   `followSymlinks`, quel qu'il soit sans).
+ *   `..`, ou lien symbolique.
  */
 export class FilesystemProvider implements ContentProvider {
   readonly type = 'filesystem';
@@ -156,7 +158,6 @@ export class FilesystemProvider implements ContentProvider {
   private readonly ignore: readonly ExclusionRule[];
   private readonly algorithms: readonly LocalHashAlgorithm[];
   private readonly concurrency: number;
-  private readonly followSymlinks: boolean;
   private readonly useHashCache: boolean;
   // Empreintes déjà calculées (§4.4) : vide tant que `hashCache` n'est pas activé.
   private readonly hashes = new Map<string, { size: number; modifiedAt: string; hashes: HashMap }>();
@@ -169,7 +170,6 @@ export class FilesystemProvider implements ContentProvider {
     this.ignore = options.ignore ?? [];
     this.algorithms = options.hashAlgorithms ?? ALL_ALGORITHMS;
     this.concurrency = options.concurrency ?? 8;
-    this.followSymlinks = options.followSymlinks ?? false;
     this.useHashCache = options.hashCache ?? false;
     this.capabilities = {
       localRead: true,
@@ -187,9 +187,8 @@ export class FilesystemProvider implements ContentProvider {
 
   async list(opts: ProviderCallOptions = {}): Promise<ProviderListing> {
     const problems: ListingProblem[] = [];
+    const diagnostics: Diagnostic[] = [];
     const files: Array<{ path: string; abs: string }> = [];
-    const realRoot = await realpath(this.root);
-    const visited = new Set<string>([realRoot]);
     const excluded = (path: string) => isExcluded(path, this.ignore) || isExcluded(`${path}/`, this.ignore);
 
     // `rawDir` : chemin tel que sur le disque (un filesystem Linux distingue NFC
@@ -213,31 +212,7 @@ export class FilesystemProvider implements ContentProvider {
           continue;
         }
         if (dirent.isSymbolicLink()) {
-          if (excluded(path)) continue;
-          if (!this.followSymlinks) {
-            problems.push({ path, reason: 'lien symbolique non suivi (followSymlinks: false)' });
-            continue;
-          }
-          let real: string;
-          let info;
-          try {
-            real = await realpath(abs);
-            info = await stat(real);
-          } catch (err) {
-            problems.push({ path, reason: `lien symbolique cassé (${(err as Error).message})` });
-            continue;
-          }
-          if (!isUnder(real, realRoot)) {
-            problems.push({ path, reason: 'lien symbolique hors de la racine' });
-          } else if (info.isDirectory()) {
-            if (visited.has(real)) problems.push({ path, reason: 'lien symbolique en cycle' });
-            else {
-              visited.add(real);
-              if (!isExcluded(`${path}/`, this.ignore)) await walk(raw, path);
-            }
-          } else if (info.isFile()) {
-            files.push({ path, abs });
-          }
+          if (!excluded(path)) diagnostics.push(symlinkDiagnostic(path));
           continue;
         }
         if (dirent.isFile() && !isExcluded(path, this.ignore)) files.push({ path, abs });
@@ -279,42 +254,35 @@ export class FilesystemProvider implements ContentProvider {
     // Un fichier disparu n'a plus d'empreinte à garder.
     for (const path of [...this.hashes.keys()]) if (!this.onDisk.has(path)) this.hashes.delete(path);
     problems.sort((a, b) => compareCanonical(a.path, b.path));
-    return { entries: listed, complete: problems.length === 0, ...(problems.length > 0 ? { problems } : {}) };
+    return {
+      entries: listed,
+      complete: problems.length === 0,
+      ...(problems.length > 0 ? { problems } : {}),
+      ...(diagnostics.length > 0 ? { diagnostics: finalizeDiagnostics(diagnostics) } : {}),
+    };
   }
 
-  /** Chemin absolu confiné à `root`, selon la politique de liens symboliques. */
+  /** Chemin absolu confiné à `root` : aucun composant sous `root` n'est un lien. */
   private async confined(path: string): Promise<string> {
     const abs = resolveInside(this.root, path);
-    if (!this.followSymlinks) {
-      await assertNoSymlink(this.root, path);
-      return abs;
-    }
-    const realRoot = await realpath(this.root);
-    // Le chemin réel du plus proche ancêtre existant doit rester sous `root`
-    // (qui existe : `realpath` vient de le résoudre, la remontée s'y arrête).
-    for (let probe = abs; ; ) {
-      try {
-        const real = await realpath(probe);
-        if (!isUnder(real, realRoot)) {
-          throw new UnsafePathError(path, `sort de la racine par le lien « ${relative(this.root, probe)} »`);
-        }
-        return abs;
-      } catch (err) {
-        const parent = dirname(probe);
-        if (err instanceof UnsafePathError || parent === probe) throw err;
-        probe = parent;
-      }
-    }
+    await assertNoSymlink(this.root, path);
+    return abs;
   }
 
   async read(path: string): Promise<Uint8Array> {
     // Le chemin du dernier listing n'est pas revérifié par `list()` : entre-temps
-    // le fichier a pu être remplacé par un lien. On reconfine donc à la lecture
-    // (`followSymlinks`), ou on ouvre en refusant de suivre le lien final
-    // (`O_NOFOLLOW`) — `ELOOP` si c'en est devenu un (SEC-009).
+    // le fichier a pu être remplacé par un lien. On ouvre donc en refusant de
+    // suivre le lien final (`O_NOFOLLOW`) — `ELOOP` si c'en est devenu un
+    // (SEC-009).
     const abs = this.onDisk.get(path) ?? (await this.confined(path));
-    if (this.followSymlinks) await this.confined(path);
-    const handle = await open(abs, this.followSymlinks ? constants.O_RDONLY : constants.O_RDONLY | constants.O_NOFOLLOW);
+    let handle;
+    try {
+      handle = await open(abs, constants.O_RDONLY | constants.O_NOFOLLOW);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ELOOP' || code === 'EMLINK') throw new UnsafePathError(path, 'est devenu un lien symbolique');
+      throw err;
+    }
     try {
       return new Uint8Array(await handle.readFile());
     } finally {
@@ -359,9 +327,15 @@ function resolveInside(root: string, path: string): string {
   return join(root, ...path.split('/'));
 }
 
-/** Le chemin réel `real` est-il la racine réelle `realRoot` ou l'un de ses descendants ? */
-function isUnder(real: string, realRoot: string): boolean {
-  return real === realRoot || real.startsWith(`${realRoot}${sep}`);
+/** Diagnostic du provider pour un lien symbolique ignoré (§4.0, §4.10). */
+function symlinkDiagnostic(path: string): Diagnostic {
+  return {
+    code: 'entry-symlink',
+    severity: 'warning',
+    path,
+    message: 'Lien symbolique ignoré : un provider filesystem ne suit jamais un lien (§4.0).',
+    rule: '§4.0',
+  };
 }
 
 /** Écrit via un fichier temporaire voisin puis `rename` : jamais de fichier à moitié écrit. */
