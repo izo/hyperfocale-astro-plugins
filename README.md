@@ -7,7 +7,7 @@
 
 > Transformez un dossier de photos en galerie complète — routes, pagination, lightbox et thème — sans écrire une seule page Astro.
 
-> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.16-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 (et la spec en suit les évolutions jusqu'à la 2.16) : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) avait son preset, retiré en 0.25.0. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
+> **Spec** : [`izo/hyperfocale-spec`](https://github.com/izo/hyperfocale-spec), **2.17-draft**. Depuis la v0.20.0, le plugin couvre la v2.11 (et la spec en suit les évolutions jusqu'à la 2.17 : l'alignement est sous « Non publié » du CHANGELOG, et ce que les tests de conformité en vérifient — comme ce qu'ils n'exercent pas — est dit sous *Ingestion → Conformité*) : les originaux (§1.9) sont ignorés — ni galerie, ni pièce jointe, ni fichier copié au build —, la garde les retire du snapshot publié (§4.11), et le profil `project` (G.12) avait son preset, retiré en 0.25.0. Un dossier de travail se publie toujours par export, jamais tel quel (G.12).
 
 Plugin d'intégration **Astro 7** pour sites de photographie. Ajoute en une ligne de config un système complet de **séries photo** : content collection, routes automatiques, composants, helpers TypeScript et thème CSS configurable.
 
@@ -1572,7 +1572,7 @@ La réplication des médias vers un stockage objet, le déploiement et les redir
 
 ### Conformité
 
-Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift : les **116 fixtures** de `izo/hyperfocale-spec` épinglées sur `51cbf73` (207 fichiers) — 6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 27 snapshots de corpus, 3 projections publiables, 46 validations, 15 diffs, 7 gardes —, rejouées par 127 tests (les 11 autres vérifient la présence et l'épinglage de la copie, et que chaque corpus a son snapshot). Le commit épinglé est lu dans `tests/fixtures/spec-ingestion/SOURCE`. Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
+Le module passe toutes les fixtures cross-language de la spec (`fixtures/ingestion/`), les mêmes que lit le CMS Swift : les **157 fixtures** de `izo/hyperfocale-spec` épinglées sur `8a55709` (2.17-draft, 309 fichiers) — 6 vecteurs de hash, 5 jeux de chemins, 7 identifiants, 42 snapshots de corpus, 5 projections publiables, 63 validations, 16 diffs, 12 gardes, 1 cas de provider —, rejouées par 157 tests (les 12 autres vérifient la présence et l'épinglage de la copie, et que chaque corpus a son snapshot). Le cas de provider (`providers/symlink.json`, liens symboliques, §4.0) se rejoue sur un arbre que le test crée, et se saute là où la plateforme ne sait pas créer de lien. Le commit épinglé est lu dans `tests/fixtures/spec-ingestion/SOURCE`. Elles sont copiées à une ref épinglée sous `tests/fixtures/spec-ingestion/` :
 
 ```bash
 npm run fixtures:sync -- --ref <ref>   # recopie les fixtures d'une ref de izo/hyperfocale-spec et l'épingle dans SOURCE
@@ -1580,6 +1580,10 @@ npm run fixtures:check                 # vérifie la copie octet pour octet cont
 ```
 
 Les fixtures de la couche 1 (`fixtures/format/` : tri des séries, parent d'une série, routes) sont copiées au même commit sous `tests/fixtures/spec-format/`, avec leur propre `SOURCE`, par les mêmes commandes. `tests/unit/format-conformance.test.ts` en rejoue le tri et le parent ; les routes ne le sont pas (le routage est celui d'Astro, le plugin n'expose aucune fonction pure de résolution d'URL).
+
+**Ce que la 2.17 vérifie ici.** Les fixtures rejouées exercent, côté couche 4 : `url-scheme-forbidden`, `reference-unsafe`, et la comparaison des références en NFC, octet à octet, casse comprise ; `index-mdx-forbidden` ; `private-type-invalid` et `private-key-suspect` ; `attachment-active-content` ; `gps-precision-excessive` ; les bornes de lecture de `frontmatter-limits` ; les seuils par défaut de la garde (`defaults-*`) ; la projection publiable sans `source` ; `entry-symlink` côté provider filesystem. Côté couche 1, le tri par jour écrit (cas `fuseau-ecrit`) et le parent d'une série. Ont leurs propres tests, hors fixtures : la forme des identifiants d'embed (§1.12), les bornes de `iptc.gps` et le code ISO de `iptc.country_code` (Annexe A), le jeton `--hf-lightbox-bg` (Annexe D) et le rejet par `TypeError` d'un seuil de garde mal formé.
+
+**Ce qu'elles n'exercent pas, et que ce module ne revendique pas.** Le plugin n'assainit pas le HTML rendu depuis le body (§1.12) ; il n'a ni liste blanche d'hôtes ni contrôle des adresses résolues pour la récupération d'URL au build (§1.12 — les fixtures `fixtures/security/` de la spec ne sont pas copiées ni rejouées ici) ; le service isolé des documents joints (§1.12) est l'affaire du site, `attachment-active-content` ne fait que signaler le fichier ; les exigences de §4.0 sur les providers autres que les liens symboliques (portée en lecture seule, secrets, signature et horodatage du webhook) n'ont pas été revérifiées pour la 2.17 ; `routes.json` n'est pas rejoué. La conformité à la 2.17 est donc partielle, et c'est ce que les tests ci-dessus bornent.
 
 ---
 
