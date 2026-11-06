@@ -67,9 +67,18 @@ function threshold(name: string, value: unknown, fallback: number | null, max = 
  * désactivé. Une valeur qui n'est ni l'un ni l'autre (`false`, `NaN`, négatif,
  * chaîne, ratio hors de 0–1) lève une `TypeError` : une faute de frappe ne
  * doit pas désactiver un contrôle en silence, et un runner qui s'arrête ne
- * publie rien.
+ * publie rien. Une clé **inconnue** est ignorée — les seuils appartiennent au
+ * consommateur (§4.11), qui peut porter les siens dans le même objet — et le
+ * défaut du seuil visé reste actif : l'erreur de frappe va dans le sens sûr.
+ * Une politique qui n'est pas un objet (`null`, liste, scalaire) lève.
  */
 export function resolveGuardPolicy(policy: GuardPolicy = {}): ResolvedGuardPolicy {
+  if (typeof policy !== 'object' || policy === null || Array.isArray(policy)) {
+    const received = policy === null ? 'null' : Array.isArray(policy) ? 'une liste' : typeof policy;
+    throw new TypeError(
+      `Politique de garde : la politique doit être un objet { maxDeletedSeries, maxDeletedMediaRatio, maxMovedSeries, maxFileBytes } (reçu ${received}).`,
+    );
+  }
   const { maxFileBytes } = policy;
   if (maxFileBytes !== undefined && maxFileBytes !== null && (typeof maxFileBytes !== 'object' || Array.isArray(maxFileBytes))) {
     throw new TypeError('Politique de garde : maxFileBytes doit être un objet { <classe>: octets }, ou null pour tout désactiver.');

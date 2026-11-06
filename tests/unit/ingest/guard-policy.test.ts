@@ -87,6 +87,20 @@ describe('resolveGuardPolicy — absent = défaut, null = désactivé (§4.11, v
     expect(policy.maxFileBytes).toEqual(DEFAULT_GUARD_POLICY.maxFileBytes);
   });
 
+  it.each([
+    ['null', null],
+    ['une liste', []],
+    ['une chaîne', 'off'],
+    ['un nombre', 10],
+  ])('refuse une politique qui est %s, avec un message qui la nomme', (_label, policy) => {
+    expect(() => resolveGuardPolicy(policy as unknown as GuardPolicy)).toThrow(/Politique de garde : la politique doit être un objet/);
+  });
+
+  it('une clé inconnue de la politique est ignorée ; les défauts restent actifs (seuils du consommateur, §4.11)', () => {
+    const policy = resolveGuardPolicy({ maxDeleted: 3, seuilPropreAuSite: 5 } as GuardPolicy);
+    expect(policy).toEqual(DEFAULT_GUARD_POLICY);
+  });
+
   it('accepte une politique gelée et laisse les défauts intacts', () => {
     resolveGuardPolicy(Object.freeze({ maxFileBytes: Object.freeze({ media: 1 }) }));
     expect(Object.isFrozen(DEFAULT_GUARD_POLICY) && Object.isFrozen(DEFAULT_GUARD_POLICY.maxFileBytes)).toBe(true);
