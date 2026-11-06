@@ -219,8 +219,8 @@ describe('couverture (§1.6, §1.5.1, §1.8, §1.9)', () => {
     expect(r.cover?.path).toBe('media/01.jpg');
   });
 
-  it('cover qui sort du corpus : cover-not-found', () => {
-    expect(codes({ frontmatter: { cover: '../../x.jpg' }, mediaFiles: [] })).toEqual(['cover-not-found']);
+  it('cover qui sort du corpus : reference-unsafe, qui remplace cover-not-found (§1.12)', () => {
+    expect(codes({ frontmatter: { cover: '../../x.jpg' }, mediaFiles: [] })).toEqual(['reference-unsafe']);
   });
 
   it('cover d\'un conteneur vers une sous-série (§1.8) : rendu sans vérification', () => {
@@ -282,6 +282,155 @@ describe('documents joints (§1.9)', () => {
   });
 });
 
+describe('valeurs refusées (§1.12) — jamais rendues, signalées', () => {
+  const HOSTILE = [
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    ' javascript:alert(1)',
+    '\tjavascript:alert(1)',
+    'java\tscript:alert(1)',
+    'java\u0000script:alert(1)',
+    'data:image/svg+xml,<svg onload=alert(1)/>',
+    'file:///etc/passwd',
+    '//evil.example/x.jpg',
+    '/\\evil.example/x.jpg',
+    '/content/a\\b.jpg',
+  ];
+  const UNSAFE = [
+    '..\\..\\x.jpg',
+    './media/%2e%2e/%2e%2e/x.jpg',
+    './media/..%2fx.jpg',
+    './media/..%5Cx.jpg',
+    './media/a\u0000b.jpg',
+    '../../x.jpg',
+  ];
+  const strings = (value: unknown): string[] =>
+    typeof value === 'string' ? [value] : value && typeof value === 'object' ? Object.values(value).flatMap(strings) : [];
+  const detail = (r: ReturnType<typeof resolveWith>) => r.diagnostics.map((d) => [d.code, d.severity]);
+
+  it.each(HOSTILE)('cover %j : url-scheme-forbidden, repli sur la première image, aucun autre contrôle', (cover) => {
+    const r = resolveWith({ frontmatter: { cover }, mediaFiles: ['01.jpg'] });
+    expect(detail(r)).toEqual([['url-scheme-forbidden', 'error']]);
+    expect(r.cover?.path).toBe('media/01.jpg');
+    expect(strings({ images: r.images, cover: r.cover, attachments: r.attachments })).not.toContain(cover);
+  });
+
+  it.each(UNSAFE)('cover %j : reference-unsafe, qui remplace cover-not-found', (cover) => {
+    const r = resolveWith({ frontmatter: { cover }, mediaFiles: ['01.jpg'] });
+    expect(detail(r)).toEqual([['reference-unsafe', 'error']]);
+    expect(r.cover?.path).toBe('media/01.jpg');
+  });
+
+  it('cover refusé sans aucune image : pas de couverture', () => {
+    const r = resolveWith({ frontmatter: { cover: 'javascript:alert(1)' } });
+    expect(r.cover).toBeUndefined();
+    expect(detail(r)).toEqual([['url-scheme-forbidden', 'error']]);
+  });
+
+  it('formes admises : http(s) en majuscules, chemin absolu au site, relatif', () => {
+    for (const cover of ['HTTPS://cdn.example.com/c.jpg', '/content/s/media/01.jpg']) {
+      const r = resolveWith({ frontmatter: { cover }, mediaFiles: ['01.jpg'] });
+      expect(r.diagnostics, cover).toEqual([]);
+      expect(r.cover?.src, cover).toBe(cover);
+    }
+    expect(resolveWith({ frontmatter: { cover: './media/01.jpg' }, mediaFiles: ['01.jpg'] }).diagnostics).toEqual([]);
+  });
+
+  it('`folder` situe la série : une remontée qui reste sous la racine du corpus n\'est pas non sûre', () => {
+    const cover = '../autre/media/01.jpg';
+    expect(detail(resolveWith({ frontmatter: { cover }, mediaFiles: ['01.jpg'] }))).toEqual([['reference-unsafe', 'error']]);
+    for (const folder of ['series/s', 'a/b', 'a/b/c']) {
+      const r = resolveWith({ frontmatter: { cover }, mediaFiles: ['01.jpg'], folder });
+      expect(r.diagnostics, folder).toEqual([]);
+      expect(r.cover?.path, folder).toBe('media/01.jpg');
+    }
+    expect(detail(resolveWith({ frontmatter: { cover: '../../x.jpg' }, folder: 'a' }))).toEqual([['reference-unsafe', 'error']]);
+    expect(resolveWith({ frontmatter: { cover: '../../x.jpg' }, folder: 'a/b' }).diagnostics).toEqual([]);
+  });
+
+  it('images: du frontmatter — chaîne et url d\'un objet, les entrées licites restent', () => {
+    const r = resolveWith({
+      frontmatter: {
+        images: ['javascript:alert(1)', { url: 'data:text/html,x' }, { url: '//evil.example/x.jpg' }, '..\\x.jpg', { url: './media/%2e%2e/x.jpg' }, './media/01.jpg', 'https://cdn.example.com/2.jpg'],
+      },
+    });
+    expect(r.images.map((i) => i.src)).toEqual(['./media/01.jpg', 'https://cdn.example.com/2.jpg']);
+    expect(r.diagnostics.map((d) => d.code).sort()).toEqual(Array(3).fill('url-scheme-forbidden').concat(Array(2).fill('reference-unsafe')).sort());
+  });
+
+  it('images.json — chaîne et url d\'un objet', () => {
+    const manifest = JSON.stringify({ images: ['https://cdn.example.com/1.jpg', 'data:image/svg+xml,<svg/>', { url: '//evil.example/2.jpg' }, '../../../x.jpg'] });
+    const r = resolveWith({ manifest, folder: 'series/n' });
+    expect(r.images.map((i) => i.src)).toEqual(['https://cdn.example.com/1.jpg']);
+    expect(r.diagnostics.map((d) => d.code).sort()).toEqual(['reference-unsafe', 'url-scheme-forbidden', 'url-scheme-forbidden']);
+  });
+
+  it('{ file } d\'une image : un nom à antislash ou %2e n\'atteint jamais une URL', () => {
+    for (const file of ['..\\..\\x.jpg', '%2e%2e%2fx.jpg', 'a\u0000b.jpg']) {
+      const r = resolveWith({ frontmatter: { images: [{ file }] } });
+      expect(r.images, file).toEqual([]);
+      expect(detail(r), file).toEqual([['reference-unsafe', 'error']]);
+    }
+    expect(resolveWith({ frontmatter: { images: [{ file: '01.jpg' }] } }).images.map((i) => i.path)).toEqual(['media/01.jpg']);
+  });
+
+  it('files: du frontmatter et du manifeste — une entrée refusée n\'est pas un document joint', () => {
+    const front = resolveWith({ frontmatter: { files: [{ url: 'file:///etc/passwd' }, { url: 'ftp://x/y.zip' }, { url: '..\\x.pdf' }, { url: 'https://cdn.example.com/a.zip' }] } });
+    expect(front.attachments.map((a) => a.src)).toEqual(['https://cdn.example.com/a.zip']);
+    expect(front.diagnostics.map((d) => d.code).sort()).toEqual(['reference-unsafe', 'url-scheme-forbidden', 'url-scheme-forbidden']);
+    const manifest = resolveWith({ manifest: JSON.stringify({ images: [], files: [{ url: 'javascript:alert(1)' }, { url: '/content/s/d.pdf' }] }) });
+    expect(manifest.attachments.map((a) => a.src)).toEqual(['/content/s/d.pdf']);
+    expect(detail(manifest)).toEqual([['url-scheme-forbidden', 'error']]);
+  });
+
+  it('attachments: reference-unsafe remplace attachment-not-found', () => {
+    const r = resolveWith({
+      frontmatter: { attachments: [{ file: '..\\..\\x.pdf' }, { file: './media/%2e%2e/x.pdf' }, { file: '../../x.pdf' }, { file: './media/absent.pdf' }] },
+      mediaFiles: ['ok.pdf'],
+    });
+    expect(r.diagnostics.map((d) => d.code).sort()).toEqual([
+      'attachment-not-found',
+      'reference-unsafe',
+      'reference-unsafe',
+      'reference-unsafe',
+    ]);
+  });
+
+  it('embeds : url (http(s) seulement) et poster sont contrôlés ; un poster non sûr n\'écarte rien du scan', () => {
+    const r = resolveWith({
+      frontmatter: {
+        embeds: [
+          { url: 'javascript:alert(1)', poster: './media/%2e%2e/secret.jpg' },
+          { url: '/embed/1' },
+          { url: 'https://vimeo.com/1', poster: 'data:text/html,x' },
+          { url: 'HTTPS://vimeo.com/2', poster: './media/p.jpg' },
+        ],
+      },
+      mediaFiles: ['secret.jpg', 'p.jpg', '01.jpg'],
+    });
+    expect(r.diagnostics.map((d) => d.code).sort()).toEqual(['reference-unsafe', 'url-scheme-forbidden', 'url-scheme-forbidden', 'url-scheme-forbidden']);
+    expect(r.images.map((i) => i.path)).toEqual(['media/01.jpg', 'media/secret.jpg']);
+  });
+
+  it('une même valeur refusée n\'est signalée qu\'une fois par champ', () => {
+    const r = resolveWith({ frontmatter: { images: ['javascript:alert(1)'] }, manifest: undefined });
+    expect(r.diagnostics).toHaveLength(1);
+  });
+
+  it('rien de refusé ne ressort dans les images, la couverture ni les documents joints', () => {
+    const r = resolveWith({
+      frontmatter: {
+        cover: 'javascript:alert(1)',
+        images: [...HOSTILE, ...UNSAFE],
+        files: [...HOSTILE, ...UNSAFE].map((url) => ({ url })),
+      },
+    });
+    expect(r.images).toEqual([]);
+    expect(r.cover).toBeUndefined();
+    expect(r.attachments).toEqual([]);
+  });
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Rejeu des fixtures de la spec
 // ─────────────────────────────────────────────────────────────────────────────
@@ -293,6 +442,8 @@ const MEDIA_CODES = new Set<MediaDiagnosticCode>([
   'cover-not-found',
   'cover-not-image',
   'attachment-not-found',
+  'url-scheme-forbidden',
+  'reference-unsafe',
 ]);
 
 /** Dossiers porteurs d'un fichier index dans un corpus, relatifs à sa racine. */
@@ -344,7 +495,7 @@ describe('fixtures de la spec — rejeu des corpus', () => {
         : readdirSync(dir).filter((n) => /^index\..+\.md$/.test(n)).sort()[0]!;
       const parsed = parseFrontmatter(readFileSync(join(dir, index)));
       if (parsed.status !== 'ok' || parsed.data.type === 'section') continue;
-      const r = resolveSeriesMedia({ frontmatter: parsed.data, ...(await readSeriesMedia(dir)) });
+      const r = resolveSeriesMedia({ frontmatter: parsed.data, folder, ...(await readSeriesMedia(dir)) });
       const found = [...new Set(r.diagnostics.map((d) => `${d.code}:${d.severity}`))];
       if (found.length > 0) actual.set(folder, found.sort());
     }

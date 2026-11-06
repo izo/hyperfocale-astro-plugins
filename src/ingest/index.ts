@@ -48,8 +48,10 @@ export {
   isOriginalPath,
   normalizePath,
   ORIGINAL_EXTENSIONS,
+  referenceProblem,
+  urlFieldProblem,
 } from './paths.js';
-export type { ExclusionRule, NormalizedPath } from './paths.js';
+export type { ExclusionRule, NormalizedPath, UrlFieldOptions, UrlFieldProblem } from './paths.js';
 
 export {
   DROPBOX_BLOCK_SIZE,

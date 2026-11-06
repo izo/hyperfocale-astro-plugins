@@ -147,6 +147,8 @@ export type DiagnosticCode =
   | 'private-type-invalid'
   | 'private-key-suspect'
   | 'index-mdx-forbidden'
+  | 'url-scheme-forbidden'
+  | 'reference-unsafe'
   | 'hash-incomparable'
   | 'move-ambiguous'
   | 'guard-snapshot-incomplete'

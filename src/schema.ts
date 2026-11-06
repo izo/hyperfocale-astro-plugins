@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import type { SchemaContext } from 'astro:content';
+import { isUnsafeReferenceText, urlFieldProblem } from './url-forms.js';
+import type { UrlFieldOptions } from './url-forms.js';
 
 /**
  * Options de génération du schéma series.
@@ -45,17 +47,48 @@ const iptcSchema = z.looseObject({
   gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
 });
 
+const URL_MESSAGES = {
+  'url-scheme-forbidden':
+    'URL hors des formes admises : chemin relatif, chemin absolu au site, `http:` ou `https:` (spec §1.12).',
+  'reference-unsafe': 'Référence non sûre : `\\`, caractère de contrôle, `%2e`, `%2f` ou `%5c` (spec §1.12).',
+} as const;
+
+/**
+ * Champ d'URL du core (spec §1.12, *Schémas d'URL*) : une chaîne non vide d'une
+ * forme admise — chemin relatif sûr, chemin absolu au site, `http:` ou
+ * `https:` — et rien d'autre. Liste blanche : `javascript:`, `data:`, `file:`,
+ * `//hôte`, `\`, caractère de contrôle ou espace initiale sont refusés, pour
+ * ce que `z.url()` laisse passer ou ne sait pas dire. La valeur se lit telle
+ * qu'écrite. La sortie du corpus par des `..` dépend du dossier de l'index :
+ * la validation d'ingestion la juge, pas ce schéma.
+ */
+function urlField(options: UrlFieldOptions = {}) {
+  return z.string().min(1).check((ctx) => {
+    const problem = urlFieldProblem(ctx.value, options);
+    if (problem !== null) ctx.issues.push({ code: 'custom', input: ctx.value, message: URL_MESSAGES[problem] });
+  });
+}
+
+/** Référence de fichier (§1.12, *Références de fichiers*) : le texte ne porte ni `\`, ni contrôle, ni `%2e` `%2f` `%5c`. */
+function referenceField() {
+  return z.string().check((ctx) => {
+    if (isUnsafeReferenceText(ctx.value)) {
+      ctx.issues.push({ code: 'custom', input: ctx.value, message: URL_MESSAGES['reference-unsafe'] });
+    }
+  });
+}
+
 /**
  * Schéma d'une image — forme longue de §1.5 / §1.5.1, `url` requis.
  *
  * `url` suit la *Résolution des URLs* de §1.5.1 : URL absolue, chemin absolu au
  * site, ou chemin relatif au fichier index (`./media/01.jpg`). La spec 2.12
  * l'étend explicitement aux entrées de `images:` — c'est là que s'écrit un
- * ordre éditorial dans une source distante —, d'où une chaîne non vide plutôt
- * qu'un `z.url()`, qui refusait toute forme relative.
+ * ordre éditorial dans une source distante —, d'où `urlField` plutôt qu'un
+ * `z.url()`, qui refusait toute forme relative.
  */
 const remoteImageSchema = z.object({
-  url: z.string().min(1),
+  url: urlField(),
   alt: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
@@ -66,7 +99,7 @@ const remoteImageSchema = z.object({
  * Permet de curer l'ordre et les `alt` d'images locales sans passer par `image()`.
  */
 const localFileImageSchema = z.object({
-  file: z.string(),
+  file: referenceField(),
   alt: z.string().optional(),
 });
 
@@ -93,7 +126,7 @@ const localAssetImageSchema = z.object({
  */
 const imageEntrySchema = z.union([
   // Forme courte (§1.5.1) : une chaîne équivaut à `{ url: <chaîne> }`.
-  z.string().min(1),
+  urlField(),
   remoteImageSchema,
   localFileImageSchema,
   localAssetImageSchema,
@@ -156,16 +189,26 @@ const projectSchema = z.looseObject({
 
 /** Métadonnées optionnelles d'un document joint local — bloc `attachments:` (spec §1.9). */
 const attachmentMetaSchema = z.object({
-  file: z.string(),
+  file: referenceField(),
   title: z.string().optional(),
   description: z.string().optional(),
 });
 
 /**
  * URL absolue en `http(s)` — `embeds[].url` et `files[].url` finissent dans un
- * `href` : `javascript:`, `data:` et les autres schémas sont refusés (#152).
+ * `href` : `javascript:`, `data:` et les autres schémas sont refusés (#152). Le
+ * contrôle de §1.12 porte sur la valeur telle qu'écrite, donc avant `z.url()`,
+ * qui lit comme un navigateur — il rogne une espace initiale et retire les
+ * tabulations et sauts de ligne — et rendrait propre ce que la spec refuse.
  */
-const httpUrl = z.url({ protocol: /^https?$/ });
+const httpUrl = z
+  .string()
+  .check((ctx) => {
+    if (urlFieldProblem(ctx.value, { httpOnly: true }) !== null) {
+      ctx.issues.push({ code: 'custom', input: ctx.value, message: URL_MESSAGES['url-scheme-forbidden'] });
+    }
+  })
+  .pipe(z.url({ protocol: /^https?$/ }));
 
 /** Schéma d'un document joint en mode distant — champ `files[]` (spec §1.9). */
 const remoteFileSchema = z.object({
@@ -208,7 +251,7 @@ const embedSchema = z.object({
   description: z.string().optional(),
   // Résolue comme une entrée de manifeste (§1.5.1) : URL absolue, chemin absolu
   // au site, ou chemin relatif à `index.md`.
-  poster: z.string().optional(),
+  poster: urlField().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
 });

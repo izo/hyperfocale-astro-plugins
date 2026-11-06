@@ -3,7 +3,8 @@ import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
 import { computeSnapshotId, verifyEntryBytes } from './hash.js';
-import { manifestEntryReferences, readImagesManifest } from './manifest.js';
+import { manifestEntryReferences, manifestEntryUrl, readImagesManifest } from './manifest.js';
+import type { ImagesManifestDocument } from './manifest.js';
 import {
   basename,
   classifyPath,
@@ -20,8 +21,11 @@ import {
   isWithin,
   joinPath,
   normalizePath,
+  referenceProblem,
   resolveReference,
+  urlFieldProblem,
 } from './paths.js';
+import type { UrlFieldOptions, UrlFieldProblem } from './paths.js';
 import { indexFolders, primaryIndex } from './series.js';
 import { entryStructureError, snapshotStructureError } from './snapshot.js';
 import type { ContentSnapshot, Diagnostic, DiagnosticCode, ReadFn, Severity, SnapshotEntry } from './types.js';
@@ -92,6 +96,8 @@ const RULES: Partial<Record<DiagnosticCode, string>> = {
   'private-type-invalid': '§1.12',
   'private-key-suspect': '§1.12',
   'index-mdx-forbidden': '§1.12',
+  'url-scheme-forbidden': '§1.12',
+  'reference-unsafe': '§1.12',
   'x-schema-invalid': '§2.1',
 };
 
@@ -146,12 +152,29 @@ function hasExcessivePrecision(value: unknown): boolean {
   return typeof value === 'number' && Math.abs(value - Math.round(value * 100) / 100) > 1e-9;
 }
 
-/** Entrées d'images d'un `images.json`, ou `null` s'il est invalide (§1.5.1). */
-function parseManifest(content: Uint8Array | string): readonly unknown[] | null {
+/** Contenu d'un `images.json`, ou `null` s'il est invalide (§1.5.1). */
+function parseManifest(content: Uint8Array | string): ImagesManifestDocument | null {
   const text = decodeUtf8(content);
   if (text === null) return null;
   const result = readImagesManifest(text);
-  return result.ok ? result.manifest.images : null;
+  return result.ok ? result.manifest : null;
+}
+
+const URL_PROBLEMS: Readonly<Record<UrlFieldProblem, string>> = {
+  'url-scheme-forbidden':
+    'forme d\'URL refusée : seuls un chemin relatif, un chemin absolu au site et `http:` ou `https:` sont admis (§1.12).',
+  'reference-unsafe':
+    'référence non sûre : `\\`, caractère de contrôle, `%2e`, `%2f`, `%5c` ou sortie de la racine du corpus (§1.12).',
+};
+
+/** Diagnostic d'une valeur de champ d'URL — message et valeur écrite, sans la décoder. */
+function urlProblemMessage(label: string, value: string, problem: UrlFieldProblem): string {
+  return `${label} ${JSON.stringify(value)} : ${URL_PROBLEMS[problem]}`;
+}
+
+/** Chemin d'une valeur dans le frontmatter, pour le message : `images[2].url`. */
+function fieldLabel(at: ReadonlyArray<string | number>): string {
+  return at.map((key, i) => (typeof key === 'number' ? `[${key}]` : i === 0 ? key : `.${key}`)).join('');
 }
 
 /** Le manifeste référence-t-il `target` (§4.10, règle 9) ? */
@@ -325,13 +348,27 @@ export async function validateSnapshot(
   const manifests = new Map<string, readonly unknown[] | null>();
   const manifestPaths = scoped.filter((e) => basename(e.path) === 'images.json' && readable(e.path)).map((e) => e.path);
   await mapConcurrent(manifestPaths, concurrency, async (path) => {
-    let images: readonly unknown[] | null = null;
+    let document: ImagesManifestDocument | null = null;
     if (!oversize(path)) {
       const content = await readVerified(path);
       if (content === null) return;
-      images = parseManifest(content);
+      document = parseManifest(content);
     }
+    const images = document?.images ?? null;
     manifests.set(dirname(path), images);
+    if (document !== null) {
+      // Règles 15 et 17 sur les entrées du manifeste : le diagnostic porte sur `images.json`.
+      const folder = dirname(path);
+      const escapesRoot = (reference: string) => resolveReference(folder, reference) === null;
+      const check = (value: string | null, label: string, options: UrlFieldOptions = {}) => {
+        const problem = value === null ? null : urlFieldProblem(value, { ...options, escapesRoot });
+        if (value !== null && problem !== null) push(problem, path, urlProblemMessage(label, value, problem));
+      };
+      document.images.forEach((entry, i) => check(manifestEntryUrl(entry), `\`images[${i}]\``));
+      document.files?.forEach((entry, i) => {
+        check(isRecord(entry) && typeof entry.url === 'string' ? entry.url : null, `\`files[${i}].url\``);
+      });
+    }
     if (images === null) {
       push(
         'images-json-invalid',
@@ -430,10 +467,25 @@ export async function validateSnapshot(
       push('date-invalid', path, `\`date\` n'est pas une date ISO 8601 valide : « ${String(date)} ».`);
     }
 
+    // Règles 15 et 17 : une valeur refusée ne subit aucun autre contrôle, et un
+    // seul diagnostic la désigne. `flagged` retient les chemins des valeurs
+    // refusées pour que `x-schema-invalid` ne les redouble pas.
+    const flagged: Array<ReadonlyArray<string | number>> = [];
+    const escapesRoot = (reference: string) => resolveReference(folder, reference) === null;
+    const checkUrl = (value: unknown, at: ReadonlyArray<string | number>, options: UrlFieldOptions = {}): boolean => {
+      if (typeof value !== 'string') return false;
+      const problem = urlFieldProblem(value, { ...options, escapesRoot });
+      if (problem === null) return false;
+      push(problem, path, urlProblemMessage(`\`${fieldLabel(at)}\``, value, problem));
+      flagged.push(at);
+      return true;
+    };
+
     // Deux règles indépendantes, qui se cumulent (règle 10) : l'extension pour
     // `cover-not-image`, l'existence pour `cover-not-found`.
     const cover = field(data, 'cover');
-    if (typeof cover === 'string' && isRelativeReference(cover)) {
+    const coverRefused = checkUrl(cover, ['cover']);
+    if (!coverRefused && typeof cover === 'string' && isRelativeReference(cover)) {
       const target = resolveReference(folder, cover);
       const manifest = manifests.get(folder);
       if (!isImagePath(cover)) {
@@ -447,15 +499,33 @@ export async function validateSnapshot(
       }
     }
 
-    if (field(data, 'images') !== undefined && byPath.has(joinPath(folder, 'images.json'))) {
+    const images = field(data, 'images');
+    if (images !== undefined && byPath.has(joinPath(folder, 'images.json'))) {
       push('images-conflict', path, '`images:` du frontmatter et `images.json` dans la même série.');
+    }
+    if (Array.isArray(images)) {
+      images.forEach((entry, i) => {
+        if (isRecord(entry)) checkUrl(entry.url, ['images', i, 'url']);
+        else checkUrl(entry, ['images', i]);
+      });
+    }
+    const files = field(data, 'files');
+    if (Array.isArray(files)) {
+      files.forEach((entry, i) => {
+        if (isRecord(entry)) checkUrl(entry.url, ['files', i, 'url']);
+      });
     }
 
     const attachments = field(data, 'attachments');
     if (Array.isArray(attachments)) {
       const mediaDir = joinPath(folder, 'media');
-      for (const attachment of attachments) {
+      for (const [i, attachment] of attachments.entries()) {
         const file = isRecord(attachment) ? attachment.file : undefined;
+        if (typeof file === 'string' && referenceProblem(file, escapesRoot) !== null) {
+          push('reference-unsafe', path, urlProblemMessage(`\`attachments[${i}].file\``, file, 'reference-unsafe'));
+          flagged.push(['attachments', i, 'file']);
+          continue;
+        }
         const target = typeof file === 'string' && isRelativeReference(file) ? resolveReference(folder, file) : null;
         if (target === null || dirname(target) !== mediaDir || !byPath.has(target)) {
           push('attachment-not-found', path, `Pièce jointe « ${String(file)} » absente de \`media/\`.`);
@@ -473,6 +543,10 @@ export async function validateSnapshot(
         if (!isRecord(embed) || typeof embed.url !== 'string' || embed.url === '') {
           push('embed-url-missing', path, `\`embeds[${i}]\` sans \`url\`.`);
         }
+        if (isRecord(embed)) {
+          checkUrl(embed.url, ['embeds', i, 'url'], { httpOnly: true });
+          checkUrl(embed.poster, ['embeds', i, 'poster']);
+        }
       });
     }
 
@@ -485,7 +559,12 @@ export async function validateSnapshot(
     const schema = (await loadSeriesSchema()).safeParse(present);
     if (!schema.success) {
       const covered = new Set(section ? ['title', 'type', 'private', 'embeds'] : ['title', 'date', 'type', 'private', 'embeds']);
-      const issues = schema.error.issues.filter((issue) => !covered.has(String(issue.path[0])));
+      const refused = (issue: { readonly path: ReadonlyArray<PropertyKey> }) =>
+        flagged.some((at) => {
+          const common = Math.min(at.length, issue.path.length);
+          return at.slice(0, common).every((key, i) => String(key) === String(issue.path[i]));
+        });
+      const issues = schema.error.issues.filter((issue) => !covered.has(String(issue.path[0])) && !refused(issue));
       if (issues.length > 0) {
         const detail = issues.map((issue) => `${issue.path.join('.') || '(racine)'} : ${issue.message}`).join(' ; ');
         push('x-schema-invalid', path, `Champs refusés par le schéma du build : ${detail}.`);

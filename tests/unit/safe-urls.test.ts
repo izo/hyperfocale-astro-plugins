@@ -3,6 +3,7 @@
  * `http(s)` (et, hors schéma, un chemin sans schéma) sont admis.
  */
 import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
 import { baseSeriesSchema } from '../../src/schema.js';
 import { getSeriesAttachments, getSeriesEmbeds } from '../../src/helpers/index.js';
 import { isSafeLinkUrl } from '../../src/ingest/paths.js';
@@ -60,6 +61,88 @@ describe('schéma — URL de embeds et files', () => {
   it('accepte http et https', () => {
     expect(schema.safeParse({ title: 'T', embeds: [{ url: 'http://a.example/v' }, { url: 'https://a.example/v' }] }).success).toBe(true);
     expect(schema.safeParse({ title: 'T', files: [{ url: 'https://a.example/x.pdf' }] }).success).toBe(true);
+  });
+});
+
+describe('schéma — champs d\'URL du core, formes admises (§1.12)', () => {
+  const schema = baseSeriesSchema({ dateRequired: false });
+  const BYPASS = [
+    'javascript:alert(1)',
+    'JaVaScRiPt:alert(1)',
+    ' javascript:alert(1)',
+    '\tjavascript:alert(1)',
+    'java\tscript:alert(1)',
+    'java\u0000script:alert(1)',
+    'data:text/html,<script>alert(1)</script>',
+    'file:///etc/passwd',
+    'blob:https://a.example/uuid',
+    'mailto:a@b.example',
+    '//evil.example/x.jpg',
+    '\t//evil.example/x.jpg',
+    '/\\evil.example/x.jpg',
+    '/content/a\\b.jpg',
+    '..\\..\\x.jpg',
+    './media/%2e%2e/%2e%2e/x.jpg',
+    './media/..%2fx.jpg',
+    './media/..%5cx.jpg',
+    './media/a\u0000b.jpg',
+  ];
+  const ok = (data: Record<string, unknown>) => schema.safeParse({ title: 'T', ...data }).success;
+
+  for (const url of BYPASS) {
+    const shown = JSON.stringify(url);
+    it(`refuse images[] = ${shown}, en forme courte et longue`, () => {
+      expect(ok({ images: [url] }), 'chaîne').toBe(false);
+      expect(ok({ images: [{ url }] }), 'objet').toBe(false);
+    });
+    it(`refuse embeds[].poster = ${shown}`, () => {
+      expect(ok({ embeds: [{ url: 'https://vimeo.com/1', poster: url }] })).toBe(false);
+    });
+  }
+
+  it.each(['javascript:alert(1)', ' https://a.example/v', '\thttps://a.example/v', 'https://a.example/\u0000v', 'https://a.example/v\n', '//a.example/v', '/embed/1', './v.mp4'])(
+    'refuse embeds[].url = %j',
+    (url) => {
+      expect(ok({ embeds: [{ url }] })).toBe(false);
+    },
+  );
+
+  it.each(['file:///etc/passwd', ' https://a.example/x.pdf', 'https://a.example/x\t.pdf', '//a.example/x.pdf'])('refuse files[].url = %j', (url) => {
+    expect(ok({ files: [{ url }] })).toBe(false);
+  });
+
+  it.each(['..\\..\\x.pdf', './media/%2e%2e/x.pdf', './media/..%2Fx.pdf', './media/a\u0000.pdf'])('refuse attachments[].file = %j', (file) => {
+    expect(ok({ attachments: [{ file }] })).toBe(false);
+  });
+
+  it.each(['..\\x.jpg', '%2e%2e%2fx.jpg', 'a\u0000.jpg'])('refuse images[].file = %j', (file) => {
+    expect(ok({ images: [{ file }] })).toBe(false);
+  });
+
+  it('accepte les formes admises : relatif, absolu au site, http(s) quelle que soit la casse du schéma', () => {
+    expect(
+      ok({
+        images: ['./media/01.jpg', '/content/x/media/02.jpg', 'https://a.example/3.jpg', 'HTTPS://a.example/4.jpg', { url: 'media/5.jpg', alt: 'x' }, { file: '06.jpg' }],
+        embeds: [{ url: 'HTTP://a.example/v', poster: './media/p.jpg' }, { url: 'https://a.example/w', poster: 'https://a.example/p.jpg' }],
+        files: [{ url: 'https://a.example/x.pdf' }],
+        attachments: [{ file: './media/doc.pdf', title: 'Doc' }, { file: 'media/Mon doc.pdf' }],
+      }),
+    ).toBe(true);
+  });
+
+  it('un objet qui cache sa `url` hostile derrière une autre forme n\'en garde pas la valeur', () => {
+    const result = schema.safeParse({ title: 'T', images: [{ url: 'javascript:alert(1)', file: '01.jpg' }] });
+    expect(JSON.stringify(result.success ? result.data : result.error.issues)).not.toContain('javascript:alert(1)\"');
+    if (result.success) expect(result.data.images?.[0]).toEqual({ file: '01.jpg' });
+  });
+
+  it('la valeur se lit telle qu\'écrite : `javascript%3A` et `&colon;` ne sont ni décodés ni refusés', () => {
+    expect(ok({ images: ['javascript%3Aalert(1)', 'javascript&colon;alert(1)'] })).toBe(true);
+  });
+
+  it('garde `.extend()` disponible avec `cover` : le site y met `image()`', () => {
+    const extended = baseSeriesSchema({ dateRequired: true }).extend({ cover: z.string().optional() });
+    expect(extended.safeParse({ title: 'T', date: '2024-01-01', cover: './media/01.jpg' }).success).toBe(true);
   });
 });
 

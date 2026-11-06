@@ -1,5 +1,8 @@
 import type { EntryKind } from './types.js';
 
+export { isUnsafeReferenceText, referenceProblem, urlFieldProblem } from '../url-forms.js';
+export type { UrlFieldOptions, UrlFieldProblem } from '../url-forms.js';
+
 /** Résultat de `normalizePath` : le chemin NFC et son verdict (§4.1). */
 export interface NormalizedPath {
   /** Chemin normalisé NFC — renvoyé même s'il est invalide, pour le diagnostic. */
