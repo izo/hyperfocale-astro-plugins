@@ -1,0 +1,11 @@
+{
+  "description": "Dates valides avec heure et fuseau (§4.10, règle 8) : `+02:00`, `Z` sans secondes, fraction de seconde et `-05:30`, heure sans fuseau, et un 29 février d'année bissextile. Aucun diagnostic.",
+  "corpus": "edge-date-time",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

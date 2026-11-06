@@ -1,0 +1,74 @@
+{
+  "description": "Liens symboliques (§4.0, Exigences des providers) : un provider filesystem ne les suit jamais et les signale (`entry-symlink`, warning), quelle que soit leur cible. `media/02.jpg` pointe hors du corpus (`outside/secret.jpg`), `media/03.jpg` vers un fichier du corpus, `lien-dossier` vers un dossier (dupliquerait la série), `boucle` vers le dossier qui le contient (parcours infini si suivi), `orphelin.jpg` vers rien. Seuls les deux fichiers réguliers entrent au snapshot.",
+  "outside": [
+    {
+      "path": "secret.jpg",
+      "content": "outside/secret.jpg\n"
+    }
+  ],
+  "files": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "content": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "content": "series/bretagne-2024/media/01.jpg\n"
+    }
+  ],
+  "symlinks": [
+    {
+      "path": "series/bretagne-2024/media/02.jpg",
+      "target": "../../../../outside/secret.jpg"
+    },
+    {
+      "path": "series/bretagne-2024/media/03.jpg",
+      "target": "01.jpg"
+    },
+    {
+      "path": "series/lien-dossier",
+      "target": "bretagne-2024"
+    },
+    {
+      "path": "series/boucle",
+      "target": "."
+    },
+    {
+      "path": "series/orphelin.jpg",
+      "target": "inexistant.jpg"
+    }
+  ],
+  "expected": {
+    "entries": [
+      "series/bretagne-2024/index.md",
+      "series/bretagne-2024/media/01.jpg"
+    ],
+    "diagnostics": [
+      {
+        "code": "entry-symlink",
+        "severity": "warning",
+        "path": "series/boucle"
+      },
+      {
+        "code": "entry-symlink",
+        "severity": "warning",
+        "path": "series/bretagne-2024/media/02.jpg"
+      },
+      {
+        "code": "entry-symlink",
+        "severity": "warning",
+        "path": "series/bretagne-2024/media/03.jpg"
+      },
+      {
+        "code": "entry-symlink",
+        "severity": "warning",
+        "path": "series/lien-dossier"
+      },
+      {
+        "code": "entry-symlink",
+        "severity": "warning",
+        "path": "series/orphelin.jpg"
+      }
+    ]
+  }
+}

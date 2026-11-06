@@ -1,0 +1,11 @@
+{
+  "description": "Fins de ligne `\\r\\n` dans le frontmatter et le body (§4.10, règle 5) : le bloc s'ouvre et se ferme comme avec `\\n`. Aucun diagnostic.",
+  "corpus": "edge-crlf",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

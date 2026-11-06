@@ -1,0 +1,72 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:8f8e8c3457b68e632e01145bf2bc69e60e9846eece23ede6063b40ee144acc25",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/festival-2008/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "1f755ae36954a21c9fafe2e419727727029dd15dbf34b257812585a3a1e2abdc",
+        "sha256": "34e3e7f3980947592e4abbd7a051e137ce24b2472f1095cc420780a732344c62"
+      }
+    },
+    {
+      "path": "series/festival-2008/lots/the-wombats/index.md",
+      "kind": "content",
+      "size": 86,
+      "hashes": {
+        "dropbox": "b88cc1f0e194f24150014e28be83f47f79b1e4066f940f02b645b1aa7a97771a",
+        "sha256": "a9e51a6041215c7077318815e0d2ee02b730493548e467a7b9d8685c2da2006a"
+      }
+    },
+    {
+      "path": "series/festival-2008/lots/the-wombats/media/01.jpg",
+      "kind": "media",
+      "size": 51,
+      "hashes": {
+        "dropbox": "76183c1ed1a36bb08ba45f8a82d73c1f92d458fc6c2ec62e3a628a5282f511b1",
+        "sha256": "5b5a447554514123ce57734a62f3c3dcca1dcbc06b70f7265a0c431c9cc31c28"
+      }
+    },
+    {
+      "path": "series/festival-2008/media/01.jpg",
+      "kind": "media",
+      "size": 34,
+      "hashes": {
+        "dropbox": "cff1b5f684157a3b2e3163f85ef4f3367ffd0c7b760c958e7f22c44ad7703b37",
+        "sha256": "4a3975afc58e58534114074a175799cc32a6d49f6ab83c10675cb2432f96f6d9"
+      }
+    },
+    {
+      "path": "series/festival-2008/rubrique/index.md",
+      "kind": "content",
+      "size": 62,
+      "hashes": {
+        "dropbox": "81a17e01e7b84b025b9cbf9a86ad2cf6045144dcb382a6927f2efd5966988ab0",
+        "sha256": "c424582319a24cfd3d1effc82cd59a79da2541e43cf3e924796ba4ff61521ddc"
+      }
+    },
+    {
+      "path": "series/festival-2008/rubrique/les-ogres/index.md",
+      "kind": "content",
+      "size": 84,
+      "hashes": {
+        "dropbox": "c169d09ccea66dad0369455a85f616a7d812a696a9cc5f7ecf30def860c307c7",
+        "sha256": "f8a21607c311d5d4e46b408b6200500498d118aed0042b0f1676f383e5757e1d"
+      }
+    },
+    {
+      "path": "series/festival-2008/rubrique/les-ogres/media/01.jpg",
+      "kind": "media",
+      "size": 53,
+      "hashes": {
+        "dropbox": "42d768154c8547b66e4c713b963642b725e04ffecb9ce91dca0df1ea951acc71",
+        "sha256": "11602e5f22b3b456636b8027d73d0cb6710e494c22bda0a809f8932886678b81"
+      }
+    }
+  ]
+}

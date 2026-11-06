@@ -17,6 +17,7 @@ fixtures/ingestion/
 ├── guard/<cas>.json           diagnostics attendus de la garde de publication
 ├── snapshot-id/<cas>.json     identifiant attendu d'une liste d'entrées
 ├── paths/<cas>.json           normalisation, validité, exclusion, classification, collisions
+├── providers/<cas>.json       comportement d'un provider filesystem à l'énumération (liens symboliques)
 └── hashes/vectors.json        vecteurs de hash sha256 et dropbox
 ```
 
@@ -42,10 +43,18 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `manifest` | couverture trouvée dans `images.json` par suffixe (chemin absolu au site) et par résolution (chemin relatif) ; manifeste + médias locaux | aucun |
 | `attachments` | documents joints §1.9, fichier vide | aucun |
 | `embeds` | contenus embarqués §1.11, plateforme inconnue, poster en couverture | aucun |
-| `originals` | dossier de travail du profil `project` (G.12) : RAW `.RAF`, sidecars `.xmp`, JPEG de l'appareil (extensions en majuscules), devis PDF | aucun |
+| `originals` | dossier de travail (ex-profil `project` G.12, repris par Hyperfocus) : RAW `.RAF`, sidecars `.xmp`, JPEG de l'appareil (extensions en majuscules), devis PDF | aucun |
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
 | `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
+| `container-section` | conteneur dont les sous-séries passent par un rangement (`lots/`) et par une page de section (`rubrique/`) : transparents, parent = le conteneur | aucun |
+| `nesting-through-section` | conteneur → section → sous-série → série : la section ne compte pas, la série sous la sous-série est trop profonde | `nesting-too-deep` |
+| `edge-bom` | `index.md` précédé d'un BOM UTF-8 | aucun |
+| `edge-crlf` | frontmatter et body en `\r\n` | aucun |
+| `edge-duplicate-key` | clé YAML dupliquée (`title` deux fois) | `frontmatter-invalid` |
+| `edge-utf8-invalid` | octets `ff fe c3 28` dans le body (corpus sur disque : inexprimable en JSON) | `frontmatter-invalid` |
+| `edge-date-time` | dates valides avec heure et fuseau (`+02:00`, `Z`, fraction, `-05:30`), 29 février bissextile | aucun |
+| `edge-date-hour24` | `T24:00:00Z` : l'heure 24 est invalide | `date-invalid` |
 
 ### `snapshots/<nom>.json`
 
@@ -59,12 +68,14 @@ Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `pat
 { "description": "…", "corpus": "<nom>", "expected": <snapshot> }
 ```
 
-Projection publiable (§4.11) : le snapshot sans ses entrées originales, `id` recalculé. L'entrée est `snapshots/<corpus>.json`, ou un `snapshot` donné inline à la place de `corpus`. Comparaison : comme pour `snapshots/` — `format`, `version`, `id`, `complete`, et pour chaque entrée `path`, `kind`, `size`, `hashes`.
+Projection publiable (§4.11) : le snapshot **sans `source`** et sans ses entrées originales, `id` recalculé. L'entrée est `snapshots/<corpus>.json`, ou un `snapshot` donné inline à la place de `corpus`. Comparaison : comme pour `snapshots/` — `format`, `version`, `id`, `complete`, et pour chaque entrée `path`, `kind`, `size`, `hashes` —, plus l'**absence** de `source` dans la projection.
 
 | Cas | Ce qu'il couvre |
 |---|---|
 | `originals` | dossier de travail : `.RAF` et `.xmp` retirés, JPEG, devis et `index.md` gardés |
 | `no-originals` | snapshot sans original (`minimal`) : la projection est le snapshot lui-même, même `id` |
+| `source-removed` | snapshot qui porte `source` (provider, révision, racine) : la projection ne la garde pas ; `identity` des entrées conservée |
+| `originals-single-hash` | originaux (`.RAF`, `.xmp`) qui ne portent qu'un seul algorithme (§4.4, *Coût et cache*) : retirés, `id` recalculé sur les entrées restantes |
 | `extensions` | casse ignorée (`.RAF`, `.Dng`, `.XMP`), dernier point seul (`.jpg.cr3` original, `.raf.jpg` image), fichier sans extension, entrées `other` à extension d'original gardées |
 
 ### `validation/<cas>.json`
@@ -85,6 +96,8 @@ Projection publiable (§4.11) : le snapshot sans ses entrées originales, `id` r
 
 Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `modified`, `deleted`, `moved` égaux en profondeur, dans l'ordre (§4.7, règle 6), les entrées étant comparées comme objets JSON complets (`identity` et `modifiedAt` compris) ; `diagnostics` par `code` + `severity` + `path`.
 
+**Propriété de recomposition** (§4.8, *snapshot reconstruit depuis un état*) : pour toute fixture avec `base` non nul, `apply(base, expected)` — les entrées de `base`, moins les `deleted`, les `before` des `moved` et des `modified`, plus les `added` et les `after` des `moved` et des `modified`, triées dans l'ordre canonique — redonne exactement les entrées de `target`. Seule `hash-preference` ne se compare que sur `path`, `kind` et `size` : une entrée jugée inchangée garde sa version de `base`, y compris quand un algorithme que la comparaison n'a pas retenu diverge.
+
 ### `guard/<cas>.json`
 
 ```json
@@ -92,7 +105,7 @@ Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `m
   "files": { "base": { "<chemin>": "<texte>" }, "target": { … } }, "policy": { … }, "expected": [ { "code", "severity", "path" } ] }
 ```
 
-`changeSet` est le diff de `base` vers `publishable(target)`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7 ; sans original dans `target`, c'est le diff vers `target` lui-même). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
+`changeSet` est le diff de `base` vers `publishable(target)`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7 ; sans original dans `target`, c'est le diff vers `target` lui-même). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite : un seuil absent prend son défaut (§4.11, *v2.17*), si bien que les fixtures qui ne testent pas les défauts désactivent les seuils par `null` (`"maxFileBytes": null`…). `guard/defaults-*.json` testent les défauts, avec `policy: {}`. Comparaison des diagnostics : comme pour `validation/`.
 
 ### `snapshot-id/<cas>.json`
 
@@ -119,6 +132,15 @@ Pour chaque chaîne de `input`, dans le même ordre :
 
 `collisions` : parmi les chemins de `expected` valides et non exclus, triés dans l'ordre canonique, chaque chemin qui suit le premier de son groupe de collision (égalité après NFC puis minuscule simple, §4.1), sans doublon, dans l'ordre canonique. C'est l'ensemble des chemins qui recevraient `entry-path-collision`.
 
+### `providers/<cas>.json`
+
+```json
+{ "description": "…", "outside": [ { "path", "content" } ], "files": [ { "path", "content" } ],
+  "symlinks": [ { "path", "target" } ], "expected": { "entries": ["…"], "diagnostics": [ { "code", "severity", "path" } ] } }
+```
+
+Un provider filesystem se teste sur un arbre que **le test crée** : un dépôt Git, une archive ou un checkout Windows ne conservent pas les liens symboliques de façon portable, et la fixture mentirait, comme pour les collisions de casse (voir plus bas). Le test crée, dans un dossier temporaire `T`, le corpus dans `T/corpus/` (`files`, chemins relatifs, contenu UTF-8), les fichiers de `outside` dans `T/outside/`, puis chaque lien de `symlinks` au chemin `path` (relatif au corpus) avec la cible `target` **écrite telle quelle** (relative au dossier du lien). Il énumère `T/corpus/` avec son provider. `expected.entries` est la liste, triée dans l'ordre canonique, des chemins qui entrent au snapshot ; `expected.diagnostics` les diagnostics du provider, comparés comme ceux de `validation/` (`code` + `severity` + `path`, triés). Une plateforme qui ne peut pas créer de lien symbolique saute le cas et le dit.
+
 ### `hashes/vectors.json`
 
 **`hashes/vectors.json` fait foi** pour les vecteurs `sha256` et `dropbox` (§4.4) ; ce README n'en recopie aucune valeur. `input.utf8` désigne les octets UTF-8 d'une chaîne ; `input.repeat` désigne `count` fois l'octet `byte`. Les vecteurs couvrent le fichier vide, `abc`, un bloc Dropbox plein (4 194 304 octets nuls), un bloc plein plus un octet, **5 000 000 octets nuls** et deux blocs pleins. **Aucun fichier de plus de 4 Mio n'est versionné** : les vecteurs multi-blocs se génèrent.
@@ -127,7 +149,7 @@ Le hash `dropbox` d'un fichier vide est le SHA-256 de la chaîne vide (aucun blo
 
 ## Prérequis d'une implémentation conforme
 
-Toute implémentation conforme DOIT savoir calculer `sha256` **et** `dropbox` : les snapshots des fixtures portent les deux, et leurs `id` en dépendent. Elle compare et trie les chemins sur leurs octets UTF-8 (ou leurs points de code) — en Swift, sur `unicodeScalars` ou `utf8`, jamais sur `String`, dont `==` identifie les formes NFC et NFD (§4.1).
+Toute implémentation conforme DOIT savoir calculer `sha256` **et** `dropbox` : les snapshots des fixtures portent les deux, et leurs `id` en dépendent. Une ingestion réelle n'a pas à les calculer partout : une seule lecture suffit pour les deux, un cache de hash est admis et un original peut n'en porter qu'un seul (§4.4, *Coût et cache*). Aucune fixture ne teste le cache : il ne change aucun résultat, c'est le même snapshot. Elle compare et trie les chemins sur leurs octets UTF-8 (ou leurs points de code) — en Swift, sur `unicodeScalars` ou `utf8`, jamais sur `String`, dont `==` identifie les formes NFC et NFD (§4.1).
 
 ## Pourquoi il n'y a pas de corpus `collision` sur disque
 
@@ -155,24 +177,36 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-not-materialized` | `validation/entry-not-materialized.json` |
 | `entry-conflict` | `validation/entry-conflict.json` |
 | `entry-hash-mismatch` | `validation/entry-hash-mismatch.json` |
-| `slug-invalid` … `embed-url-missing` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
+| `slug-invalid` … `url-scheme-forbidden` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` — sauf `entry-symlink` |
+| `entry-symlink` | `providers/symlink.json` (diagnostic du provider à l'énumération, non de la validation d'un snapshot) |
 | `cover-not-image`, `attachment-not-found` vers un original | `validation/originals-references.json` (snapshot inline) ; `validation/originals.json` vérifie qu'un dossier de travail sain n'en produit aucun |
 | `hash-incomparable` | `diff/incomparable.json` |
+| NFC et casse d'une référence relative (§4.10, règles 9 et 10) | `validation/references-nfc-case.json` (snapshot inline, chemins non ASCII en `\uXXXX`) |
 | `move-ambiguous` | `diff/ambiguous.json` |
 
 | Garde (§4.11) | Fixture |
 |---|---|
 | `guard-mass-deletion` | `guard/mass-deletion-series.json` (séries), `guard/mass-deletion-media.json` (ratio de médias) |
 | `guard-mass-move` | `guard/mass-move.json` |
-| `guard-private-exposed` | `guard/private-exposed.json`, `guard/private-fail-closed.json` (fail-closed côté `base` : octets divergents, `placeholder`, frontmatter illisible) |
+| `guard-private-exposed` | `guard/private-exposed.json`, `guard/private-fail-closed.json` (fail-closed côté `base` : octets divergents, `placeholder`, frontmatter illisible), `guard/private-type-changed.json` (`private` devenu chaîne, `yes`, entier ou clé `Private` dans `target`) |
 | `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` | `guard/always-active.json` |
 | `guard-originals-excluded` | `guard/originals.json` (`count` et `bytes` comparés ; `.RAF` au-delà de `maxFileBytes.media` sans `guard-oversize`, puisqu'ils ne sont pas publiés) |
 
 Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au consommateur.
 
+| Défauts de §4.11 | Fixture |
+|---|---|
+| `maxDeletedSeries` (10) | `guard/defaults-mass-deletion.json` |
+| `maxMovedSeries` (10) | `guard/defaults-mass-move.json` |
+| `maxFileBytes` : `content` et `derived` à 1 Mio, aucun plafond pour `media` et `other` ; désactivation par `null` | `guard/defaults-oversize.json`, `guard/defaults-disabled.json` |
+
+| Bornes de lecture (§1.12) | Fixture |
+|---|---|
+| Alias exponentiels, profondeur 32 / 33, fichier de plus de 1 Mio (jamais lu), JSON à 33 niveaux | `validation/frontmatter-limits.json` (snapshot inline ; les deux fichiers de plus de 1 Mio sont déclarés par leur `size` et n'ont aucune entrée dans `files`) |
+
 ## Diffs couverts
 
-`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `moved-identity-resized` (move par identité sans algorithme commun, taille ou `kind` changé : pas de `hash-incomparable`), `ambiguous`, `ambiguous-one-to-two` (1 supprimé : 2 ajoutés), `identity-duplicated` (identité portée par deux entrées : pas de move par identité), `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
+`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `moved-identity-resized` (move par identité sans algorithme commun, taille ou `kind` changé : pas de `hash-incomparable`), `ambiguous`, `ambiguous-one-to-two` (1 supprimé : 2 ajoutés), `identity-duplicated` (identité portée par deux entrées : pas de move par identité), `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `mixed-algorithms` (algorithmes différents d'une paire : le premier commun décide, jamais un index sur une clé unique ; ambiguïté par deux algorithmes), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
 
 ## Provenance des valeurs attendues
 

@@ -1,0 +1,63 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:8ffe6646befdf3b789a1c2d2a9854d9a1cdd4a51bd7a7ab78573bfab0dc19dec",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/alsace-2022/index.md",
+      "kind": "content",
+      "size": 100,
+      "hashes": {
+        "dropbox": "8e30487fe56304de5e1e536b4e487f4e81b313d8ca009740d5677d280ea9e664",
+        "sha256": "1dee7d9829c7e381d393408d75250dede6650f469ca3e236fd04c5e032e04cd8"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 104,
+      "hashes": {
+        "dropbox": "aa72484322b39441ef1e98ff53c4dd78ce7be6ae69a2f1a94bb5cd3819cf966b",
+        "sha256": "69680315b92eee017aeb848ae248621c68918f9f9198014b569be8e9baa85147"
+      }
+    },
+    {
+      "path": "series/loire-2021/index.md",
+      "kind": "content",
+      "size": 99,
+      "hashes": {
+        "dropbox": "ee9f721e5369c7ab4bf4fd289cee598e150314bd23a88137125508062947625c",
+        "sha256": "f61a99eb401f4a4622faaee6ea4a8262098dbc2c859166f950d2ff99af96c873"
+      }
+    },
+    {
+      "path": "series/musique/index.md",
+      "kind": "content",
+      "size": 72,
+      "hashes": {
+        "dropbox": "e5b5e9ae1e326c20b52ac85ef7a98f6c0d525343d97c6da710a5a53484a7b2a7",
+        "sha256": "7320b91d7007efade047ffdef95915f176b8ab014e5cfaff52264bec2acdb38d"
+      }
+    },
+    {
+      "path": "series/normandie-2023/index.en.md",
+      "kind": "content",
+      "size": 110,
+      "hashes": {
+        "dropbox": "7bafc6208d4d21aa7c3a568fae187e7772c0d92458f6a8dc3d1f8a527e92bec4",
+        "sha256": "7eba5edffd0d29db22bdd8410a384e8139eb71aabfa889887a7231f76489418e"
+      }
+    },
+    {
+      "path": "series/normandie-2023/index.md",
+      "kind": "content",
+      "size": 103,
+      "hashes": {
+        "dropbox": "7ae65ced6b565833cc5d566c5fa016ce3cdfe61a45c42fa7aceef5f37ba01f60",
+        "sha256": "2833eee5a38ad984b8529f26713082de3929b1d069aeefb7a1d728865559e7fe"
+      }
+    }
+  ]
+}

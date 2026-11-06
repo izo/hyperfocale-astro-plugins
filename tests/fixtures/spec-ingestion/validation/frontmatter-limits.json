@@ -1,0 +1,115 @@
+{
+  "description": "Bornes de lecture (§1.12, §4.10 règles 4 et 6). `bombe-2024` : 359 octets de YAML, dix niveaux d'alias de neuf éléments (9^10 nœuds) → `frontmatter-invalid`. `profonde-2024` : 33 collections imbriquées → `frontmatter-invalid` ; `limite-2024` : 32, accepté. `gros-2024/index.md` et `gros-2024/images.json` déclarent plus de 1 Mio (1 048 577 octets) : jamais lus (aucune entrée dans `files`) → `frontmatter-invalid` et `images-json-invalid`. `imbrique-2024/images.json` : JSON à 33 niveaux → `images-json-invalid`.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:9adbb304d5bcfc42696b07c90ed0e365241204475b8f8eda7a1f0bdef94eadb8",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bombe-2024/index.md",
+        "kind": "content",
+        "size": 444,
+        "hashes": {
+          "dropbox": "179e101140d1246cef91edace7d05067df88de8d324365d341b37e745aba2b62",
+          "sha256": "0a795d5dfb47a253fc98da4b14dfbd1a29cbad16abd47fdbc17171b26c2b7c93"
+        }
+      },
+      {
+        "path": "series/gros-2024/images.json",
+        "kind": "derived",
+        "size": 1048577,
+        "hashes": {
+          "dropbox": "81942335e386f4e3550f73b34215a16767353e4337d2ae096fc6d4a542bf8b38",
+          "sha256": "3248be5aa7e093a07a28db9633310f5ec3efef8d0b352437260392a8d608c3ea"
+        }
+      },
+      {
+        "path": "series/gros-2024/index.md",
+        "kind": "content",
+        "size": 1048577,
+        "hashes": {
+          "dropbox": "aee3862c255b792bf10a81f6fe70671655debdf2302dad22ccbab70ad03a2196",
+          "sha256": "86560e38ea8d03e2f92a3e6d566aaf079bd16b01ff05a513d2e9284ecf41223a"
+        }
+      },
+      {
+        "path": "series/imbrique-2024/images.json",
+        "kind": "derived",
+        "size": 88,
+        "hashes": {
+          "dropbox": "c49d5baba61b4d7c007b4606154eda8c8ae39e5677a8fcc39a7e56208144765b",
+          "sha256": "a4b480d06cb50ce042be9851f68368e1a092d8c383f2762f787a47838dcf4966"
+        }
+      },
+      {
+        "path": "series/imbrique-2024/index.md",
+        "kind": "content",
+        "size": 90,
+        "hashes": {
+          "dropbox": "3aab237f92027a7e55947956e9977a8fb60d58108e26992997c7744927fb463b",
+          "sha256": "15428a5bd00058f58fc7aeee5125eb3a16c170faf22c91063679d846af58c92f"
+        }
+      },
+      {
+        "path": "series/limite-2024/index.md",
+        "kind": "content",
+        "size": 155,
+        "hashes": {
+          "dropbox": "cdc0b81ca84c5a71bf1a9e0fc7114c3b20b01c92fbb23de2b0e9eaf4eedc3c22",
+          "sha256": "1b81ea4f2195123058e4a7a2cd5e0b7d4c809c99beefe693b55337298c5010be"
+        }
+      },
+      {
+        "path": "series/profonde-2024/index.md",
+        "kind": "content",
+        "size": 159,
+        "hashes": {
+          "dropbox": "99a9546186107af2fd7e35e72e54996948f8f58a6b31f3d30ac84c5a4c0c4a84",
+          "sha256": "b8f02e44d1931e4708a2805649fa09cae7ee3b2029e1eb90b92186b5e85b0eea"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/bombe-2024/index.md": "---\ntitle: \"Bombe 2024\"\ndate: 2024-06-15\na: &a [\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\",\"x\"]\nb: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a]\nc: &c [*b,*b,*b,*b,*b,*b,*b,*b,*b]\nd: &d [*c,*c,*c,*c,*c,*c,*c,*c,*c]\ne: &e [*d,*d,*d,*d,*d,*d,*d,*d,*d]\nf: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e]\ng: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f]\nh: &h [*g,*g,*g,*g,*g,*g,*g,*g,*g]\ni: &i [*h,*h,*h,*h,*h,*h,*h,*h,*h]\nj: &j [*i,*i,*i,*i,*i,*i,*i,*i,*i]\n---\n\nTexte libre affiché avant la galerie.\n",
+    "series/profonde-2024/index.md": "---\ntitle: \"Profonde 2024\"\ndate: 2024-06-15\ndeep: [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n---\n\nTexte libre affiché avant la galerie.\n",
+    "series/limite-2024/index.md": "---\ntitle: \"Limite 2024\"\ndate: 2024-06-15\ndeep: [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]\n---\n\nTexte libre affiché avant la galerie.\n",
+    "series/imbrique-2024/index.md": "---\ntitle: \"Imbriquée 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+    "series/imbrique-2024/images.json": "{ \"images\": [], \"x\": [[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]] }\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/bombe-2024/index.md"
+    },
+    {
+      "code": "images-json-invalid",
+      "severity": "warning",
+      "path": "series/gros-2024/images.json"
+    },
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/gros-2024/index.md"
+    },
+    {
+      "code": "images-json-invalid",
+      "severity": "warning",
+      "path": "series/imbrique-2024/images.json"
+    },
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/profonde-2024/index.md"
+    }
+  ]
+}

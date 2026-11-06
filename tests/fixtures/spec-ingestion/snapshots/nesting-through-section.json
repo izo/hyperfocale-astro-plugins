@@ -1,0 +1,45 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:feb6ef4aee8aba5c45af560355c37591dcb506b5574e0d44f6efbe29cd3452d5",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/festival-2008/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "1f755ae36954a21c9fafe2e419727727029dd15dbf34b257812585a3a1e2abdc",
+        "sha256": "34e3e7f3980947592e4abbd7a051e137ce24b2472f1095cc420780a732344c62"
+      }
+    },
+    {
+      "path": "series/festival-2008/rubrique/index.md",
+      "kind": "content",
+      "size": 62,
+      "hashes": {
+        "dropbox": "81a17e01e7b84b025b9cbf9a86ad2cf6045144dcb382a6927f2efd5966988ab0",
+        "sha256": "c424582319a24cfd3d1effc82cd59a79da2541e43cf3e924796ba4ff61521ddc"
+      }
+    },
+    {
+      "path": "series/festival-2008/rubrique/the-wombats/index.md",
+      "kind": "content",
+      "size": 86,
+      "hashes": {
+        "dropbox": "b88cc1f0e194f24150014e28be83f47f79b1e4066f940f02b645b1aa7a97771a",
+        "sha256": "a9e51a6041215c7077318815e0d2ee02b730493548e467a7b9d8685c2da2006a"
+      }
+    },
+    {
+      "path": "series/festival-2008/rubrique/the-wombats/titre-un/index.md",
+      "kind": "content",
+      "size": 83,
+      "hashes": {
+        "dropbox": "ce542b82bb947631cb66e348d3e9e8634e801a1a467bdd7553625940cd1ca514",
+        "sha256": "b83d44efebffda9c49b4505e125d3002d1629d3bb176f881f5bd0308ca554dd3"
+      }
+    }
+  ]
+}

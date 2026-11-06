@@ -1,0 +1,17 @@
+{
+  "description": "Une clé dupliquée rend le YAML illisible (§4.10, règle 6) : `frontmatter-invalid`, sans diagnostic de champ.",
+  "corpus": "edge-duplicate-key",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:75ec59a298e6c9409b85928604547db10b2bd589bc09995a2322404063d56a7f",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/alsace-2022/index.md",
+      "kind": "content",
+      "size": 180,
+      "hashes": {
+        "dropbox": "214f0cb32e4c714a86e2577260746cbfa63fbc8e371255c6fdbe30b0c15b4b25",
+        "sha256": "dc234ce00af673897634c1811b36bc5003dae7e732f0edc2b242a84329e3193f"
+      }
+    },
+    {
+      "path": "series/alsace-2022/media/01.jpg",
+      "kind": "media",
+      "size": 32,
+      "hashes": {
+        "dropbox": "44488ab0b09d4655eeb05dfd4bdf4e918b3d822b4eccff82c311827ebb146da5",
+        "sha256": "396ed84196af981698c9c41063a744ecb0a6da90145f8663fbd07721a36d2302"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 117,
+      "hashes": {
+        "dropbox": "06266e712ece5b3fe965097913e7705e7da8c8e29943bbd5402af0e24c746e54",
+        "sha256": "1f8f699a963f2b993cb16725a6d24eb7785a6b77ebc6ab0fd0825c2fa541ea0a"
+      }
+    },
+    {
+      "path": "series/loire-2021/images.json",
+      "kind": "derived",
+      "size": 57,
+      "hashes": {
+        "dropbox": "adb6f57149d709e8a3e67c1cc5016205605e9c058a93dde18b1bc43ba995ffb8",
+        "sha256": "500262625a8f63247eeaf860639e37ab83be8c26b90a9064fc41353f12905a83"
+      }
+    },
+    {
+      "path": "series/loire-2021/index.md",
+      "kind": "content",
+      "size": 85,
+      "hashes": {
+        "dropbox": "4a6d5272b3c276e66c4651a5cad09b7666053f00570853f475720e1622e8e371",
+        "sha256": "48b5590e078e3e6d4263ff181f39c296d60f421a4fe6ff815b9edb3b34ac6285"
+      }
+    },
+    {
+      "path": "series/normandie-2023/index.md",
+      "kind": "content",
+      "size": 126,
+      "hashes": {
+        "dropbox": "e63bab3f9c7ce31117ed889417135c094cf3afc29524b056ea1d6fdb5f8510fb",
+        "sha256": "d54ccbef9847ec164723ecd781f5ef23cfa86e21d70cde073f98c80f2b1a1fcb"
+      }
+    },
+    {
+      "path": "series/provence-2020/index.md",
+      "kind": "content",
+      "size": 125,
+      "hashes": {
+        "dropbox": "f1d2cb08696fc1a5979375aa15929d787d7c825b1344fcdc9bc640f2bc21077b",
+        "sha256": "54f58396e5d79c1b9873b373ea12961dac2cbd7b01b8b167583745e8bb2b1281"
+      }
+    }
+  ]
+}

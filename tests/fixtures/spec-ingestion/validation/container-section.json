@@ -1,0 +1,11 @@
+{
+  "description": "Un conteneur (§1.8) dont les sous-séries passent par un dossier de rangement (`lots/`, sans `index.md`) et par une page de section (`rubrique/`, `type: section`) : le rangement et la section sont transparents, ces deux sous-séries ont `festival-2008` pour parent et ne dépassent pas la limite d'un niveau. Aucun diagnostic.",
+  "corpus": "container-section",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

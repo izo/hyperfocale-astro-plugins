@@ -1,0 +1,27 @@
+{
+  "description": "Documents joints de contenu actif (§1.12) : `plan.svg`, `Page.HTML` et `app.JS` (extension comparée sans tenir compte de la casse) produisent un `warning` chacun ; `dossier-de-presse.pdf` n'en produit aucun.",
+  "corpus": "invalid-attachment-active-content",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "attachment-active-content",
+      "severity": "warning",
+      "path": "series/bretagne-2024/media/Page.HTML"
+    },
+    {
+      "code": "attachment-active-content",
+      "severity": "warning",
+      "path": "series/bretagne-2024/media/app.JS"
+    },
+    {
+      "code": "attachment-active-content",
+      "severity": "warning",
+      "path": "series/bretagne-2024/media/plan.svg"
+    }
+  ]
+}

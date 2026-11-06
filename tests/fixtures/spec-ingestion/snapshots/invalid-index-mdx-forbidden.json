@@ -1,0 +1,63 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:54c150093a7db3feeda80f732b4e41c8074357adfdf13ea7dc7f0c9372261de9",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/alsace-2022/index.mdx",
+      "kind": "content",
+      "size": 86,
+      "hashes": {
+        "dropbox": "6169033d20f5b99f3f60921ac36a50eb810957fafcc41cc43589a6ada4408938",
+        "sha256": "3d2b6b291742248adc311962385ded4ffeaf115c6df69011bd48a101c36444c3"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+        "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/index.mdx",
+      "kind": "content",
+      "size": 98,
+      "hashes": {
+        "dropbox": "2f91410c6158190c7f25c09204cdb505a51e66f65a660beed7aebd1e1f7eed10",
+        "sha256": "242f77030a584bc0651b87a1e853946a4bf46aa02d462e857a42f78f9eaaa3d7"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "kind": "media",
+      "size": 34,
+      "hashes": {
+        "dropbox": "3264895753e7729482386b537099020f94ac5fd20cc43f45f67212f0970ab275",
+        "sha256": "19eebcd5ebdfb7fbcbaa87b5b7a0029f66c71c9e60d7105b79ad15ed758c011c"
+      }
+    },
+    {
+      "path": "series/normandie-2023/index.en.mdx",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "2c45fde3c9c0b59fdbb4b963345cede87b68327529dfe7de11abec19540f37e6",
+        "sha256": "fa16211551a62fb7e9968b3d54349c315797d7fd0a8bee141b01c4eb65c3e4db"
+      }
+    },
+    {
+      "path": "series/normandie-2023/index.md",
+      "kind": "content",
+      "size": 89,
+      "hashes": {
+        "dropbox": "46edc85c54cc1a0fd755566b88caf8118ce33fce43327ab899b109f0b851e6a6",
+        "sha256": "51f6dcc953150bb5220f6feae3662a71517761b05201309f6668bc9454e95ad4"
+      }
+    }
+  ]
+}

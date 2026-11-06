@@ -1,0 +1,11 @@
+{
+  "description": "Un BOM UTF-8 initial est ignoré (§4.10, règle 4) : la première ligne vaut `---` une fois le BOM retiré. Aucun diagnostic.",
+  "corpus": "edge-bom",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}
