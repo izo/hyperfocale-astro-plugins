@@ -208,6 +208,25 @@ describe('FilesystemProvider', () => {
     await expect(provider.read('a.md')).rejects.toBeInstanceOf(UnsafePathError);
   });
 
+  // §4.0 : `O_NOFOLLOW` ne protège que le dernier composant. Un dossier intermédiaire
+  // remplacé par un lien depuis le listing doit être refusé comme le fichier final.
+  it.skipIf(process.platform === 'win32')('read refuse un dossier listé remplacé par un lien symbolique depuis le listing', async () => {
+    tree(work, { 'root/serie-a/index.md': 'dans la racine', 'other/serie-a/index.md': 'EXTERIEUR' });
+    const root = join(work, 'root');
+    const provider = new FilesystemProvider({ root });
+    await provider.list();
+    rmSync(join(root, 'serie-a'), { recursive: true });
+    symlinkSync(join(work, 'other', 'serie-a'), join(root, 'serie-a'));
+    await expect(provider.read('serie-a/index.md')).rejects.toBeInstanceOf(UnsafePathError);
+  });
+
+  it('read lit toujours un fichier listé dans un dossier ordinaire', async () => {
+    tree(work, { 'root/serie-a/index.md': 'dans la racine' });
+    const provider = new FilesystemProvider({ root: join(work, 'root') });
+    await provider.list();
+    expect(new TextDecoder().decode(await provider.read('serie-a/index.md'))).toBe('dans la racine');
+  });
+
   it.skipIf(process.platform === 'win32')('avec followSymlinks, un lien sorti de la racine depuis le listing est refusé à la lecture', async () => {
     tree(work, { 'root/a.md': 'dans la racine' });
     tree(work, { 'outside.txt': 'secret' });

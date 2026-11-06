@@ -8,7 +8,7 @@
 import { createHash, randomBytes, type Hash } from 'node:crypto';
 import { constants, createReadStream } from 'node:fs';
 import { lstat, mkdir, open, readdir, rename, rm, rmdir, stat, writeFile } from 'node:fs/promises';
-import { dirname, join, sep } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { mapConcurrent, mapConcurrentWeighted } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { DROPBOX_BLOCK_SIZE } from './hash.js';
@@ -274,7 +274,17 @@ export class FilesystemProvider implements ContentProvider {
     // le fichier a pu être remplacé par un lien. On ouvre donc en refusant de
     // suivre le lien final (`O_NOFOLLOW`) — `ELOOP` si c'en est devenu un
     // (SEC-009).
-    const abs = this.onDisk.get(path) ?? (await this.confined(path));
+    // Le chemin du listing garde son nom sur disque (NFC ou non) : on le confine
+    // tel quel, composant par composant — un dossier intermédiaire remplacé par
+    // un lien depuis le listing est refusé comme le fichier final (§4.0).
+    const listed = this.onDisk.get(path);
+    let abs: string;
+    if (listed === undefined) {
+      abs = await this.confined(path);
+    } else {
+      abs = listed;
+      await assertNoSymlink(this.root, path, relative(this.root, listed).split(sep).join('/'));
+    }
     let handle;
     try {
       handle = await open(abs, constants.O_RDONLY | constants.O_NOFOLLOW);
@@ -393,8 +403,9 @@ export class UnsafePathError extends Error {
  * l'appelant. Un composant absent arrête l'examen : ce qui n'existe pas encore
  * sera créé comme dossier ordinaire.
  */
-async function assertNoSymlink(root: string, path: string): Promise<void> {
-  const segments = path.split('/');
+async function assertNoSymlink(root: string, path: string, onDiskPath: string = path): Promise<void> {
+  // `onDiskPath` : nom réel sous `root` quand il diffère du chemin NFC annoncé ; `path` sert aux messages.
+  const segments = onDiskPath.split('/');
   for (let i = 1; i <= segments.length; i++) {
     const prefix = segments.slice(0, i).join('/');
     let info;
