@@ -17,7 +17,10 @@
  * liste blanche : les extensions de site (§1.3, passthrough) arrivent dans
  * `entry.data`, et une entrée invalide fait échouer le build, comme avec
  * `glob()`. Le frontmatter est lu par `parseFrontmatter` d'`astro/markdown`, le
- * même parseur que `glob()`.
+ * même parseur que `glob()`, et jugé par le lecteur de la validation
+ * (`readFrontmatter`) : ce que la validation refuse — clé de fusion `<<`, clé
+ * dupliquée, bornes de §1.12 — le loader le refuse aussi, et la date se lit
+ * telle qu'écrite (§1.3).
  *
  * Avant la validation, `prepare` laisse le site normaliser le frontmatter —
  * replis d'un champ que son contrat exige, typage YAML (`fallbackField`,
@@ -37,6 +40,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BOUND_MESSAGES, MAX_READ_BYTES, measureStructure } from './ingest/bounds.js';
 import { mapConcurrent } from './ingest/concurrency.js';
+import { parseFrontmatter as readWritten } from './ingest/frontmatter.js';
 import { compareCanonical, isExcluded } from './ingest/paths.js';
 import type { ExclusionRule } from './ingest/paths.js';
 import type { MediaFile } from './media.js';
@@ -258,31 +262,25 @@ function unreadable(filePath: string, reason: string, cause?: unknown): Error {
   );
 }
 
-/** Ligne `date:` de premier niveau, valeur sans guillemets ni commentaire. */
-const DATE_LINE = /^date:[ \t]+([^\s#][^#\r\n]*?)[ \t\r]*(?:#.*)?$/m;
-
 /**
- * Le jour écrit de `date` (§1.3), à minuit UTC, ou `null`. Le parseur d'Astro lit
- * un horodatage non guillemeté en `Date` : l'instant garde son jour UTC, pas le
- * jour que l'auteur a écrit (`2026-06-15T23:30:00-05:00` tombe le 16). Le texte de
- * la ligne `date:` de premier niveau le redonne — une seconde ne passerait pas le
- * parseur, qui refuse les clés dupliquées et les continuations non indentées — s'il
- * est une date ISO 8601 valide. Le loader n'a pas de parseur YAML à lui : il ne
- * charge que Node et `astro/markdown`.
- */
-function writtenFrontmatterDate(raw: string): Date | null {
-  const text = DATE_LINE.exec(raw)?.[1];
-  return text === undefined ? null : writtenDate(text);
-}
-
-/**
- * Frontmatter et corps d'un fichier index. Les bornes de §1.12 jugent la valeur
- * lue avant tout usage — `prepare`, sérialisation, schéma — : une bombe d'alias,
- * une imbrication de plus de 32 collections ou un alias circulaire rendent le
- * fichier illisible, comme un YAML invalide. Le parseur d'Astro partage les
+ * Frontmatter et corps d'un fichier index.
+ *
+ * Deux lectures du même texte. Le lecteur de la validation (`readWritten`, YAML
+ * 1.2 *core*) juge le fichier : bornes de §1.12 — une bombe d'alias, plus de 32
+ * collections imbriquées, un alias circulaire, un texte développé trop lourd —,
+ * clé dupliquée, clé de fusion `<<`, étiquette inconnue. Ce qu'il refuse, la
+ * validation le refuse aussi : le loader ne publie rien qu'elle n'ait vu. Il
+ * donne en outre la date telle qu'elle est écrite, que le parseur d'Astro a
+ * convertie en instant.
+ *
+ * Le parseur d'Astro (`parseFrontmatter` d'`astro/markdown`, celui de `glob()`)
+ * fournit le frontmatter qui va au schéma — dates comprises, pour les champs
+ * que le contrat de site type en `Date` — et le corps. Il partage les
  * références des alias, `measureStructure` ne les développe donc pas.
  */
 function readFrontmatter(contents: string, filePath: string): ReturnType<typeof parseFrontmatter> {
+  const written = readWritten(contents);
+  if (written.status === 'invalid') throw unreadable(filePath, written.reason);
   let parsed: ReturnType<typeof parseFrontmatter>;
   try {
     parsed = parseFrontmatter(contents);
@@ -292,8 +290,13 @@ function readFrontmatter(contents: string, filePath: string): ReturnType<typeof 
   }
   const violation = measureStructure(parsed.frontmatter);
   if (violation !== null) throw unreadable(filePath, BOUND_MESSAGES[violation]);
-  if (parsed.frontmatter['date'] instanceof Date) {
-    const day = writtenFrontmatterDate(parsed.rawFrontmatter);
+  // §1.3, §1.6 : le jour d'une série est celui que l'auteur a écrit
+  // (`2026-06-15T23:30:00-05:00` est le 15), non le jour UTC de l'instant que
+  // le parseur d'Astro en a tiré. Une date que le lecteur de la validation
+  // refuse reste telle que le parseur l'a lue : `date-invalid` la signale.
+  if (written.status === 'ok' && parsed.frontmatter['date'] instanceof Date) {
+    const text = written.data['date'];
+    const day = typeof text === 'string' ? writtenDate(text) : null;
     if (day !== null) parsed.frontmatter['date'] = day;
   }
   return parsed;

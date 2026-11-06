@@ -947,9 +947,108 @@ describe('seriesLoader — `date` au jour écrit (§1.3)', () => {
     expect(await dayOf('2024-06-01 23:30:00 -05:00')).toBe('2024-06-02T04:30:00.000Z');
   });
 
+  // Le jour écrit se lit dans le scalaire que lit le YAML, pas dans une ligne de texte :
+  // toute écriture valide de la clé donne le même jour.
+  describe('toute écriture YAML valide de la clé', () => {
+    const WRITTEN = '2026-06-15T23:30:00-05:00';
+    const day = async (frontmatter: string) => {
+      const { entries } = await load2({ 'a/index.md': `---\n${frontmatter}\n---\n` });
+      return (entries.get('a')!.data.date as Date).toISOString();
+    };
+
+    it.each([
+      ['la forme simple', `title: T\ndate: ${WRITTEN}`],
+      ['clé entre guillemets doubles', `title: T\n"date": ${WRITTEN}`],
+      ['clé entre guillemets simples', `title: T\n'date': ${WRITTEN}`],
+      ['espace avant les deux-points', `title: T\ndate : ${WRITTEN}`],
+      ['plusieurs espaces après les deux-points', `title: T\ndate:     ${WRITTEN}`],
+      ['une ancre', `title: T\ndate: &d ${WRITTEN}`],
+      ['une clé explicite', `title: T\n? date\n: ${WRITTEN}`],
+      ['le style flux', `{title: T, date: ${WRITTEN}}`],
+      ['le style flux, valeur entre guillemets', `{title: T, "date": '${WRITTEN}'}`],
+      ['un alias de la valeur', `title: T\nwhen: &d ${WRITTEN}\ndate: *d`],
+      ['une valeur sur la ligne suivante', `title: T\ndate:\n  ${WRITTEN}`],
+      ['un commentaire en tête de ligne', `# écrit à Lima\ntitle: T\ndate: ${WRITTEN}`],
+    ])('%s : le jour écrit', async (_label, frontmatter) => {
+      expect(await day(frontmatter)).toBe('2026-06-15T00:00:00.000Z');
+    });
+
+    it('une seconde clé `date` imbriquée ou dans une liste ne change rien', async () => {
+      const yaml = `title: T\ndate: ${WRITTEN}\nliste:\n  - date: 2030-01-01\n  - {date: 2031-01-01}`;
+      expect(await day(yaml)).toBe('2026-06-15T00:00:00.000Z');
+    });
+
+    it('un texte de bloc qui ressemble à une ligne `date:` n\'est pas la clé', async () => {
+      const yaml = `title: T\nnote: |\n  date: 2030-01-01T00:00:00Z\ndate: ${WRITTEN}`;
+      expect(await day(yaml)).toBe('2026-06-15T00:00:00.000Z');
+    });
+
+    it('une étiquette `!!timestamp` est un frontmatter illisible, comme pour la validation', async () => {
+      const yaml = `title: T\ndate: !!timestamp ${WRITTEN}`;
+      await expect(day(yaml)).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+      expect(parseCore(`---\n${yaml}\n---\n`).status).toBe('invalid');
+    });
+  });
+
+  // Une longue suite d'espaces entre la date et l'heure est un horodatage YAML 1.1
+  // valide pour Astro ; aucune recherche de texte ne doit s'y emmêler.
+  it.each([80_000, 200_000])('un horodatage à %i espaces internes se charge sans retour arrière', async (spaces) => {
+    const written = `2026-06-15${' '.repeat(spaces)}10:00:00`;
+    const started = performance.now();
+    const { entries } = await load2({ 'a/index.md': `---\ntitle: T\ndate: ${written}\n---\n` }, z.object({ date: z.coerce.date() }).passthrough() as Schema);
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(entries.get('a')!.data.date).toBeInstanceOf(Date);
+  });
+
   it('une entrée sans `date` reste sans `date`', async () => {
     const ctx = makeContext(ROOT, baseSeriesSchema({ dateRequired: false }));
     await seriesLoader({ base: corpus({ 'a/index.md': '---\ntitle: T\n---\n' }) }).load(ctx.context);
     expect(ctx.entries.get('a')!.data.date).toBeUndefined();
   });
 });
+
+describe('seriesLoader — clé de fusion YAML 1.1 (§1.12)', () => {
+  // Astro lit avec `merge: true` ; la validation lit en YAML 1.2 core. Le loader
+  // juge avec le lecteur de la validation : ce qu'elle ne voit pas, il ne le publie pas.
+  const permissiveSchema = z.object({}).passthrough() as Schema;
+  const load3 = async (frontmatter: string, options: Omit<SeriesLoaderOptions, 'base'> = {}) => {
+    const dir = corpus({ 'a/index.md': `---\n${frontmatter}\n---\n` });
+    const ctx = makeContext(ROOT, permissiveSchema);
+    await seriesLoader({ base: dir, ...options }).load(ctx.context);
+    return ctx;
+  };
+
+  it.each([
+    ['private: true'],
+    ['cover: ../../../etc/x.jpg'],
+    ['cover: "javascript:alert(1)"'],
+    ['type: section'],
+    ['iptc: {gps: {lat: 48.123456, lng: -4.123456}}'],
+  ])('« %s » caché par `<<` : fichier illisible, chemin à l\'appui', async (hidden) => {
+    const yaml = `title: T\ndate: 2024-01-01\nx: &g\n  ${hidden}\n<<: *g`;
+    await expect(load3(yaml)).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md — clé de fusion/);
+  });
+
+  it('la fusion est refusée avant prepare, et même pour une rubrique que `sections: exclude` écarterait', async () => {
+    const prepare = vi.fn<SeriesPrepare>((data) => data);
+    const yaml = 'title: T\ng: &g {type: section}\n<<: *g';
+    await expect(load3(yaml, { sections: 'exclude', prepare })).rejects.toThrow(/clé de fusion/);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it('un autre fichier du corpus n\'est pas touché par le refus d\'un seul : l\'erreur dit lequel', async () => {
+    const dir = corpus({
+      'ok/index.md': '---\ntitle: T\n---\n',
+      'mauvais/index.md': '---\ntitle: T\ng: &g {a: 1}\n<<: *g\n---\n',
+    });
+    await expect(seriesLoader({ base: dir }).load(makeContext(ROOT, permissiveSchema).context)).rejects.toThrow(
+      /mauvais\/index\.md/,
+    );
+  });
+
+  it('les alias ordinaires restent lus', async () => {
+    const { entries } = await load3('title: T\nbase: &b {w: 1}\nautre: *b');
+    expect(entries.get('a')!.data.autre).toEqual({ w: 1 });
+  });
+});
+
