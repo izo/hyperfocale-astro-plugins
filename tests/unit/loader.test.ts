@@ -803,3 +803,69 @@ describe('seriesLoader — bornes de lecture (§1.12)', () => {
     expect(resolved.images.map((i) => i.path)).toEqual(['media/01.jpg']);
   });
 });
+
+describe('seriesLoader — index.mdx interdit (§1.2, §1.12, v2.17)', () => {
+  const md = (title: string) => `---\ntitle: ${title}\ndate: 2024-01-01\n---\n`;
+  // Un MDX qui ferait échouer toute lecture : il n'est jamais ouvert.
+  const MDX = '---\ntitle: [illisible\n---\nimport Carte from \'../Carte.astro\'\n\n<Carte />\n';
+
+  it('un dossier qui ne porte qu\'un index.mdx ou index.<lang>.mdx n\'est pas un contenu', async () => {
+    const dir = corpus({ 'a/index.mdx': MDX, 'b/index.en.mdx': MDX, 'c/index.md': md('C') });
+    for (const [options, expected] of [
+      [{}, ['c']],
+      [{ locale: 'en' }, ['c']],
+      [{ locale: 'en', fallback: false }, []],
+    ] as const) {
+      const ctx = makeContext();
+      await seriesLoader({ base: dir, ...options }).load(ctx.context);
+      expect([...ctx.entries.keys()]).toEqual(expected);
+    }
+  });
+
+  it('index.md et index.mdx côte à côte : seul index.md est lu', async () => {
+    const dir = corpus({ 'a/index.md': md('Markdown'), 'a/index.mdx': MDX });
+    const ctx = makeContext();
+    await seriesLoader({ base: dir }).load(ctx.context);
+    expect(ctx.entries.get('a')?.data.title).toBe('Markdown');
+    expect(ctx.entries.get('a')?.filePath).toMatch(/a\/index\.md$/);
+  });
+
+  it('index.<locale>.mdx ne tient pas lieu de variante de langue : repli sur index.md, ou rien sans repli', async () => {
+    const dir = corpus({ 'a/index.md': md('Défaut'), 'a/index.en.mdx': MDX });
+    const withFallback = makeContext();
+    await seriesLoader({ base: dir, locale: 'en' }).load(withFallback.context);
+    expect(withFallback.entries.get('a')?.data.title).toBe('Défaut');
+    const without = makeContext();
+    await seriesLoader({ base: dir, locale: 'en', fallback: false }).load(without.context);
+    expect(without.entries.size).toBe(0);
+  });
+
+  it('corpus de la spec invalid-index-mdx-forbidden : seuls les index.md sont des entrées', async () => {
+    const { entries } = await load('invalid-index-mdx-forbidden');
+    expect([...entries.keys()]).toEqual(['series/bretagne-2024', 'series/normandie-2023']);
+    expect(entries.get('series/bretagne-2024')?.data.title).toBe('Bretagne 2024');
+    const en = await load('invalid-index-mdx-forbidden', { locale: 'en' });
+    expect(en.entries.get('series/normandie-2023')?.data.title).toBe('Normandie 2023');
+  });
+
+  it('le watcher ignore un index.mdx ajouté, modifié ou supprimé : ni lecture, ni rechargement', async () => {
+    const dir = corpus({ 'a/index.md': md('A') });
+    const ctx = makeContext();
+    const handlers = new Map<string, Array<(path: string) => Promise<void> | void>>();
+    (ctx.context as unknown as { watcher: unknown }).watcher = {
+      add: vi.fn(),
+      on: (event: string, handler: (path: string) => Promise<void> | void) => {
+        handlers.set(event, [...(handlers.get(event) ?? []), handler]);
+      },
+    };
+    await seriesLoader({ base: dir }).load(ctx.context);
+    const parsed = ctx.parseData.mock.calls.length;
+    mkdirSync(join(dir, 'n'));
+    writeFileSync(join(dir, 'n/index.mdx'), MDX);
+    for (const event of ['add', 'change', 'unlink']) {
+      for (const handler of handlers.get(event) ?? []) await handler(join(dir, 'n/index.mdx'));
+    }
+    expect([...ctx.entries.keys()]).toEqual(['a']);
+    expect(ctx.parseData.mock.calls.length).toBe(parsed);
+  });
+});

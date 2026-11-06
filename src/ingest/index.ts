@@ -34,11 +34,14 @@ export { ENTRY_KINDS, PUBLICATION_STATES } from './types.js';
 export { isPublicationTransition } from './publication.js';
 
 export {
+  ACTIVE_CONTENT_EXTENSIONS,
   classifyPath,
   collisionKey,
   compareCanonical,
   IMAGE_EXTENSIONS,
+  isActiveContentPath,
   isExcluded,
+  isForbiddenIndexFile,
   isImagePath,
   isIndexFile,
   isOriginalEntry,

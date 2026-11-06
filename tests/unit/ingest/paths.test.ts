@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ACTIVE_CONTENT_EXTENSIONS,
   classifyPath,
   collisionKey,
   compareCanonical,
+  isActiveContentPath,
   isExcluded,
+  isForbiddenIndexFile,
   isIndexFile,
   normalizePath,
 } from '../../../src/ingest/index.js';
@@ -135,12 +138,55 @@ describe('collisionKey et isIndexFile', () => {
     expect(collisionKey('Archives/É.md')).toBe(collisionKey('archives/e\u0301.MD'));
   });
 
-  it.each(['index.md', 'index.mdx', 'index.en.md', 'index.pt-BR.md'])('%s est un fichier index', (name) => {
+  it.each(['index.md', 'index.en.md', 'index.pt-BR.md'])('%s est un fichier index', (name) => {
     expect(isIndexFile(name)).toBe(true);
   });
 
-  it.each(['index.en.mdx', 'index.EN.md', 'index.english.md', 'Index.md', 'index.pt-br.md', 'README.md'])(
-    '%s n\'est pas un fichier index',
-    (name) => expect(isIndexFile(name)).toBe(false),
+  it.each([
+    'index.mdx',
+    'index.en.mdx',
+    'index.pt-BR.mdx',
+    'index.EN.md',
+    'index.english.md',
+    'Index.md',
+    'index.pt-br.md',
+    'README.md',
+  ])('%s n\'est pas un fichier index', (name) => expect(isIndexFile(name)).toBe(false));
+});
+
+describe('isForbiddenIndexFile (§1.12, v2.17)', () => {
+  it.each(['index.mdx', 'index.en.mdx', 'index.pt-BR.mdx'])('%s est interdit', (name) => {
+    expect(isForbiddenIndexFile(name)).toBe(true);
+  });
+
+  it.each(['index.md', 'index.en.md', 'index.english.mdx', 'index.EN.mdx', 'Index.mdx', 'index.MDX', 'page.mdx', 'index.mdx.md'])(
+    '%s n\'est pas interdit',
+    (name) => expect(isForbiddenIndexFile(name)).toBe(false),
+  );
+
+  it('reste classé content : le snapshot décrit tout ce que la source contient (§4.3)', () => {
+    expect(classifyPath('series/a/index.mdx')).toBe('content');
+    expect(classifyPath('series/a/index.en.mdx')).toBe('content');
+  });
+});
+
+describe('isActiveContentPath (§1.12, v2.17)', () => {
+  it('la liste fermée est celle de la spec', () => {
+    expect([...ACTIVE_CONTENT_EXTENSIONS]).toEqual(['html', 'htm', 'xhtml', 'svg', 'svgz', 'xml', 'xsl', 'xslt', 'js', 'mjs']);
+  });
+
+  it.each(ACTIVE_CONTENT_EXTENSIONS)('.%s est actif, quelle que soit la casse', (extension) => {
+    expect(isActiveContentPath(`media/plan.${extension}`)).toBe(true);
+    expect(isActiveContentPath(`media/plan.${extension.toUpperCase()}`)).toBe(true);
+  });
+
+  it('seule la dernière extension compte', () => {
+    expect(isActiveContentPath('media/plan.jpg.svg')).toBe(true);
+    expect(isActiveContentPath('media/plan.svg.jpg')).toBe(false);
+  });
+
+  it.each(['media/dossier.pdf', 'media/clip.mp4', 'media/notes.txt', 'media/01.jpg', 'media/svg', 'media/.svg', 'media/page.html5'])(
+    '%s n\'est pas actif',
+    (path) => expect(isActiveContentPath(path)).toBe(false),
   );
 });

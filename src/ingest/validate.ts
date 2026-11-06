@@ -11,7 +11,9 @@ import {
   compareCanonical,
   dirname,
   isDefaultIndexFile,
+  isActiveContentPath,
   isExcluded,
+  isForbiddenIndexFile,
   isImagePath,
   isOriginalPath,
   isRelativeReference,
@@ -85,6 +87,11 @@ const RULES: Partial<Record<DiagnosticCode, string>> = {
   'images-json-invalid': '§1.5.1',
   'attachment-not-found': '§1.9',
   'embed-url-missing': '§1.11',
+  'gps-precision-excessive': '§1.12',
+  'attachment-active-content': '§1.12',
+  'private-type-invalid': '§1.12',
+  'private-key-suspect': '§1.12',
+  'index-mdx-forbidden': '§1.12',
   'x-schema-invalid': '§2.1',
 };
 
@@ -95,6 +102,9 @@ const WARNINGS = new Set<DiagnosticCode>([
   'cover-not-found',
   'images-json-invalid',
   'attachment-not-found',
+  'gps-precision-excessive',
+  'attachment-active-content',
+  'private-key-suspect',
 ]);
 
 function diagnostic(code: DiagnosticCode, path: string, message: string): Diagnostic {
@@ -124,6 +134,16 @@ function isIsoDate(value: unknown): boolean {
   }
   const [hour, minute, second] = [m[4], m[5], m[6]].map((v) => (v === undefined ? 0 : Number(v))) as [number, number, number];
   return hour <= 23 && minute <= 59 && second <= 59;
+}
+
+/** Clé qui ne diffère de `private` que par la casse, des espaces, `_` ou `-` (§4.10, règle 7). */
+function isPrivateLookalike(key: string): boolean {
+  return key !== 'private' && key.toLowerCase().replace(/[\s_-]/g, '') === 'private';
+}
+
+/** Valeur numérique qui n'égale pas son arrondi à deux décimales (§4.10, règle 18). */
+function hasExcessivePrecision(value: unknown): boolean {
+  return typeof value === 'number' && Math.abs(value - Math.round(value * 100) / 100) > 1e-9;
 }
 
 /** Entrées d'images d'un `images.json`, ou `null` s'il est invalide (§1.5.1). */
@@ -332,7 +352,7 @@ export async function validateSnapshot(
       push('slug-invalid', folder, `« ${basename(folder)} » ne suit pas ^[a-z0-9]+(-[a-z0-9]+)*$.`);
     }
     if (!indexes.some((path) => isDefaultIndexFile(basename(path)))) {
-      push('index-default-missing', folder, 'Fichier index de langue sans `index.md` ni `index.mdx`.');
+      push('index-default-missing', folder, 'Fichier index de langue sans `index.md`.');
     }
     if (isSection(folder)) {
       const media = `${joinPath(folder, 'media')}/`;
@@ -349,6 +369,17 @@ export async function validateSnapshot(
     }
     if (seriesAncestors >= 2) {
       push('nesting-too-deep', folder, 'Série sous une sous-série : l\'imbrication est limitée à un niveau.');
+    }
+  }
+
+  // `index-mdx-forbidden` et règle 16 : le chemin seul décide, l'état de l'entrée
+  // n'y change rien et le fichier n'est pas lu.
+  for (const entry of scoped) {
+    if (entry.kind === 'content' && isForbiddenIndexFile(basename(entry.path))) {
+      push('index-mdx-forbidden', entry.path, 'MDX est du code exécutable : seul `index.md` (ou `index.<lang>.md`) porte une série (§1.12).');
+    }
+    if (entry.kind === 'media' && isActiveContentPath(entry.path)) {
+      push('attachment-active-content', entry.path, 'Document joint de contenu actif : à servir de façon isolée (§1.12).');
     }
   }
 
@@ -377,6 +408,17 @@ export async function validateSnapshot(
       push('type-invalid', path, `\`type\` vaut « ${String(type)} » : attendu \`series\` ou \`section\`.`);
     }
     const section = type === 'section';
+    const privateValue = field(data, 'private');
+    if (privateValue !== undefined && typeof privateValue !== 'boolean') {
+      push('private-type-invalid', path, '`private` doit être un booléen YAML (`true` ou `false`) : toute autre valeur est une erreur, jamais un contenu public.');
+    }
+    if (Object.keys(data).some(isPrivateLookalike)) {
+      push('private-key-suspect', path, 'Une clé ne diffère de `private` que par la casse, des espaces, `_` ou `-` : elle ne protège rien.');
+    }
+    const gps = isRecord(data.iptc) ? data.iptc.gps : undefined;
+    if (isRecord(gps) && (hasExcessivePrecision(gps.lat) || hasExcessivePrecision(gps.lng))) {
+      push('gps-precision-excessive', path, '`iptc.gps` a plus de 2 décimales (≈ 1,1 km) : une position précise publiée est irréversible (§1.12).');
+    }
     const title = field(data, 'title');
     if (typeof title !== 'string' || title.length === 0) push('title-missing', path, '`title` absent ou vide.');
     const date = field(data, 'date');
@@ -435,14 +477,14 @@ export async function validateSnapshot(
     }
 
     // Le schéma du build, pour ce que le §4.10 ne code pas. `title`, `type`,
-    // les `embeds`, la `date` d'une série et les `null` (valent absents) sont
-    // déjà couverts. La `date` d'une section échappe au §4.10 mais pas au
+    // `private`, les `embeds`, la `date` d'une série et les `null` (valent
+    // absents) sont déjà couverts. La `date` d'une section échappe au §4.10 mais pas au
     // build : elle passe ici.
     if (options.astroSchema !== true) continue;
     const present = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null));
     const schema = (await loadSeriesSchema()).safeParse(present);
     if (!schema.success) {
-      const covered = new Set(section ? ['title', 'type', 'embeds'] : ['title', 'date', 'type', 'embeds']);
+      const covered = new Set(section ? ['title', 'type', 'private', 'embeds'] : ['title', 'date', 'type', 'private', 'embeds']);
       const issues = schema.error.issues.filter((issue) => !covered.has(String(issue.path[0])));
       if (issues.length > 0) {
         const detail = issues.map((issue) => `${issue.path.join('.') || '(racine)'} : ${issue.message}`).join(' ; ');

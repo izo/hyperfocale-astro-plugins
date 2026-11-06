@@ -436,7 +436,7 @@ import { glob } from 'astro/loaders';
 import { seriesSchema } from ${JSON.stringify(schemaFile)};
 
 export const seriesCollection = defineCollection({
-  loader: glob({ pattern: '**/index.{md,mdx}', base: './src/content/${collectionName}' }),
+  loader: glob({ pattern: '**/index.md', base: './src/content/${collectionName}' }),
   schema: (ctx) => seriesSchema(ctx, { dateRequired: ${JSON.stringify(dateRequired)} }),
 });
 `;

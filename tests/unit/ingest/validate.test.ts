@@ -195,7 +195,11 @@ describe('validateSnapshot — structure', () => {
 
   it('index-default-missing : index de langue sans index.md', async () => {
     expect(await validate({ 'a/index.en.md': SERIES })).toEqual([['index-default-missing', 'warning', 'a']]);
-    expect(await validate({ 'a/index.mdx': SERIES, 'a/index.en.md': SERIES })).toEqual([]);
+    // `index.mdx` n'est plus un fichier index (§1.12, v2.17) : il ne tient pas lieu d'`index.md`.
+    expect(await validate({ 'a/index.mdx': SERIES, 'a/index.en.md': SERIES })).toEqual([
+      ['index-default-missing', 'warning', 'a'],
+      ['index-mdx-forbidden', 'error', 'a/index.mdx'],
+    ]);
   });
 
   it('nesting-too-deep : série sous une sous-série ; sections et rangement ne comptent pas', async () => {
@@ -412,5 +416,258 @@ describe('validateSnapshot — frontmatter', () => {
   it('propage une erreur de lecture plutôt que de conclure', async () => {
     const snap = await snapshot([entry('a/index.md', SERIES)]);
     await expect(validateSnapshot(snap, { read: memoryReader({}) })).rejects.toThrow(/absent/);
+  });
+});
+
+/** Fichier de frontmatter `private` / `iptc` pour les tests de §1.12. */
+const fm = (extra: string, title = 'T') => `---\ntitle: ${title}\ndate: 2024-01-01\n${extra}\n---\n`;
+
+describe('validateSnapshot — index.mdx interdit (§1.12, règle `index-mdx-forbidden`)', () => {
+  it('index.mdx et index.<lang>.mdx : une erreur chacun, jamais lus', async () => {
+    const files = { 'a/index.md': SERIES, 'a/index.mdx': 'import X from "./x"', 'a/index.en.mdx': '<X />' };
+    const { snap } = await corpus(files);
+    const read = async (path: string) => {
+      if (path.endsWith('.mdx')) throw new Error(`lu : ${path}`);
+      return files[path as keyof typeof files];
+    };
+    expect(triples(await validateSnapshot(snap, { read }))).toEqual([
+      ['index-mdx-forbidden', 'error', 'a/index.en.mdx'],
+      ['index-mdx-forbidden', 'error', 'a/index.mdx'],
+    ]);
+  });
+
+  it('le fichier reste content dans le snapshot, mais ne rend pas son dossier porteur', async () => {
+    const files = { 'a/index.mdx': SERIES, 'a/media/01.jpg': 'x', 'a/Bad_Slug/index.mdx': SERIES };
+    const { snap } = await corpus(files);
+    expect(snap.entries.filter((e) => e.path.endsWith('.mdx')).map((e) => e.kind)).toEqual(['content', 'content']);
+    // Ni `snapshot-empty` (l'entrée est du contenu), ni slug, ni frontmatter : `media/` sans index est orphelin.
+    expect(await validate(files)).toEqual([
+      ['index-mdx-forbidden', 'error', 'a/Bad_Slug/index.mdx'],
+      ['index-mdx-forbidden', 'error', 'a/index.mdx'],
+      ['media-orphan', 'warning', 'a/media'],
+    ]);
+  });
+
+  it('règle 14 : un index.mdx n\'est pas une série ancêtre, l\'imbrication ne le compte pas', async () => {
+    expect(
+      await validate({
+        'fest/index.md': SERIES,
+        'fest/set/index.mdx': SERIES,
+        'fest/set/encore/index.md': SERIES,
+      }),
+    ).toEqual([['index-mdx-forbidden', 'error', 'fest/set/index.mdx']]);
+  });
+
+  it('règle 13 : le type d\'un dossier ne se lit jamais dans un index.mdx', async () => {
+    const files = {
+      'a/index.mdx': '---\ntype: section\ntitle: S\n---\n',
+      'a/index.en.md': SERIES,
+      'a/media/01.jpg': 'x',
+    };
+    // `index.en.md` est la référence : le dossier est une série, `media/` y est licite.
+    expect(await validate(files)).toEqual([
+      ['index-default-missing', 'warning', 'a'],
+      ['index-mdx-forbidden', 'error', 'a/index.mdx'],
+    ]);
+  });
+
+  it('vaut dans toute racine, placeholder et conflict compris, et seulement dans une racine', async () => {
+    const snap = await snapshot([
+      entry('s/ok/index.md', SERIES),
+      { path: 's/p/index.mdx', kind: 'content', size: 5, state: 'placeholder' },
+      { path: 's/c/index.en.mdx', kind: 'content', size: 5, state: 'conflict' },
+      entry('pages/index.mdx', 'x'),
+    ]);
+    expect(triples(await validateSnapshot(snap, { read: memoryReader({ 's/ok/index.md': SERIES }), roots: [{ path: 's' }] }))).toEqual([
+      ['entry-conflict', 'error', 's/c/index.en.mdx'],
+      ['index-mdx-forbidden', 'error', 's/c/index.en.mdx'],
+      ['entry-not-materialized', 'error', 's/p/index.mdx'],
+      ['index-mdx-forbidden', 'error', 's/p/index.mdx'],
+    ]);
+  });
+
+  it('seul le nom exact est visé : index.english.mdx et page.mdx sont copiés sans diagnostic', async () => {
+    expect(await validate({ 'a/index.md': SERIES, 'a/index.english.mdx': 'x', 'a/page.mdx': 'x' })).toEqual([]);
+  });
+});
+
+describe('validateSnapshot — contenu actif joint (§1.12, règle 16)', () => {
+  it.each(['html', 'htm', 'xhtml', 'svg', 'svgz', 'xml', 'xsl', 'xslt', 'js', 'mjs'])('.%s dans media/ : un warning, casse ignorée', async (ext) => {
+    expect(await validate({ 'a/index.md': SERIES, [`a/media/x.${ext}`]: 'x', [`a/media/Y.${ext.toUpperCase()}`]: 'x' })).toEqual([
+      ['attachment-active-content', 'warning', `a/media/Y.${ext.toUpperCase()}`],
+      ['attachment-active-content', 'warning', `a/media/x.${ext}`],
+    ]);
+  });
+
+  it('ne dépend que du chemin : placeholder et conflict compris, le fichier n\'est pas lu', async () => {
+    const snap = await snapshot([
+      entry('a/index.md', SERIES),
+      { path: 'a/media/p.svg', kind: 'media', size: 5, state: 'placeholder' },
+      { path: 'a/media/c.html', kind: 'media', size: 5, state: 'conflict' },
+    ]);
+    expect(triples(await validateSnapshot(snap, { read: memoryReader({ 'a/index.md': SERIES }) }))).toEqual([
+      ['attachment-active-content', 'warning', 'a/media/c.html'],
+      ['entry-conflict', 'error', 'a/media/c.html'],
+      ['attachment-active-content', 'warning', 'a/media/p.svg'],
+      ['entry-not-materialized', 'error', 'a/media/p.svg'],
+    ]);
+  });
+
+  it('seule la dernière extension compte ; un PDF, une image et un original sont sains', async () => {
+    expect(
+      await validate({
+        'a/index.md': SERIES,
+        'a/media/plan.svg.jpg': 'x',
+        'a/media/plan.jpg.svg': 'x',
+        'a/media/dossier.pdf': 'x',
+        'a/media/01.jpg': 'x',
+        'a/media/sidecar.xmp': 'x',
+        'a/media/svg': 'x',
+      }),
+    ).toEqual([['attachment-active-content', 'warning', 'a/media/plan.jpg.svg']]);
+  });
+
+  it('une entrée qui n\'est pas de classe media n\'est pas visée : le sous-dossier de media/ relève de media-nested', async () => {
+    expect(await validate({ 'a/index.md': SERIES, 'a/page.html': 'x', 'a/media/sub/x.svg': 'x' })).toEqual([
+      ['media-nested', 'error', 'a/media/sub'],
+    ]);
+  });
+
+  it('hors des racines : copié, pas validé', async () => {
+    expect(
+      await validate({ 'archives/a/index.md': SERIES, 'pages/media/x.svg': 'x', 'archives/a/media/x.svg': 'x' }, [{ path: 'archives' }]),
+    ).toEqual([['attachment-active-content', 'warning', 'archives/a/media/x.svg']]);
+  });
+});
+
+describe('validateSnapshot — précision des coordonnées (§1.12, règle 18)', () => {
+  const gps = (lat: string, lng: string) => ({ 'a/index.md': fm(`iptc:\n  gps: { lat: ${lat}, lng: ${lng} }`) });
+
+  it('la valeur décide, pas l\'écriture : zéros de queue et marge de 1e-9 tolérés', async () => {
+    expect(await validate(gps('48.5800', '-4.50'))).toEqual([]);
+    expect(await validate(gps('48.58000000001', '-4.5'))).toEqual([]);
+    expect(await validate(gps('4.858e1', '-0.0'))).toEqual([]);
+  });
+
+  it('lat seule, lng seule ou les deux : un seul warning par fichier', async () => {
+    const expected = [['gps-precision-excessive', 'warning', 'a/index.md']];
+    expect(await validate(gps('48.581', '-4.5'))).toEqual(expected);
+    expect(await validate(gps('48.58', '-4.501'))).toEqual(expected);
+    expect(await validate(gps('48.3905', '-4.4861'))).toEqual(expected);
+  });
+
+  it('la notation exponentielle ne contourne pas le contrôle', async () => {
+    expect(await validate(gps('4.83905e1', '-4.5'))).toEqual([['gps-precision-excessive', 'warning', 'a/index.md']]);
+    expect(await validate(gps('48.58', '-4486.1e-3'))).toEqual([['gps-precision-excessive', 'warning', 'a/index.md']]);
+  });
+
+  it('le signe ne change rien, ni un troisième chiffre infime mais supérieur à la marge', async () => {
+    expect(await validate(gps('-48.395', '4.5'))).toEqual([['gps-precision-excessive', 'warning', 'a/index.md']]);
+    expect(await validate(gps('48.5800001', '4.5'))).toEqual([['gps-precision-excessive', 'warning', 'a/index.md']]);
+  });
+
+  it('ignorés : valeurs non numériques, gps qui n\'est pas un mapping, iptc absent ou ailleurs', async () => {
+    expect(await validate(gps('"43.123456"', '"5.123456"'))).toEqual([]);
+    expect(await validate(gps('null', '~'))).toEqual([]);
+    expect(await validate({ 'a/index.md': fm('iptc:\n  gps: [48.3905, -4.4861]') })).toEqual([]);
+    expect(await validate({ 'a/index.md': fm('iptc: 48.3905') })).toEqual([]);
+    expect(await validate({ 'a/index.md': fm('gps: { lat: 48.3905, lng: -4.4861 }') })).toEqual([]);
+    expect(await validate({ 'a/index.md': fm('lieu:\n  iptc:\n    gps: { lat: 48.3905, lng: 1 }') })).toEqual([]);
+  });
+
+  it('vaut pour une page de section et un index.<lang>.md, un diagnostic par fichier', async () => {
+    const files = {
+      's/index.md': '---\ntype: section\ntitle: S\niptc: { gps: { lat: 1.234, lng: 2 } }\n---\n',
+      's/a/index.md': fm('iptc: { gps: { lat: 48.3905, lng: 1 } }'),
+      's/a/index.en.md': fm('iptc: { gps: { lat: 48.58, lng: 1.005 } }', 'EN'),
+    };
+    expect(await validate(files)).toEqual([
+      ['gps-precision-excessive', 'warning', 's/a/index.en.md'],
+      ['gps-precision-excessive', 'warning', 's/a/index.md'],
+      ['gps-precision-excessive', 'warning', 's/index.md'],
+    ]);
+  });
+});
+
+describe('validateSnapshot — `private` strictement booléen (§1.12, règle 7)', () => {
+  it.each(['true', 'True', 'TRUE', 'false', 'False', 'FALSE', '~', 'null', 'Null', ''])('private: %j est accepté (booléen YAML, ou null = absent)', async (value) => {
+    expect(await validate({ 'a/index.md': fm(`private: ${value}`) })).toEqual([]);
+  });
+
+  it.each(['"true"', '"false"', 'yes', 'no', 'on', 'off', 'y', '1', '0', '1.5', 'oui', '"True "', '""', "''", '!!str true', '[true]', '{ a: true }'])(
+    'private: %s : private-type-invalid',
+    async (value) => {
+      expect(await validate({ 'a/index.md': fm(`private: ${value}`) })).toEqual([['private-type-invalid', 'error', 'a/index.md']]);
+    },
+  );
+
+  it('page de section et index.<lang>.md compris, un fichier sain à côté n\'est pas touché', async () => {
+    expect(
+      await validate({
+        's/index.md': '---\ntype: section\ntitle: S\nprivate: 1\n---\n',
+        's/a/index.md': fm('private: true'),
+        's/a/index.en.md': fm('private: yes', 'EN'),
+        's/b/index.md': fm('private: false'),
+      }),
+    ).toEqual([
+      ['private-type-invalid', 'error', 's/a/index.en.md'],
+      ['private-type-invalid', 'error', 's/index.md'],
+    ]);
+  });
+
+  it('un fichier qui n\'est pas lu ne produit rien : le seul diagnostic est celui de l\'entrée', async () => {
+    const snap = await snapshot([{ path: 'a/index.md', kind: 'content', size: 5, state: 'conflict' }]);
+    expect(triples(await validateSnapshot(snap, { read: memoryReader({}) }))).toEqual([['entry-conflict', 'error', 'a/index.md']]);
+  });
+
+  it('astroSchema ne double pas le diagnostic : la violation est déjà codée par le §4.10', async () => {
+    const files = { 'a/index.md': fm('private: "true"') };
+    expect(await validate(files, undefined, true)).toEqual([['private-type-invalid', 'error', 'a/index.md']]);
+    const section = { 's/index.md': '---\ntype: section\ntitle: S\nprivate: 1\n---\n' };
+    expect(await validate(section, undefined, true)).toEqual([['private-type-invalid', 'error', 's/index.md']]);
+  });
+});
+
+describe('validateSnapshot — clés quasi-homonymes de `private` (§1.12, règle 7)', () => {
+  it.each(['Private', 'PRIVATE', 'pRiVaTe', 'private_', '_private', 'pri_vate', 'pri-vate', '-private-', 'private__', '"private "', '"pri vate"', '"private\u00a0"', '"private\t"'])(
+    'clé %s : private-key-suspect',
+    async (key) => {
+      expect(await validate({ 'a/index.md': fm(`${key}: true`) })).toEqual([['private-key-suspect', 'warning', 'a/index.md']]);
+    },
+  );
+
+  it.each(['private', 'privacy', 'privates', 'private_key', 'is_private', 'pri', 'confidential', 'visibility'])('clé %s : rien à signaler', async (key) => {
+    expect(await validate({ 'a/index.md': fm(`${key}: true`) })).toEqual([]);
+  });
+
+  it('une clé quasi-homonyme sans valeur est tout autant suspecte ; seul le premier niveau compte', async () => {
+    expect(await validate({ 'a/index.md': fm('Private:') })).toEqual([['private-key-suspect', 'warning', 'a/index.md']]);
+    expect(await validate({ 'a/index.md': fm('portfolio:\n  Private: true\niptc:\n  private_: true') })).toEqual([]);
+  });
+
+  it('plusieurs clés suspectes, ou la clé exacte à côté : un seul warning par fichier, sans toucher à `private`', async () => {
+    expect(await validate({ 'a/index.md': fm('private: true\nPrivate: true\nprivate_: true') })).toEqual([
+      ['private-key-suspect', 'warning', 'a/index.md'],
+    ]);
+  });
+
+  it('se cumule avec private-type-invalid : la clé exacte mal typée et la variante de casse', async () => {
+    expect(await validate({ 'a/index.md': fm('private: "true"\nPrivate: true') })).toEqual([
+      ['private-key-suspect', 'warning', 'a/index.md'],
+      ['private-type-invalid', 'error', 'a/index.md'],
+    ]);
+  });
+
+  it('page de section et index.<lang>.md compris', async () => {
+    expect(
+      await validate({
+        's/index.md': '---\ntype: section\ntitle: S\nPrivate: true\n---\n',
+        's/a/index.md': fm('private: true'),
+        's/a/index.en.md': fm('PRIVATE: true', 'EN'),
+      }),
+    ).toEqual([
+      ['private-key-suspect', 'warning', 's/a/index.en.md'],
+      ['private-key-suspect', 'warning', 's/index.md'],
+    ]);
   });
 });

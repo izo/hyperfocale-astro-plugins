@@ -30,8 +30,8 @@ export interface BuildSeriesImagesManifestOptions extends BuildImagesManifestOpt
  * d'exclusivité (`images-conflict`, §4.10). C'est là que vit l'ordre éditorial
  * d'une source distante.
  *
- * Lit le fichier index de référence du dossier (`index.md`, sinon `index.mdx`,
- * sinon le premier `index.<lang>.md`). `null` aussi quand le dossier ne porte
+ * Lit le fichier index de référence du dossier (`index.md`, sinon le premier
+ * `index.<lang>.md`). `null` aussi quand le dossier ne porte
  * aucun fichier index, ou que son frontmatter est absent ou illisible — de plus
  * de 1 Mio, il n'est même pas lu (§1.12) : on ne sait pas alors s'il porte
  * `images:`, et la validation bloque de toute façon la publication

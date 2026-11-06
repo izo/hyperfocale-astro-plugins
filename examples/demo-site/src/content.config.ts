@@ -12,7 +12,7 @@ const corpusSchema = baseSeriesSchema({ dateRequired: true });
 export const collections = {
   series: seriesCollection,
   brands: defineCollection({
-    loader: glob({ pattern: '**/index.{md,mdx}', base: './src/content/brands' }),
+    loader: glob({ pattern: '**/index.md', base: './src/content/brands' }),
     schema: baseSeriesSchema({ dateRequired: false }),
   }),
   corpus_fr: defineCollection({ loader: seriesLoader({ base: 'corpus' }), schema: corpusSchema }),
