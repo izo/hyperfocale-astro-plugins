@@ -2,7 +2,7 @@ import { getCollection } from 'astro:content';
 import type { CollectionEntry, CollectionKey } from 'astro:content';
 import { EMBED_PLATFORMS } from '../schema.js';
 import type { Attachment, AttachmentKind, Embed } from '../schema.js';
-import { isExcluded, isSafeLinkUrl } from '../ingest/paths.js';
+import { isExcluded, isNetworkPathReference, isSafeLinkUrl } from '../ingest/paths.js';
 import { classifyAttachment, isOriginal, parseImageManifest, posterFilenames as posterFilenamesOf, type ResolvedImage } from '../media.js';
 import { compareNFC, compareSeriesOrder } from '../order.js';
 import { isEmbedId } from '../url-forms.js';
@@ -249,7 +249,7 @@ function resolveManifestImage(entry: ManifestImage, dirSlug: string): ImageMetad
     ...(img.alt !== undefined ? { alt: img.alt } : {}),
   });
 
-  if (/^https?:\/\//.test(img.url) || img.url.startsWith('/')) {
+  if (/^https?:\/\//.test(img.url) || (img.url.startsWith('/') && !isNetworkPathReference(img.url))) {
     return withAlt({
       src: img.url,
       width: img.width ?? 0,
@@ -710,7 +710,7 @@ export async function getSeriesEmbeds(slug: string, series?: Series): Promise<Em
  */
 function resolvePoster(poster: string | undefined, dirSlug: string): Embed['poster'] {
   if (typeof poster !== 'string' || poster === '') return undefined;
-  if (/^https?:\/\//.test(poster) || poster.startsWith('/')) return poster;
+  if (/^https?:\/\//.test(poster) || (poster.startsWith('/') && !isNetworkPathReference(poster))) return poster;
 
   const filename = (poster.replace(/^\.\//, '').split('/').pop() ?? '').trim();
   return findMediaImage(dirSlug, filename)?.default;

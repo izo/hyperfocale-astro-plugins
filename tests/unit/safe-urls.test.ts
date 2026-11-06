@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { baseSeriesSchema } from '../../src/schema.js';
 import { getSeriesAttachments, getSeriesEmbeds } from '../../src/helpers/index.js';
-import { isSafeLinkUrl } from '../../src/ingest/paths.js';
+import { isNetworkPathReference, isSafeLinkUrl } from '../../src/ingest/paths.js';
 import type { Series } from '../../src/helpers/index.js';
 
 const HOSTILE = [
@@ -24,9 +24,18 @@ const makeSeries = (data: Record<string, unknown>): Series =>
 
 describe('isSafeLinkUrl', () => {
   it('admet http(s), les chemins absolus et relatifs', () => {
-    for (const url of ['https://a.example/x', 'http://a.example', '/media/x.zip', './x.pdf', '../x.pdf', 'media/x.pdf', '//cdn.example/x']) {
+    for (const url of ['https://a.example/x', 'http://a.example', '/media/x.zip', './x.pdf', '../x.pdf', 'media/x.pdf']) {
       expect(isSafeLinkUrl(url), url).toBe(true);
     }
+  });
+
+  it('refuse `//hôte` et ses lectures par un navigateur (§1.12, spec 2.17)', () => {
+    for (const url of ['//cdn.example/x', '//evil.example/x.pdf', '/\\evil.example/x.pdf', '\\\\evil.example/x.pdf', '/\t/evil.example/x', '\t//evil.example/x', '  //evil.example/x']) {
+      expect(isSafeLinkUrl(url), JSON.stringify(url)).toBe(false);
+    }
+    // Un seul `/` initial reste un chemin du site.
+    expect(isSafeLinkUrl('/media/x.pdf')).toBe(true);
+    expect(isNetworkPathReference('/media//x.pdf')).toBe(false);
   });
 
   it('refuse javascript:, data:, vbscript:, ftp: et leurs variantes', () => {

@@ -175,6 +175,16 @@ describe('getSeriesEmbeds', () => {
     expect((await getSeriesEmbeds('demo', series))[0]?.poster).toBe('https://cdn.test/p.jpg');
   });
 
+  it.each(['//evil.example/p.jpg', '/\\evil.example/p.jpg', '/\t/evil.example/p.jpg'])(
+    'ne rend pas un poster que le navigateur lirait comme un hôte : %j (§1.12)',
+    async (poster) => {
+      resetSeriesCache();
+      const series = makeSeries([{ url: 'https://vimeo.com/1', platform: 'vimeo', id: '1', poster }]);
+      const embed = (await getSeriesEmbeds('demo', series))[0] as object;
+      expect('poster' in embed).toBe(false);
+    },
+  );
+
   it('omet la clé poster quand un chemin relatif est introuvable', async () => {
     resetSeriesCache();
     const series = makeSeries([

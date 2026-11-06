@@ -13,6 +13,17 @@ export interface NormalizedPath {
 }
 
 /**
+ * `//hôte`, `/\hôte`, `\\hôte` : un navigateur y lit un hôte, non un chemin du site
+ * (il traite `\` en `/`). §1.12 refuse la forme dans un champ d'URL ; au rendu,
+ * elle ne doit sortir ni en `href` ni en `src`. Juger la valeur sans espaces ni
+ * caractères de contrôle, comme le fait un navigateur.
+ */
+export function isNetworkPathReference(url: string): boolean {
+  // Tabulation et saut de ligne se retirent aussi de l'intérieur : `/<tab>/hôte` est `//hôte`.
+  return /^[/\\]{2}/.test(url.replace(/[\u0000-\u0020\u007f]/g, ''));
+}
+
+/**
  * Une URL peut-elle finir dans un `href` ? Oui si elle n'a pas de schéma
  * (chemin relatif ou absolu au site) ou si son schéma est `http(s)` (#152).
  * `javascript:`, `data:`, `vbscript:` et tout autre schéma sont refusés ; avec
@@ -24,6 +35,7 @@ export interface NormalizedPath {
 export function isSafeLinkUrl(url: unknown, allowData = false): url is string {
   if (typeof url !== 'string' || url.trim() === '') return false;
   const bare = url.replace(/[\u0000-\u0020\u007f]/g, '');
+  if (isNetworkPathReference(bare)) return false;
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(bare)?.[1]?.toLowerCase();
   if (scheme === undefined) return true;
   return scheme === 'http' || scheme === 'https' || (allowData && scheme === 'data');
