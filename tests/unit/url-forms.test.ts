@@ -238,3 +238,34 @@ describe('isEmbedId — identifiants d\'embed (§1.12)', () => {
     expect(isEmbedId(id)).toBe(false);
   });
 });
+
+describe('urlFieldProblem — temps linéaire sur une longue suite d\'espaces (§1.12)', () => {
+  // `/^ +| +$/g` reculait en temps quadratique : 200 000 espaces internes, 27 s.
+  const hostile = (n: number): string => `x${' '.repeat(n)}y`;
+
+  it('juge une valeur de 200 000 espaces internes en moins de 200 ms', () => {
+    const start = performance.now();
+    const problem = urlFieldProblem(hostile(200_000));
+    expect(performance.now() - start).toBeLessThan(200);
+    // Relative et sans caractère interdit : forme admise.
+    expect(problem).toBeNull();
+  });
+
+  it('juge une référence de 200 000 espaces internes en moins de 200 ms', () => {
+    const start = performance.now();
+    expect(referenceProblem(hostile(200_000))).toBeNull();
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+
+  it('lit toujours un schéma derrière des espaces de tête (le balayage garde la sémantique)', () => {
+    expect(urlFieldProblem('   javascript:alert(1)')).toBe('url-scheme-forbidden');
+    expect(urlFieldProblem('  //evil.example/x')).toBe('url-scheme-forbidden');
+    expect(urlFieldProblem('media/a b.jpg   ')).toBeNull();
+  });
+
+  it('juge une valeur faite uniquement d\'espaces sans boucler', () => {
+    const start = performance.now();
+    expect(urlFieldProblem(' '.repeat(200_000))).toBe('url-scheme-forbidden');
+    expect(performance.now() - start).toBeLessThan(200);
+  });
+});

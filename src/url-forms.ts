@@ -39,7 +39,14 @@ export interface UrlFieldOptions {
  * `javascript:`), pas plus que les espaces de tête et de queue.
  */
 function browserView(value: string): string {
-  return value.replace(CONTROL_CHARS, '').replace(/^ +| +$/g, '');
+  const text = value.replace(CONTROL_CHARS, '');
+  // Balayage linéaire : `/^ +| +$/g` reculait en temps quadratique sur une longue
+  // suite d'espaces suivie d'un autre caractère (200 000 espaces : 27 s).
+  let start = 0;
+  let end = text.length;
+  while (start < end && text.charCodeAt(start) === 0x20) start++;
+  while (end > start && text.charCodeAt(end - 1) === 0x20) end--;
+  return text.slice(start, end);
 }
 
 /** La valeur porte-t-elle un schéma, ou commence-t-elle par `/` — sous la lecture d'un navigateur ? */

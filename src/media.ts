@@ -15,6 +15,7 @@
  */
 
 import type { Attachment, AttachmentKind } from './schema.js';
+import { truncate } from './preview.js';
 import type { DiagnosticCode, Severity } from './ingest/types.js';
 import {
   basename,
@@ -474,7 +475,7 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
     } else {
       const target = resolveReference('', coverField);
       const notImage = !isImagePath(coverField);
-      if (notImage) report('cover-not-image', `\`cover\` « ${coverField} » ne désigne pas une image (§1.9).`);
+      if (notImage) report('cover-not-image', `\`cover\` « ${truncate(coverField)} » ne désigne pas une image (§1.9).`);
       // Hors du dossier de la série mais sous la racine du corpus : le résolveur ne
       // voit que le `media/` de la série, il ne peut ni la vérifier ni la rendre.
       if (target !== null) {
@@ -482,7 +483,7 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
         // Vérifiable : la cible est dans `media/` et l'on connaît `media/` ou la liste d'images.
         const checkable = dirname(target) === 'media' && (listing !== null || source !== 'none');
         const missing = matched === undefined && !inMedia(target) && checkable;
-        if (missing) report('cover-not-found', `\`cover\` « ${coverField} » introuvable.`);
+        if (missing) report('cover-not-found', `\`cover\` « ${truncate(coverField)} » introuvable.`);
         if (!notImage && !missing) cover = matched?.image ?? { src: url(target), path: target };
       }
     }
