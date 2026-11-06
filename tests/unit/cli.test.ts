@@ -285,6 +285,32 @@ describe('CLI — validate', () => {
       expect(stderr).toMatch(/entry-symlink\s+s\/media\/02\.jpg /);
     });
 
+    it('snapshot -o --json : les diagnostics du listing sont dans le JSON de stdout, plus sur stderr', async () => {
+      corpusWithLinks();
+      const { code, stdout, stderr } = await run('snapshot', 'c', '-o', 's.json', '--json');
+      expect(code).toBe(0);
+      const report = JSON.parse(stdout);
+      expect(report).toMatchObject({ output: 's.json', complete: true, entries: 2 });
+      expect(report.diagnostics.map(({ code, severity, path }: Record<string, string>) => ({ code, severity, path }))).toEqual([
+        { code: 'entry-symlink', severity: 'warning', path: 'copie' },
+        { code: 'entry-symlink', severity: 'warning', path: 's/media/02.jpg' },
+      ]);
+      expect(stderr).toBe('');
+    });
+
+    it('snapshot -o sans --json : les avertissements restent en texte sur stderr', async () => {
+      corpusWithLinks();
+      const { code, stderr } = await run('snapshot', 'c', '-o', 's.json');
+      expect(code).toBe(0);
+      expect(stderr).toMatch(/entry-symlink\s+copie /);
+    });
+
+    it('snapshot -o --json sans lien : `diagnostics` est une liste vide', async () => {
+      tree({ 'c/s/index.md': SERIE });
+      const report = JSON.parse((await run('snapshot', 'c', '-o', 's.json', '--json')).stdout);
+      expect(report.diagnostics).toEqual([]);
+    });
+
     it('un corpus sans lien : aucune ligne entry-symlink', async () => {
       tree({ 'c/s/index.md': SERIE });
       expect((await run('validate', 'c')).stdout).not.toContain('entry-symlink');

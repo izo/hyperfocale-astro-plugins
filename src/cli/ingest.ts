@@ -135,6 +135,11 @@ async function validate(args: Parsed, io: CliIO): Promise<number> {
 async function snapshot(args: Parsed, io: CliIO): Promise<number> {
   const { snapshot, listed } = await snapshotDirectory(resolve(io.cwd, args.positional[0] as string), args.ignore);
   const json = `${JSON.stringify(snapshot, null, 2)}\n`;
+  // Les diagnostics du listing (`entry-symlink`…) vont dans le JSON de stdout quand
+  // la commande en rend un — `-o fichier --json` — pour qu'un script les lise comme
+  // ceux de `validate --json`. Sans `-o`, stdout est le snapshot lui-même, qui n'a
+  // pas de champ pour eux : ils restent sur stderr, en texte.
+  const diagnosticsInJson = args.output !== undefined && args.json;
   if (args.output === undefined) {
     io.stdout(json);
   } else {
@@ -142,11 +147,11 @@ async function snapshot(args: Parsed, io: CliIO): Promise<number> {
     writeFileSync(output, json, 'utf-8');
     io.stdout(
       args.json
-        ? `${JSON.stringify({ output: args.output, snapshot: snapshot.id, complete: snapshot.complete, entries: snapshot.entries.length }, null, 2)}\n`
+        ? `${JSON.stringify({ output: args.output, snapshot: snapshot.id, complete: snapshot.complete, entries: snapshot.entries.length, diagnostics: listed }, null, 2)}\n`
         : `[hyperfocale] ✓ ${args.output} — ${snapshot.entries.length} entrées, ${snapshot.id}\n`,
     );
   }
-  if (listed.length > 0) io.stderr(formatDiagnostics(listed));
+  if (listed.length > 0 && !diagnosticsInJson) io.stderr(formatDiagnostics(listed));
   if (!snapshot.complete) {
     io.stderr('[hyperfocale] ✗ snapshot-incomplete : une lecture a échoué, le snapshot est impubliable.\n');
     return EXIT.diagnostics;
