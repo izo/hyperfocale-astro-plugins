@@ -71,8 +71,8 @@ export type { CreateSnapshotOptions, SnapshotFormatErrorCode } from './snapshot.
 export { diffSnapshots } from './diff.js';
 export { validateSnapshot } from './validate.js';
 export type { ValidateSnapshotOptions, ValidationRoot } from './validate.js';
-export { guardChangeSet } from './guard.js';
-export type { GuardOptions, GuardPolicy, GuardSide } from './guard.js';
+export { DEFAULT_GUARD_POLICY, guardChangeSet, resolveGuardPolicy } from './guard.js';
+export type { GuardOptions, GuardPolicy, GuardSide, ResolvedGuardPolicy } from './guard.js';
 export { summarizeChangeSet } from './summary.js';
 export type { ChangeSetSummary, MovedSeries } from './summary.js';
 export { buildImagesManifest } from './manifest.js';
