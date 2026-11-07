@@ -1,0 +1,17 @@
+{
+  "description": "La section `rubrique` ne compte pas dans la profondeur (§4.10, règle 14) : `the-wombats` est une sous-série de `festival-2008`, `titre-un` une série sous une sous-série → `nesting-too-deep` sur `titre-un` seulement.",
+  "corpus": "nesting-through-section",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "nesting-too-deep",
+      "severity": "error",
+      "path": "series/festival-2008/rubrique/the-wombats/titre-un"
+    }
+  ]
+}

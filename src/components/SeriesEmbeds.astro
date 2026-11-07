@@ -14,6 +14,7 @@ import {
   passthroughAttrs,
   safeHref,
   headingTag,
+  isEmbedId,
   type InstanceProps,
   type HeadingLevel,
 } from './runtime.js';
@@ -68,15 +69,13 @@ function resolvePoster(poster: ResolvedImage) {
 }
 
 function playerUrl(embed: Pick<Embed, 'playable' | 'id' | 'platform'>): string | null {
-  if (!embed.playable || embed.id === undefined) return null;
-  // `id` traverse le schéma sans contrainte de format (`z.string()`), et c'est
-  // voulu : figer un gabarit rejetterait au build un identifiant qu'un hébergeur
-  // vient de changer. L'encoder au moment de construire l'URL obtient la sûreté
-  // sans ce coût — un `?`, un `&` ou un `/` cesse d'être un séparateur et
-  // redevient une donnée. Aucun identifiant réel n'est altéré : les six
-  // hébergeurs n'emploient que des caractères qu'`encodeURIComponent` laisse
-  // intacts.
-  const id = encodeURIComponent(embed.id);
+  // §1.12 : l'`id` traverse le schéma sans contrainte de format (`z.string()`) —
+  // figer un gabarit rejetterait au build l'identifiant qu'un hébergeur vient de
+  // changer —, donc rien n'entre dans une URL avant ce contrôle. Un `id` refusé
+  // dégrade en lien, sans erreur. Les six hébergeurs n'emploient que ces
+  // caractères.
+  if (!embed.playable || !isEmbedId(embed.id)) return null;
+  const id = embed.id;
   switch (embed.platform) {
     case 'vimeo':
       return `https://player.vimeo.com/video/${id}?autoplay=1`;

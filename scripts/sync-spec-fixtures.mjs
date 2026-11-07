@@ -1,11 +1,14 @@
 #!/usr/bin/env node
 /**
- * Copie versionnée des fixtures de conformité de la couche 4 (ingestion) de
- * izo/hyperfocale-spec vers tests/fixtures/spec-ingestion/.
+ * Copie versionnée des fixtures de conformité de izo/hyperfocale-spec :
+ *
+ *   fixtures/ingestion/ → tests/fixtures/spec-ingestion/   (couche 4, ingestion)
+ *   fixtures/format/    → tests/fixtures/spec-format/      (couche 1, fonctions pures)
  *
  * La spec possède les fixtures cross-language ; ce dépôt en garde une copie à
- * une ref épinglée, écrite dans tests/fixtures/spec-ingestion/SOURCE, pour que
- * les tests ne dépendent ni du réseau ni de l'état d'un autre checkout.
+ * une ref épinglée, écrite dans le fichier SOURCE de chaque dossier copié, pour
+ * que les tests ne dépendent ni du réseau ni de l'état d'un autre checkout. Les
+ * deux copies sont synchronisées ensemble, au même commit.
  *
  * Usage :
  *   node scripts/sync-spec-fixtures.mjs --ref <ref> [--repo <url | chemin local>]
@@ -16,8 +19,8 @@
  *       son sous-dossier fixtures/) sans épingler — pour itérer, pas pour
  *       committer.
  *   node scripts/sync-spec-fixtures.mjs --check
- *       Vérifie que la copie correspond octet pour octet au commit épinglé de
- *       SOURCE. Code 1 sinon.
+ *       Vérifie que chaque copie correspond octet pour octet au commit épinglé de
+ *       son SOURCE. Code 1 sinon.
  */
 
 import { execFileSync } from 'node:child_process';
@@ -27,7 +30,11 @@ import { join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
-const TARGET = join(ROOT, 'tests', 'fixtures', 'spec-ingestion');
+/** Les dossiers de fixtures copiés : leur nom dans la spec, et leur destination ici. */
+const SETS = [
+  { name: 'ingestion', target: join(ROOT, 'tests', 'fixtures', 'spec-ingestion') },
+  { name: 'format', target: join(ROOT, 'tests', 'fixtures', 'spec-format') },
+];
 const UPSTREAM = 'https://github.com/izo/hyperfocale-spec.git';
 
 function fail(message, code = 2) {
@@ -86,21 +93,27 @@ function files(dir) {
   return out.sort();
 }
 
-/** Remplace la copie par `fixtures/ingestion` (+ son .gitattributes) de `fixturesDir`. */
+/**
+ * Remplace chaque copie par le dossier de même nom de `fixturesDir` (+ son
+ * .gitattributes). Rien n'est touché si l'un des dossiers manque.
+ */
 function install(fixturesDir, sourceLines) {
-  const ingestion = join(fixturesDir, 'ingestion');
-  if (!existsSync(join(ingestion, 'README.md'))) fail(`pas de fixtures/ingestion/README.md sous ${fixturesDir}.`);
-  rmSync(TARGET, { recursive: true, force: true });
-  cpSync(ingestion, TARGET, { recursive: true });
-  // Octets exacts : la règle « * -text » de la spec doit couvrir la copie aussi.
+  for (const { name } of SETS) {
+    if (!existsSync(join(fixturesDir, name, 'README.md'))) fail(`pas de fixtures/${name}/README.md sous ${fixturesDir}.`);
+  }
+  // Octets exacts : la règle « * -text » de la spec doit couvrir les copies aussi.
   const attributes = join(fixturesDir, '.gitattributes');
-  writeFileSync(join(TARGET, '.gitattributes'), existsSync(attributes) ? readFileSync(attributes) : '* -text\n');
-  writeFileSync(join(TARGET, 'SOURCE'), `${sourceLines.join('\n')}\n`);
+  for (const { name, target } of SETS) {
+    rmSync(target, { recursive: true, force: true });
+    cpSync(join(fixturesDir, name), target, { recursive: true });
+    writeFileSync(join(target, '.gitattributes'), existsSync(attributes) ? readFileSync(attributes) : '* -text\n');
+    writeFileSync(join(target, 'SOURCE'), `${sourceLines.join('\n')}\n`);
+  }
 }
 
-function readSource() {
-  const file = join(TARGET, 'SOURCE');
-  if (!existsSync(file)) fail('tests/fixtures/spec-ingestion/SOURCE absent.');
+function readSource({ target }) {
+  const file = join(target, 'SOURCE');
+  if (!existsSync(file)) fail(`${relative(ROOT, file)} absent.`);
   return Object.fromEntries(
     readFileSync(file, 'utf-8')
       .split('\n')
@@ -112,25 +125,42 @@ function readSource() {
 const opts = args(process.argv.slice(2));
 
 if (opts.check) {
-  const source = readSource();
-  if (source.commit === undefined) fail('copie non épinglée (synchronisée depuis un dossier local).', 1);
-  const { dir, cleanup } = extract(opts.repo ?? source.repo ?? UPSTREAM, source.commit);
+  // Une extraction par (dépôt, commit) : les copies épinglées au même commit la partagent.
+  const extractions = new Map();
+  const extracted = (repo, commit) => {
+    const key = `${repo}\n${commit}`;
+    if (!extractions.has(key)) extractions.set(key, extract(repo, commit));
+    return extractions.get(key);
+  };
+  const drift = [];
+  let checked = 0;
   try {
-    const expected = files(join(dir, 'ingestion'));
-    const actual = files(TARGET).filter((f) => f !== 'SOURCE' && f !== '.gitattributes');
-    const drift = [
-      ...expected.filter((f) => !actual.includes(f)).map((f) => `manquant : ${f}`),
-      ...actual.filter((f) => !expected.includes(f)).map((f) => `en trop : ${f}`),
-      ...expected
-        .filter((f) => actual.includes(f))
-        .filter((f) => !readFileSync(join(dir, 'ingestion', f)).equals(readFileSync(join(TARGET, f))))
-        .map((f) => `modifié : ${f}`),
-    ];
-    if (drift.length > 0) fail(`la copie diverge du commit ${source.commit} :\n  ${drift.join('\n  ')}`, 1);
-    process.stdout.write(`[sync-spec-fixtures] ✓ ${expected.length} fichiers conformes au commit ${source.commit}\n`);
+    for (const set of SETS) {
+      const source = readSource(set);
+      if (source.commit === undefined) fail(`copie ${set.name} non épinglée (synchronisée depuis un dossier local).`, 1);
+      const { dir } = extracted(opts.repo ?? source.repo ?? UPSTREAM, source.commit);
+      const expected = files(join(dir, set.name));
+      const actual = files(set.target).filter((f) => f !== 'SOURCE' && f !== '.gitattributes');
+      const problems = [
+        ...expected.filter((f) => !actual.includes(f)).map((f) => `manquant : ${f}`),
+        ...actual.filter((f) => !expected.includes(f)).map((f) => `en trop : ${f}`),
+        ...expected
+          .filter((f) => actual.includes(f))
+          .filter((f) => !readFileSync(join(dir, set.name, f)).equals(readFileSync(join(set.target, f))))
+          .map((f) => `modifié : ${f}`),
+      ];
+      if (problems.length > 0) {
+        drift.push(`la copie ${set.name} diverge du commit ${source.commit} :\n  ${problems.join('\n  ')}`);
+      } else {
+        checked += expected.length;
+        process.stdout.write(`[sync-spec-fixtures] ✓ ${set.name} : ${expected.length} fichiers conformes au commit ${source.commit}\n`);
+      }
+    }
   } finally {
-    cleanup();
+    for (const { cleanup } of extractions.values()) cleanup();
   }
+  if (drift.length > 0) fail(drift.join('\n'), 1);
+  process.stdout.write(`[sync-spec-fixtures] ✓ ${checked} fichiers au total\n`);
 } else if (opts.path !== undefined) {
   const base = resolve(opts.path);
   const fixturesDir = existsSync(join(base, 'fixtures', 'ingestion')) ? join(base, 'fixtures') : base;
@@ -142,7 +172,8 @@ if (opts.check) {
   try {
     const upstream = existsSync(repo) ? UPSTREAM : repo;
     install(dir, [`repo=${upstream}`, `ref=${opts.ref}`, `commit=${commit}`]);
-    process.stdout.write(`[sync-spec-fixtures] ✓ fixtures de ${opts.ref} (${commit}) copiées dans tests/fixtures/spec-ingestion/\n`);
+    const targets = SETS.map(({ target }) => `${relative(ROOT, target)}/`).join(', ');
+    process.stdout.write(`[sync-spec-fixtures] ✓ fixtures de ${opts.ref} (${commit}) copiées dans ${targets}\n`);
   } finally {
     cleanup();
   }

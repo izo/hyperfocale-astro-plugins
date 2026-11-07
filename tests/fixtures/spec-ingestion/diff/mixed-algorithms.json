@@ -1,0 +1,245 @@
+{
+  "description": "Algorithmes mixtes (§4.7, étape 4 : « premier algorithme commun » de la paire). `d/un.jpg` `{sha256, dropbox}` → `a/un.jpg` `{dropbox}` : se compare sur `dropbox`, égal → déplacement. `d/deux.jpg` → `a/deux.jpg` : premier commun `sha256`, valeurs différentes → pas candidates, bien que `dropbox` soit égal : un index sur `dropbox` seul serait faux. `d/trois.jpg` `{dropbox}` / `a/trois.jpg` `{sha256}` : aucun algorithme commun, pas candidates. `d/quatre.jpg` a deux candidates (par `dropbox` et par `sha256`) → `move-ambiguous` pour les trois. `d/cinq.jpg` → `a/cinq.jpg` : déplacement sur `sha256` seul.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:1227372f0ccd6cb55285fc47351b63d8413957b2a1f700d061c482a5a1315277",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "d/cinq.jpg",
+        "kind": "other",
+        "size": 14,
+        "hashes": {
+          "sha256": "1cdcbd57e7e20491d8be5ff46549aac5f9c117320a164a49ebc4f1439a741d76"
+        }
+      },
+      {
+        "path": "d/deux.jpg",
+        "kind": "other",
+        "size": 11,
+        "hashes": {
+          "sha256": "adfa2b24c2d924fe6383d8804be55afb98ea3eb0e14c3470ac3a0f651b9a422e",
+          "dropbox": "abdbc2b5cc2c7a519b72bf7a164c58ebf892ab0c2df6468213705cc2f0da8561"
+        }
+      },
+      {
+        "path": "d/quatre.jpg",
+        "kind": "other",
+        "size": 13,
+        "hashes": {
+          "sha256": "b1d3eb8f32936fa9cf89d2240bd10734270fd55ff4644ad254b3b237468bad88",
+          "dropbox": "239fd09dd1c48679b74cec2120cd5e448b002c728c05e9b10f2c19f298fbdd57"
+        }
+      },
+      {
+        "path": "d/trois.jpg",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "dropbox": "0cd20d37dbaa799d1d2f6f04adbab0b9e958b083f38e06512cdefadd20863f98"
+        }
+      },
+      {
+        "path": "d/un.jpg",
+        "kind": "other",
+        "size": 10,
+        "hashes": {
+          "sha256": "3696ad59777e09d5f2daacb544022d435e7cd053d87c5781241fabd8fdf2a90d",
+          "dropbox": "5b950e77941d01cdf246d00b1ece546bc95234b77d98b44c9187e2733afa696a"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:91582e0008b2ceae2bdf60e7eaac06c112b628a4c1e8b6af322c75f256156389",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "a/cinq.jpg",
+        "kind": "other",
+        "size": 14,
+        "hashes": {
+          "sha256": "1cdcbd57e7e20491d8be5ff46549aac5f9c117320a164a49ebc4f1439a741d76"
+        }
+      },
+      {
+        "path": "a/deux.jpg",
+        "kind": "other",
+        "size": 11,
+        "hashes": {
+          "sha256": "4ac0b2def82f0a493a87388983cf9cd622a1d1b3dd197a6cd4684e083eb4e6af",
+          "dropbox": "abdbc2b5cc2c7a519b72bf7a164c58ebf892ab0c2df6468213705cc2f0da8561"
+        }
+      },
+      {
+        "path": "a/quatre-dropbox.jpg",
+        "kind": "other",
+        "size": 13,
+        "hashes": {
+          "dropbox": "239fd09dd1c48679b74cec2120cd5e448b002c728c05e9b10f2c19f298fbdd57"
+        }
+      },
+      {
+        "path": "a/quatre-sha.jpg",
+        "kind": "other",
+        "size": 13,
+        "hashes": {
+          "sha256": "b1d3eb8f32936fa9cf89d2240bd10734270fd55ff4644ad254b3b237468bad88"
+        }
+      },
+      {
+        "path": "a/trois.jpg",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "sha256": "44d6a8a73eddb284d49799fdbfa2919a004ece6d2df3546eaa4e246048bcdf81"
+        }
+      },
+      {
+        "path": "a/un.jpg",
+        "kind": "other",
+        "size": 10,
+        "hashes": {
+          "dropbox": "5b950e77941d01cdf246d00b1ece546bc95234b77d98b44c9187e2733afa696a"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:1227372f0ccd6cb55285fc47351b63d8413957b2a1f700d061c482a5a1315277",
+    "target": "sha256:91582e0008b2ceae2bdf60e7eaac06c112b628a4c1e8b6af322c75f256156389",
+    "added": [
+      {
+        "path": "a/deux.jpg",
+        "kind": "other",
+        "size": 11,
+        "hashes": {
+          "sha256": "4ac0b2def82f0a493a87388983cf9cd622a1d1b3dd197a6cd4684e083eb4e6af",
+          "dropbox": "abdbc2b5cc2c7a519b72bf7a164c58ebf892ab0c2df6468213705cc2f0da8561"
+        }
+      },
+      {
+        "path": "a/quatre-dropbox.jpg",
+        "kind": "other",
+        "size": 13,
+        "hashes": {
+          "dropbox": "239fd09dd1c48679b74cec2120cd5e448b002c728c05e9b10f2c19f298fbdd57"
+        }
+      },
+      {
+        "path": "a/quatre-sha.jpg",
+        "kind": "other",
+        "size": 13,
+        "hashes": {
+          "sha256": "b1d3eb8f32936fa9cf89d2240bd10734270fd55ff4644ad254b3b237468bad88"
+        }
+      },
+      {
+        "path": "a/trois.jpg",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "sha256": "44d6a8a73eddb284d49799fdbfa2919a004ece6d2df3546eaa4e246048bcdf81"
+        }
+      }
+    ],
+    "modified": [],
+    "deleted": [
+      {
+        "path": "d/deux.jpg",
+        "kind": "other",
+        "size": 11,
+        "hashes": {
+          "sha256": "adfa2b24c2d924fe6383d8804be55afb98ea3eb0e14c3470ac3a0f651b9a422e",
+          "dropbox": "abdbc2b5cc2c7a519b72bf7a164c58ebf892ab0c2df6468213705cc2f0da8561"
+        }
+      },
+      {
+        "path": "d/quatre.jpg",
+        "kind": "other",
+        "size": 13,
+        "hashes": {
+          "sha256": "b1d3eb8f32936fa9cf89d2240bd10734270fd55ff4644ad254b3b237468bad88",
+          "dropbox": "239fd09dd1c48679b74cec2120cd5e448b002c728c05e9b10f2c19f298fbdd57"
+        }
+      },
+      {
+        "path": "d/trois.jpg",
+        "kind": "other",
+        "size": 12,
+        "hashes": {
+          "dropbox": "0cd20d37dbaa799d1d2f6f04adbab0b9e958b083f38e06512cdefadd20863f98"
+        }
+      }
+    ],
+    "moved": [
+      {
+        "from": "d/cinq.jpg",
+        "to": "a/cinq.jpg",
+        "before": {
+          "path": "d/cinq.jpg",
+          "kind": "other",
+          "size": 14,
+          "hashes": {
+            "sha256": "1cdcbd57e7e20491d8be5ff46549aac5f9c117320a164a49ebc4f1439a741d76"
+          }
+        },
+        "after": {
+          "path": "a/cinq.jpg",
+          "kind": "other",
+          "size": 14,
+          "hashes": {
+            "sha256": "1cdcbd57e7e20491d8be5ff46549aac5f9c117320a164a49ebc4f1439a741d76"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "d/un.jpg",
+        "to": "a/un.jpg",
+        "before": {
+          "path": "d/un.jpg",
+          "kind": "other",
+          "size": 10,
+          "hashes": {
+            "sha256": "3696ad59777e09d5f2daacb544022d435e7cd053d87c5781241fabd8fdf2a90d",
+            "dropbox": "5b950e77941d01cdf246d00b1ece546bc95234b77d98b44c9187e2733afa696a"
+          }
+        },
+        "after": {
+          "path": "a/un.jpg",
+          "kind": "other",
+          "size": 10,
+          "hashes": {
+            "dropbox": "5b950e77941d01cdf246d00b1ece546bc95234b77d98b44c9187e2733afa696a"
+          }
+        },
+        "modified": false
+      }
+    ],
+    "diagnostics": [
+      {
+        "code": "move-ambiguous",
+        "severity": "info",
+        "path": "a/quatre-dropbox.jpg"
+      },
+      {
+        "code": "move-ambiguous",
+        "severity": "info",
+        "path": "a/quatre-sha.jpg"
+      },
+      {
+        "code": "move-ambiguous",
+        "severity": "info",
+        "path": "d/quatre.jpg"
+      }
+    ]
+  }
+}

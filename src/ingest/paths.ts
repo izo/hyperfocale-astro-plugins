@@ -1,5 +1,8 @@
 import type { EntryKind } from './types.js';
 
+export { isUnsafeReferenceText, referenceProblem, urlFieldProblem } from '../url-forms.js';
+export type { UrlFieldOptions, UrlFieldProblem } from '../url-forms.js';
+
 /** Résultat de `normalizePath` : le chemin NFC et son verdict (§4.1). */
 export interface NormalizedPath {
   /** Chemin normalisé NFC — renvoyé même s'il est invalide, pour le diagnostic. */
@@ -7,6 +10,17 @@ export interface NormalizedPath {
   readonly valid: boolean;
   /** Motif de l'invalidité, en clair. */
   readonly reason?: string;
+}
+
+/**
+ * `//hôte`, `/\hôte`, `\\hôte` : un navigateur y lit un hôte, non un chemin du site
+ * (il traite `\` en `/`). §1.12 refuse la forme dans un champ d'URL ; au rendu,
+ * elle ne doit sortir ni en `href` ni en `src`. Juger la valeur sans espaces ni
+ * caractères de contrôle, comme le fait un navigateur.
+ */
+export function isNetworkPathReference(url: string): boolean {
+  // Tabulation et saut de ligne se retirent aussi de l'intérieur : `/<tab>/hôte` est `//hôte`.
+  return /^[/\\]{2}/.test(url.replace(/[\u0000-\u0020\u007f]/g, ''));
 }
 
 /**
@@ -21,6 +35,7 @@ export interface NormalizedPath {
 export function isSafeLinkUrl(url: unknown, allowData = false): url is string {
   if (typeof url !== 'string' || url.trim() === '') return false;
   const bare = url.replace(/[\u0000-\u0020\u007f]/g, '');
+  if (isNetworkPathReference(bare)) return false;
   const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(bare)?.[1]?.toLowerCase();
   if (scheme === undefined) return true;
   return scheme === 'http' || scheme === 'https' || (allowData && scheme === 'data');
@@ -256,17 +271,43 @@ export function isOriginalEntry(entry: { readonly path: string }): boolean {
   return classifyPath(entry.path) === 'media' && isOriginalPath(entry.path);
 }
 
-const INDEX_FILE =/^index(?:\.[a-z]{2}(?:-[A-Z]{2})?)?\.md$|^index\.mdx$/;
+const LANG_SUFFIX = '(?:\\.[a-z]{2}(?:-[A-Z]{2})?)?';
+const INDEX_FILE = new RegExp(`^index${LANG_SUFFIX}\\.md$`);
+const INDEX_MDX_FILE = new RegExp(`^index${LANG_SUFFIX}\\.mdx$`);
 
 /**
- * Le basename est-il un fichier index (§4.10) : `index.md`, `index.mdx` ou
- * `index.<lang>.md` (Annexe F, stratégie 2 ; `<lang>` = `[a-z]{2}(-[A-Z]{2})?`) ?
+ * Le basename est-il un fichier index (§4.10) : `index.md` ou `index.<lang>.md`
+ * (Annexe F, stratégie 2 ; `<lang>` = `[a-z]{2}(-[A-Z]{2})?`) ? `index.mdx` n'en
+ * est plus un depuis la spec 2.17 : voir `isForbiddenIndexFile`.
  */
 export function isIndexFile(name: string): boolean {
   return INDEX_FILE.test(name);
 }
 
+/**
+ * `index.mdx` ou `index.<lang>.mdx` (§1.12, v2.17) : un fichier MDX est du code,
+ * jamais un fichier index — ni lu, ni porteur de dossier, mais refusé
+ * (`index-mdx-forbidden`).
+ */
+export function isForbiddenIndexFile(name: string): boolean {
+  return INDEX_MDX_FILE.test(name);
+}
+
 /** Fichier index par défaut — celui qui ne porte pas de langue. */
 export function isDefaultIndexFile(name: string): boolean {
-  return name === 'index.md' || name === 'index.mdx';
+  return name === 'index.md';
+}
+
+/**
+ * Extensions d'un contenu actif (§1.12, *Documents joints*, v2.17) — liste
+ * fermée, versionnée avec la spec : un navigateur les exécute ou les interprète.
+ */
+export const ACTIVE_CONTENT_EXTENSIONS: readonly string[] = [
+  'html', 'htm', 'xhtml', 'svg', 'svgz', 'xml', 'xsl', 'xslt', 'js', 'mjs',
+];
+const ACTIVE_CONTENT_EXTENSION_SET = new Set(ACTIVE_CONTENT_EXTENSIONS);
+
+/** L'extension du chemin (dernier point, casse ignorée) désigne-t-elle un contenu actif (§1.12) ? */
+export function isActiveContentPath(path: string): boolean {
+  return ACTIVE_CONTENT_EXTENSION_SET.has(extensionOf(path) ?? '');
 }

@@ -1,8 +1,10 @@
+import { MAX_READ_BYTES } from './bounds.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { decodeUtf8, parseFrontmatter } from './frontmatter.js';
 import { computeSnapshotId, verifyEntryBytes } from './hash.js';
-import { manifestEntryReferences, readImagesManifest } from './manifest.js';
+import { manifestEntryReferences, manifestEntryUrl, readImagesManifest } from './manifest.js';
+import type { ImagesManifestDocument } from './manifest.js';
 import {
   basename,
   classifyPath,
@@ -10,17 +12,24 @@ import {
   compareCanonical,
   dirname,
   isDefaultIndexFile,
+  isActiveContentPath,
   isExcluded,
+  isForbiddenIndexFile,
   isImagePath,
   isOriginalPath,
   isRelativeReference,
   isWithin,
   joinPath,
   normalizePath,
+  referenceProblem,
   resolveReference,
+  urlFieldProblem,
 } from './paths.js';
+import type { UrlFieldOptions, UrlFieldProblem } from './paths.js';
 import { indexFolders, primaryIndex } from './series.js';
 import { entryStructureError, snapshotStructureError } from './snapshot.js';
+import { preview, truncate } from '../preview.js';
+import { writtenDay } from '../written-date.js';
 import type { ContentSnapshot, Diagnostic, DiagnosticCode, ReadFn, Severity, SnapshotEntry } from './types.js';
 
 /** Racine de corpus soumise à validation (§4.10). */
@@ -49,7 +58,6 @@ export interface ValidateSnapshotOptions {
 }
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
 
 // Règle de la spec invoquée par chaque code, reportée dans `Diagnostic.rule`.
 const RULES: Partial<Record<DiagnosticCode, string>> = {
@@ -84,6 +92,13 @@ const RULES: Partial<Record<DiagnosticCode, string>> = {
   'images-json-invalid': '§1.5.1',
   'attachment-not-found': '§1.9',
   'embed-url-missing': '§1.11',
+  'gps-precision-excessive': '§1.12',
+  'attachment-active-content': '§1.12',
+  'private-type-invalid': '§1.12',
+  'private-key-suspect': '§1.12',
+  'index-mdx-forbidden': '§1.12',
+  'url-scheme-forbidden': '§1.12',
+  'reference-unsafe': '§1.12',
   'x-schema-invalid': '§2.1',
 };
 
@@ -94,6 +109,9 @@ const WARNINGS = new Set<DiagnosticCode>([
   'cover-not-found',
   'images-json-invalid',
   'attachment-not-found',
+  'gps-precision-excessive',
+  'attachment-active-content',
+  'private-key-suspect',
 ]);
 
 function diagnostic(code: DiagnosticCode, path: string, message: string): Diagnostic {
@@ -111,26 +129,44 @@ function field(data: Record<string, unknown>, key: string): unknown {
   return data[key] === null ? undefined : data[key];
 }
 
-/** Date ISO 8601 valide au sens de §4.10, règle 7 — calendrier et horloge compris. */
+/** Date ISO 8601 valide au sens de §4.10, règle 8 — calendrier et horloge compris. */
 function isIsoDate(value: unknown): boolean {
-  if (typeof value !== 'string') return false;
-  const m = ISO_DATE.exec(value);
-  if (m === null) return false;
-  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
-  const calendar = new Date(Date.UTC(year, month - 1, day));
-  if (calendar.getUTCFullYear() !== year || calendar.getUTCMonth() !== month - 1 || calendar.getUTCDate() !== day) {
-    return false;
-  }
-  const [hour, minute, second] = [m[4], m[5], m[6]].map((v) => (v === undefined ? 0 : Number(v))) as [number, number, number];
-  return hour <= 23 && minute <= 59 && second <= 59;
+  return typeof value === 'string' && writtenDay(value) !== null;
 }
 
-/** Entrées d'images d'un `images.json`, ou `null` s'il est invalide (§1.5.1). */
-function parseManifest(content: Uint8Array | string): readonly unknown[] | null {
+/** Clé qui ne diffère de `private` que par la casse, des espaces, `_` ou `-` (§4.10, règle 7). */
+function isPrivateLookalike(key: string): boolean {
+  return key !== 'private' && key.toLowerCase().replace(/[\s_-]/g, '') === 'private';
+}
+
+/** Valeur numérique qui n'égale pas son arrondi à deux décimales (§4.10, règle 18). */
+function hasExcessivePrecision(value: unknown): boolean {
+  return typeof value === 'number' && Math.abs(value - Math.round(value * 100) / 100) > 1e-9;
+}
+
+/** Contenu d'un `images.json`, ou `null` s'il est invalide (§1.5.1). */
+function parseManifest(content: Uint8Array | string): ImagesManifestDocument | null {
   const text = decodeUtf8(content);
   if (text === null) return null;
   const result = readImagesManifest(text);
-  return result.ok ? result.manifest.images : null;
+  return result.ok ? result.manifest : null;
+}
+
+const URL_PROBLEMS: Readonly<Record<UrlFieldProblem, string>> = {
+  'url-scheme-forbidden':
+    'forme d\'URL refusée : seuls un chemin relatif, un chemin absolu au site et `http:` ou `https:` sont admis (§1.12).',
+  'reference-unsafe':
+    'référence non sûre : `\\`, caractère de contrôle, `%2e`, `%2f`, `%5c` ou sortie de la racine du corpus (§1.12).',
+};
+
+/** Diagnostic d'une valeur de champ d'URL — message et valeur écrite, sans la décoder. */
+function urlProblemMessage(label: string, value: string, problem: UrlFieldProblem): string {
+  return `${label} ${JSON.stringify(truncate(value))} : ${URL_PROBLEMS[problem]}`;
+}
+
+/** Chemin d'une valeur dans le frontmatter, pour le message : `images[2].url`. */
+function fieldLabel(at: ReadonlyArray<string | number>): string {
+  return at.map((key, i) => (typeof key === 'number' ? `[${key}]` : i === 0 ? key : `.${key}`)).join('');
 }
 
 /** Le manifeste référence-t-il `target` (§4.10, règle 9) ? */
@@ -271,6 +307,8 @@ export async function validateSnapshot(
   // ── Lecture ───────────────────────────────────────────────────────────────
   // Seules les entrées matérialisées se lisent, et leurs octets se vérifient.
   const readable = (path: string) => (byPath.get(path)?.state ?? 'materialized') === 'materialized';
+  // Borne de §1.12, jugée sur la taille déclarée : un fichier trop gros n'est pas lu.
+  const oversize = (path: string) => (byPath.get(path) as SnapshotEntry).size > MAX_READ_BYTES;
   const readVerified = async (path: string): Promise<Uint8Array | string | null> => {
     const content = await options.read(path);
     if (await verifyEntryBytes(byPath.get(path) as SnapshotEntry, content)) return content;
@@ -280,6 +318,10 @@ export async function validateSnapshot(
   const indexPaths = [...folders.values()].flat();
   const parsed = await mapConcurrent(indexPaths, concurrency, async (path): Promise<ParsedIndex> => {
     const folder = dirname(path);
+    if (readable(path) && oversize(path)) {
+      push('frontmatter-invalid', path, `Frontmatter illisible : fichier de plus de ${MAX_READ_BYTES} octets, non lu (§1.12).`);
+      return { path, folder, data: null };
+    }
     const content = readable(path) ? await readVerified(path) : null;
     if (content === null) return { path, folder, data: null };
     const result = parseFrontmatter(content);
@@ -298,12 +340,33 @@ export async function validateSnapshot(
   const manifests = new Map<string, readonly unknown[] | null>();
   const manifestPaths = scoped.filter((e) => basename(e.path) === 'images.json' && readable(e.path)).map((e) => e.path);
   await mapConcurrent(manifestPaths, concurrency, async (path) => {
-    const content = await readVerified(path);
-    if (content === null) return;
-    const images = parseManifest(content);
+    let document: ImagesManifestDocument | null = null;
+    if (!oversize(path)) {
+      const content = await readVerified(path);
+      if (content === null) return;
+      document = parseManifest(content);
+    }
+    const images = document?.images ?? null;
     manifests.set(dirname(path), images);
+    if (document !== null) {
+      // Règles 15 et 17 sur les entrées du manifeste : le diagnostic porte sur `images.json`.
+      const folder = dirname(path);
+      const escapesRoot = (reference: string) => resolveReference(folder, reference) === null;
+      const check = (value: string | null, label: string, options: UrlFieldOptions = {}) => {
+        const problem = value === null ? null : urlFieldProblem(value, { ...options, escapesRoot });
+        if (value !== null && problem !== null) push(problem, path, urlProblemMessage(label, value, problem));
+      };
+      document.images.forEach((entry, i) => check(manifestEntryUrl(entry), `\`images[${i}]\``));
+      document.files?.forEach((entry, i) => {
+        check(isRecord(entry) && typeof entry.url === 'string' ? entry.url : null, `\`files[${i}].url\``);
+      });
+    }
     if (images === null) {
-      push('images-json-invalid', path, 'JSON illisible, racine non objet, ou clé `images` absente ou non tableau.');
+      push(
+        'images-json-invalid',
+        path,
+        'JSON illisible, bornes de lecture franchies (§1.12), racine non objet, ou clé `images` absente ou non tableau.',
+      );
     }
   });
 
@@ -318,7 +381,7 @@ export async function validateSnapshot(
       push('slug-invalid', folder, `« ${basename(folder)} » ne suit pas ^[a-z0-9]+(-[a-z0-9]+)*$.`);
     }
     if (!indexes.some((path) => isDefaultIndexFile(basename(path)))) {
-      push('index-default-missing', folder, 'Fichier index de langue sans `index.md` ni `index.mdx`.');
+      push('index-default-missing', folder, 'Fichier index de langue sans `index.md`.');
     }
     if (isSection(folder)) {
       const media = `${joinPath(folder, 'media')}/`;
@@ -335,6 +398,17 @@ export async function validateSnapshot(
     }
     if (seriesAncestors >= 2) {
       push('nesting-too-deep', folder, 'Série sous une sous-série : l\'imbrication est limitée à un niveau.');
+    }
+  }
+
+  // `index-mdx-forbidden` et règle 16 : le chemin seul décide, l'état de l'entrée
+  // n'y change rien et le fichier n'est pas lu.
+  for (const entry of scoped) {
+    if (entry.kind === 'content' && isForbiddenIndexFile(basename(entry.path))) {
+      push('index-mdx-forbidden', entry.path, 'MDX est du code exécutable : seul `index.md` (ou `index.<lang>.md`) porte une série (§1.12).');
+    }
+    if (entry.kind === 'media' && isActiveContentPath(entry.path)) {
+      push('attachment-active-content', entry.path, 'Document joint de contenu actif : à servir de façon isolée (§1.12).');
     }
   }
 
@@ -360,9 +434,20 @@ export async function validateSnapshot(
 
     const type = field(data, 'type');
     if (type !== undefined && type !== 'series' && type !== 'section') {
-      push('type-invalid', path, `\`type\` vaut « ${String(type)} » : attendu \`series\` ou \`section\`.`);
+      push('type-invalid', path, `\`type\` vaut « ${preview(type)} » : attendu \`series\` ou \`section\`.`);
     }
     const section = type === 'section';
+    const privateValue = field(data, 'private');
+    if (privateValue !== undefined && typeof privateValue !== 'boolean') {
+      push('private-type-invalid', path, '`private` doit être un booléen YAML (`true` ou `false`) : toute autre valeur est une erreur, jamais un contenu public.');
+    }
+    if (Object.keys(data).some(isPrivateLookalike)) {
+      push('private-key-suspect', path, 'Une clé ne diffère de `private` que par la casse, des espaces, `_` ou `-` : elle ne protège rien.');
+    }
+    const gps = isRecord(data.iptc) ? data.iptc.gps : undefined;
+    if (isRecord(gps) && (hasExcessivePrecision(gps.lat) || hasExcessivePrecision(gps.lng))) {
+      push('gps-precision-excessive', path, '`iptc.gps` a plus de 2 décimales (≈ 1,1 km) : une position précise publiée est irréversible (§1.12).');
+    }
     const title = field(data, 'title');
     if (typeof title !== 'string' || title.length === 0) push('title-missing', path, '`title` absent ou vide.');
     const date = field(data, 'date');
@@ -371,42 +456,75 @@ export async function validateSnapshot(
         push('date-missing', path, '`date` requise pour une série (une section se déclare `type: section`).');
       }
     } else if (!section && !isIsoDate(date)) {
-      push('date-invalid', path, `\`date\` n'est pas une date ISO 8601 valide : « ${String(date)} ».`);
+      push('date-invalid', path, `\`date\` n'est pas une date ISO 8601 valide : « ${preview(date)} ».`);
     }
+
+    // Règles 15 et 17 : une valeur refusée ne subit aucun autre contrôle, et un
+    // seul diagnostic la désigne. `flagged` retient les chemins des valeurs
+    // refusées pour que `x-schema-invalid` ne les redouble pas.
+    const flagged: Array<ReadonlyArray<string | number>> = [];
+    const escapesRoot = (reference: string) => resolveReference(folder, reference) === null;
+    const checkUrl = (value: unknown, at: ReadonlyArray<string | number>, options: UrlFieldOptions = {}): boolean => {
+      if (typeof value !== 'string') return false;
+      const problem = urlFieldProblem(value, { ...options, escapesRoot });
+      if (problem === null) return false;
+      push(problem, path, urlProblemMessage(`\`${fieldLabel(at)}\``, value, problem));
+      flagged.push(at);
+      return true;
+    };
 
     // Deux règles indépendantes, qui se cumulent (règle 10) : l'extension pour
     // `cover-not-image`, l'existence pour `cover-not-found`.
     const cover = field(data, 'cover');
-    if (typeof cover === 'string' && isRelativeReference(cover)) {
+    const coverRefused = checkUrl(cover, ['cover']);
+    if (!coverRefused && typeof cover === 'string' && isRelativeReference(cover)) {
       const target = resolveReference(folder, cover);
       const manifest = manifests.get(folder);
       if (!isImagePath(cover)) {
-        push('cover-not-image', path, `\`cover\` « ${cover} » ne désigne pas une image.`);
+        push('cover-not-image', path, `\`cover\` « ${truncate(cover)} » ne désigne pas une image.`);
       }
       if (
         target === null ||
         (!byPath.has(target) && !(Array.isArray(manifest) && manifestReferences(manifest, folder, target)))
       ) {
-        push('cover-not-found', path, `\`cover\` « ${cover} » introuvable.`);
+        push('cover-not-found', path, `\`cover\` « ${truncate(cover)} » introuvable.`);
       }
     }
 
-    if (field(data, 'images') !== undefined && byPath.has(joinPath(folder, 'images.json'))) {
+    const images = field(data, 'images');
+    if (images !== undefined && byPath.has(joinPath(folder, 'images.json'))) {
       push('images-conflict', path, '`images:` du frontmatter et `images.json` dans la même série.');
+    }
+    if (Array.isArray(images)) {
+      images.forEach((entry, i) => {
+        if (isRecord(entry)) checkUrl(entry.url, ['images', i, 'url']);
+        else checkUrl(entry, ['images', i]);
+      });
+    }
+    const files = field(data, 'files');
+    if (Array.isArray(files)) {
+      files.forEach((entry, i) => {
+        if (isRecord(entry)) checkUrl(entry.url, ['files', i, 'url']);
+      });
     }
 
     const attachments = field(data, 'attachments');
     if (Array.isArray(attachments)) {
       const mediaDir = joinPath(folder, 'media');
-      for (const attachment of attachments) {
+      for (const [i, attachment] of attachments.entries()) {
         const file = isRecord(attachment) ? attachment.file : undefined;
+        if (typeof file === 'string' && referenceProblem(file, escapesRoot) !== null) {
+          push('reference-unsafe', path, urlProblemMessage(`\`attachments[${i}].file\``, file, 'reference-unsafe'));
+          flagged.push(['attachments', i, 'file']);
+          continue;
+        }
         const target = typeof file === 'string' && isRelativeReference(file) ? resolveReference(folder, file) : null;
         if (target === null || dirname(target) !== mediaDir || !byPath.has(target)) {
-          push('attachment-not-found', path, `Pièce jointe « ${String(file)} » absente de \`media/\`.`);
+          push('attachment-not-found', path, `Pièce jointe « ${preview(file)} » absente de \`media/\`.`);
         } else if (isOriginalPath(target)) {
           // Un original n'est pas un document joint (§1.9, règle 12) : le
           // fichier existe, mais l'entrée ne désigne rien de publiable.
-          push('attachment-not-found', path, `Pièce jointe « ${String(file)} » : un original n'est pas un document joint.`);
+          push('attachment-not-found', path, `Pièce jointe « ${preview(file)} » : un original n'est pas un document joint.`);
         }
       }
     }
@@ -417,19 +535,28 @@ export async function validateSnapshot(
         if (!isRecord(embed) || typeof embed.url !== 'string' || embed.url === '') {
           push('embed-url-missing', path, `\`embeds[${i}]\` sans \`url\`.`);
         }
+        if (isRecord(embed)) {
+          checkUrl(embed.url, ['embeds', i, 'url'], { httpOnly: true });
+          checkUrl(embed.poster, ['embeds', i, 'poster']);
+        }
       });
     }
 
     // Le schéma du build, pour ce que le §4.10 ne code pas. `title`, `type`,
-    // les `embeds`, la `date` d'une série et les `null` (valent absents) sont
-    // déjà couverts. La `date` d'une section échappe au §4.10 mais pas au
+    // `private`, les `embeds`, la `date` d'une série et les `null` (valent
+    // absents) sont déjà couverts. La `date` d'une section échappe au §4.10 mais pas au
     // build : elle passe ici.
     if (options.astroSchema !== true) continue;
     const present = Object.fromEntries(Object.entries(data).filter(([, value]) => value !== null));
     const schema = (await loadSeriesSchema()).safeParse(present);
     if (!schema.success) {
-      const covered = new Set(section ? ['title', 'type', 'embeds'] : ['title', 'date', 'type', 'embeds']);
-      const issues = schema.error.issues.filter((issue) => !covered.has(String(issue.path[0])));
+      const covered = new Set(section ? ['title', 'type', 'private', 'embeds'] : ['title', 'date', 'type', 'private', 'embeds']);
+      const refused = (issue: { readonly path: ReadonlyArray<PropertyKey> }) =>
+        flagged.some((at) => {
+          const common = Math.min(at.length, issue.path.length);
+          return at.slice(0, common).every((key, i) => String(key) === String(issue.path[i]));
+        });
+      const issues = schema.error.issues.filter((issue) => !covered.has(String(issue.path[0])) && !refused(issue));
       if (issues.length > 0) {
         const detail = issues.map((issue) => `${issue.path.join('.') || '(racine)'} : ${issue.message}`).join(' ; ');
         push('x-schema-invalid', path, `Champs refusés par le schéma du build : ${detail}.`);

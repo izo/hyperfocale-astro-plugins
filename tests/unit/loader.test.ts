@@ -14,9 +14,11 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { LoaderContext } from 'astro/loaders';
 import { z } from 'zod';
-import { fallbackField, seriesLoader, stringifyTags } from '../../src/loader.js';
+import { fallbackField, readSeriesMedia, seriesLoader, stringifyTags } from '../../src/loader.js';
 import type { SeriesLoaderOptions, SeriesPrepare, SeriesPrepareContext } from '../../src/loader.js';
 import { baseSeriesSchema } from '../../src/schema.js';
+import { MAX_NESTING_DEPTH, MAX_NODES, MAX_READ_BYTES } from '../../src/ingest/bounds.js';
+import { resolveSeriesMedia } from '../../src/media.js';
 import { parseFrontmatter as parseCore } from '../../src/ingest/frontmatter.js';
 
 const FIXTURES = resolve(__dirname, '../fixtures/spec-ingestion');
@@ -557,6 +559,9 @@ function indexFolders(root: string, rel = ''): string[] {
 
 const CORPORA = readdirSync(join(FIXTURES, 'corpora')).filter((n) => statSync(join(FIXTURES, 'corpora', n)).isDirectory()).sort();
 
+/** Corpus dont un fichier index a un YAML illisible : le loader refuse de les lire. */
+const UNREADABLE = ['edge-duplicate-key', 'invalid-frontmatter-invalid'];
+
 describe('seriesLoader — rejeu des corpus de la spec (#135)', () => {
   it.each(CORPORA)('%s : exclude retire exactement les `type: section`, que prepare ne voit jamais', async (name) => {
     const root = join(FIXTURES, 'corpora', name);
@@ -569,12 +574,11 @@ describe('seriesLoader — rejeu des corpus de la spec (#135)', () => {
     }
     const sections = [...all].filter(([, s]) => s).map(([id]) => id);
 
+    // Seul un frontmatter illisible empêche la lecture (§4.10 frontmatter-invalid),
+    // clé dupliquée comprise (règle 6) — et il l'empêche toujours.
     const include = await load(name, {}, permissive).catch(() => null);
-    if (include === null) {
-      // Seul un frontmatter illisible empêche la lecture (§4.10 frontmatter-invalid).
-      expect(name).toBe('invalid-frontmatter-invalid');
-      return;
-    }
+    expect(include === null).toBe(UNREADABLE.includes(name));
+    if (include === null) return;
     expect([...include.entries.keys()].sort()).toEqual([...all.keys()].sort());
 
     const prepared: string[] = [];
@@ -722,3 +726,329 @@ describe('seriesLoader — rechargement incrémental du watcher (#158, PERF-010)
     expect(prepared.filter((id) => id === 'a')).toHaveLength(2);
   });
 });
+
+describe('seriesLoader — bornes de lecture (§1.12)', () => {
+  const head = '---\ntitle: A\ndate: 2024-01-01\n';
+
+  /** Charge un corpus d'un seul fichier index ; `prepare` rend l'identifiant vu. */
+  async function loadIndex(yaml: string, body = '') {
+    const dir = corpus({ 'a/index.md': `${head}${yaml}---\n${body}` });
+    const ctx = makeContext(ROOT, permissive);
+    const prepare = vi.fn<SeriesPrepare>((data) => data);
+    await seriesLoader({ base: dir, prepare }).load(ctx.context);
+    return { ctx, prepare };
+  }
+
+  const flowDeep = (collections: number) => `deep: ${'['.repeat(collections - 1)}${']'.repeat(collections - 1)}\n`;
+  // Une ancre de 20 collections, réutilisée sous `nesting` autres : chaque ligne reste sous la borne, pas leur somme.
+  const reuse = (nesting: number) =>
+    `deep: &d ${'['.repeat(20)}${']'.repeat(20)}\nlater: ${'['.repeat(nesting)}*d${']'.repeat(nesting)}\n`;
+
+  it('32 collections passent, 33 refusent le fichier avant que prepare ne le voie', async () => {
+    const { ctx } = await loadIndex(flowDeep(MAX_NESTING_DEPTH));
+    expect([...ctx.entries.keys()]).toEqual(['a']);
+
+    const dir = corpus({ 'a/index.md': `${head}${flowDeep(MAX_NESTING_DEPTH + 1)}---\n` });
+    const prepare = vi.fn<SeriesPrepare>((data) => data);
+    const failing = makeContext(ROOT, permissive);
+    await expect(seriesLoader({ base: dir, prepare }).load(failing.context)).rejects.toThrow(
+      /frontmatter illisible dans .*a\/index\.md — imbrication de plus de 32 collections/,
+    );
+    expect(prepare).not.toHaveBeenCalled();
+    expect(failing.entries.size).toBe(0);
+  });
+
+  it('la profondeur se mesure à travers les alias : une ancre réutilisée plus bas ne la contourne pas', async () => {
+    // racine + 11 + 20 = 32 collections, puis 33.
+    const { ctx } = await loadIndex(reuse(11));
+    expect(ctx.entries.size).toBe(1);
+    await expect(loadIndex(reuse(12))).rejects.toThrow(/imbrication de plus de 32 collections/);
+  });
+
+  it('plus de 100 000 nœuds : illisible, sans qu\'aucun alias y soit pour rien', async () => {
+    const flat = (count: number) => `a: [${Array(count).fill(1).join(',')}]\n`;
+    await expect(loadIndex(flat(MAX_NODES))).rejects.toThrow(/plus de 100000 nœuds/);
+  });
+
+  it('la bombe de la spec est refusée en quelques millisecondes, avec le chemin du fichier', async () => {
+    const names = 'abcdefghij';
+    const lines = [`a: &a [${Array(9).fill('"x"').join(',')}]`];
+    for (let i = 1; i < 10; i++) lines.push(`${names[i]}: &${names[i]} [${Array(9).fill(`*${names[i - 1]}`).join(',')}]`);
+    const started = performance.now();
+    await expect(loadIndex(`${lines.join('\n')}\n`)).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+
+  it('un alias circulaire et une clé dupliquée sont illisibles, chemin du fichier à l\'appui', async () => {
+    await expect(loadIndex('a: &a [*a]\n')).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+    await expect(loadIndex('title: B\n')).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+  });
+
+  it('plus de 1 Mio : illisible, quel que soit le poids du frontmatter', async () => {
+    await expect(loadIndex('', 'x'.repeat(MAX_READ_BYTES))).rejects.toThrow(
+      new RegExp(`frontmatter illisible dans .*a/index\\.md — fichier de plus de ${MAX_READ_BYTES} octets, non lu`),
+    );
+    const exact = `${head}---\n`;
+    const { ctx } = await loadIndex('', 'x'.repeat(MAX_READ_BYTES - exact.length));
+    expect(ctx.entries.size).toBe(1);
+  });
+
+  it('readSeriesMedia ne lit pas un images.json de plus de 1 Mio en entier ; le résolveur le déclare illisible', async () => {
+    const dir = corpus({ 'a/index.md': `${head}---\n`, 'a/media/01.jpg': 'jpg' });
+    writeFileSync(join(dir, 'a/images.json'), `{"images":["./media/01.jpg"],"pad":"${'x'.repeat(3 * MAX_READ_BYTES)}"}`);
+    const media = await readSeriesMedia(join(dir, 'a'));
+    expect(media.manifest).toHaveLength(MAX_READ_BYTES + 1);
+    const resolved = resolveSeriesMedia({ frontmatter: {}, ...media });
+    expect(resolved.diagnostics.map((d) => d.code)).toEqual(['images-json-invalid']);
+    expect(resolved.images.map((i) => i.path)).toEqual(['media/01.jpg']);
+  });
+});
+
+describe('seriesLoader — index.mdx interdit (§1.2, §1.12, v2.17)', () => {
+  const md = (title: string) => `---\ntitle: ${title}\ndate: 2024-01-01\n---\n`;
+  // Un MDX qui ferait échouer toute lecture : il n'est jamais ouvert.
+  const MDX = '---\ntitle: [illisible\n---\nimport Carte from \'../Carte.astro\'\n\n<Carte />\n';
+
+  it('un dossier qui ne porte qu\'un index.mdx ou index.<lang>.mdx n\'est pas un contenu', async () => {
+    const dir = corpus({ 'a/index.mdx': MDX, 'b/index.en.mdx': MDX, 'c/index.md': md('C') });
+    for (const [options, expected] of [
+      [{}, ['c']],
+      [{ locale: 'en' }, ['c']],
+      [{ locale: 'en', fallback: false }, []],
+    ] as const) {
+      const ctx = makeContext();
+      await seriesLoader({ base: dir, ...options }).load(ctx.context);
+      expect([...ctx.entries.keys()]).toEqual(expected);
+    }
+  });
+
+  it('index.md et index.mdx côte à côte : seul index.md est lu', async () => {
+    const dir = corpus({ 'a/index.md': md('Markdown'), 'a/index.mdx': MDX });
+    const ctx = makeContext();
+    await seriesLoader({ base: dir }).load(ctx.context);
+    expect(ctx.entries.get('a')?.data.title).toBe('Markdown');
+    expect(ctx.entries.get('a')?.filePath).toMatch(/a\/index\.md$/);
+  });
+
+  it('index.<locale>.mdx ne tient pas lieu de variante de langue : repli sur index.md, ou rien sans repli', async () => {
+    const dir = corpus({ 'a/index.md': md('Défaut'), 'a/index.en.mdx': MDX });
+    const withFallback = makeContext();
+    await seriesLoader({ base: dir, locale: 'en' }).load(withFallback.context);
+    expect(withFallback.entries.get('a')?.data.title).toBe('Défaut');
+    const without = makeContext();
+    await seriesLoader({ base: dir, locale: 'en', fallback: false }).load(without.context);
+    expect(without.entries.size).toBe(0);
+  });
+
+  it('corpus de la spec invalid-index-mdx-forbidden : seuls les index.md sont des entrées', async () => {
+    const { entries } = await load('invalid-index-mdx-forbidden');
+    expect([...entries.keys()]).toEqual(['series/bretagne-2024', 'series/normandie-2023']);
+    expect(entries.get('series/bretagne-2024')?.data.title).toBe('Bretagne 2024');
+    const en = await load('invalid-index-mdx-forbidden', { locale: 'en' });
+    expect(en.entries.get('series/normandie-2023')?.data.title).toBe('Normandie 2023');
+  });
+
+  it('le watcher ignore un index.mdx ajouté, modifié ou supprimé : ni lecture, ni rechargement', async () => {
+    const dir = corpus({ 'a/index.md': md('A') });
+    const ctx = makeContext();
+    const handlers = new Map<string, Array<(path: string) => Promise<void> | void>>();
+    (ctx.context as unknown as { watcher: unknown }).watcher = {
+      add: vi.fn(),
+      on: (event: string, handler: (path: string) => Promise<void> | void) => {
+        handlers.set(event, [...(handlers.get(event) ?? []), handler]);
+      },
+    };
+    await seriesLoader({ base: dir }).load(ctx.context);
+    const parsed = ctx.parseData.mock.calls.length;
+    mkdirSync(join(dir, 'n'));
+    writeFileSync(join(dir, 'n/index.mdx'), MDX);
+    for (const event of ['add', 'change', 'unlink']) {
+      for (const handler of handlers.get(event) ?? []) await handler(join(dir, 'n/index.mdx'));
+    }
+    expect([...ctx.entries.keys()]).toEqual(['a']);
+    expect(ctx.parseData.mock.calls.length).toBe(parsed);
+  });
+});
+
+describe('seriesLoader — `date` au jour écrit (§1.3)', () => {
+  const index = (date: string) => `---\ntitle: T\ndate: ${date}\n---\n`;
+  const dayOf = async (date: string, schema?: Schema) => {
+    const { entries } = await load2({ 'a/index.md': index(date) }, schema);
+    return (entries.get('a')!.data.date as Date).toISOString();
+  };
+  const load2 = async (files: Record<string, string>, schema?: Schema) => {
+    const ctx = makeContext(ROOT, schema);
+    await seriesLoader({ base: corpus(files) }).load(ctx.context);
+    return ctx;
+  };
+
+  it.each([
+    ['2024-06-01T23:30:00-05:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T00:30:00+02:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T22:00:00-02:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T23:30:00', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01T23:30:00Z', '2024-06-01T00:00:00.000Z'],
+    ['2024-06-01', '2024-06-01T00:00:00.000Z'],
+    ['"2024-06-01T23:30:00-05:00"', '2024-06-01T00:00:00.000Z'],
+    ["'2024-06-01T00:30:00+02:00'", '2024-06-01T00:00:00.000Z'],
+  ])('date: %s est le jour écrit', async (written, instant) => {
+    expect(await dayOf(written)).toBe(instant);
+  });
+
+  it('un site qui a son propre schéma `z.coerce.date()` reçoit le jour écrit', async () => {
+    const own = z.object({ title: z.string(), date: z.coerce.date() });
+    expect(await dayOf('2024-06-01T23:30:00-05:00', own as Schema)).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('`prepare` reçoit la date au jour écrit', async () => {
+    const seen: unknown[] = [];
+    const ctx = makeContext();
+    const prepare: SeriesPrepare = (frontmatter) => {
+      seen.push(frontmatter.date);
+      return frontmatter;
+    };
+    await seriesLoader({ base: corpus({ 'a/index.md': index('2024-06-01T23:30:00-05:00') }), prepare }).load(ctx.context);
+    expect(seen).toEqual([new Date('2024-06-01T00:00:00Z')]);
+  });
+
+  it('seule `date` est réécrite : les autres dates du frontmatter restent des instants', async () => {
+    const files = { 'a/index.md': '---\ntitle: T\ndate: 2024-06-01T23:30:00-05:00\nupdated: 2024-06-01T23:30:00-05:00\n---\n' };
+    const { entries } = await load2(files);
+    expect((entries.get('a')!.data.updated as Date).toISOString()).toBe('2024-06-02T04:30:00.000Z');
+  });
+
+  it('une clé `date` imbriquée n\'est pas prise pour la date de la série', async () => {
+    const files = { 'a/index.md': '---\ntitle: T\ndate: 2024-06-01T23:30:00-05:00\nproject:\n  date: 2030-01-01\n---\n' };
+    const { entries } = await load2(files);
+    expect((entries.get('a')!.data.date as Date).toISOString()).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it.each([
+    ['un commentaire', '2024-06-01T23:30:00-05:00 # écrit à Lima'],
+    ['des espaces autour', '   2024-06-01T23:30:00-05:00   '],
+  ])('date: %s', async (_, written) => {
+    expect(await dayOf(written)).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('fins de ligne CRLF', async () => {
+    const { entries } = await load2({ 'a/index.md': '---\r\ntitle: T\r\ndate: 2024-06-01T23:30:00-05:00\r\n---\r\n' });
+    expect((entries.get('a')!.data.date as Date).toISOString()).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('une `date:` dans le corps d\'un texte indenté n\'est pas lue', async () => {
+    const files = {
+      'a/index.md': '---\ntitle: T\ndescription: |\n  date: 2030-01-01\ndate: 2024-06-01T23:30:00-05:00\n---\n',
+    };
+    const { entries } = await load2(files);
+    expect((entries.get('a')!.data.date as Date).toISOString()).toBe('2024-06-01T00:00:00.000Z');
+  });
+
+  it('hors de la grammaire ISO 8601 de §4.10, la valeur lue par le parseur est laissée telle quelle', async () => {
+    expect(await dayOf('2024-06-01 23:30:00 -05:00')).toBe('2024-06-02T04:30:00.000Z');
+  });
+
+  // Le jour écrit se lit dans le scalaire que lit le YAML, pas dans une ligne de texte :
+  // toute écriture valide de la clé donne le même jour.
+  describe('toute écriture YAML valide de la clé', () => {
+    const WRITTEN = '2026-06-15T23:30:00-05:00';
+    const day = async (frontmatter: string) => {
+      const { entries } = await load2({ 'a/index.md': `---\n${frontmatter}\n---\n` });
+      return (entries.get('a')!.data.date as Date).toISOString();
+    };
+
+    it.each([
+      ['la forme simple', `title: T\ndate: ${WRITTEN}`],
+      ['clé entre guillemets doubles', `title: T\n"date": ${WRITTEN}`],
+      ['clé entre guillemets simples', `title: T\n'date': ${WRITTEN}`],
+      ['espace avant les deux-points', `title: T\ndate : ${WRITTEN}`],
+      ['plusieurs espaces après les deux-points', `title: T\ndate:     ${WRITTEN}`],
+      ['une ancre', `title: T\ndate: &d ${WRITTEN}`],
+      ['une clé explicite', `title: T\n? date\n: ${WRITTEN}`],
+      ['le style flux', `{title: T, date: ${WRITTEN}}`],
+      ['le style flux, valeur entre guillemets', `{title: T, "date": '${WRITTEN}'}`],
+      ['un alias de la valeur', `title: T\nwhen: &d ${WRITTEN}\ndate: *d`],
+      ['une valeur sur la ligne suivante', `title: T\ndate:\n  ${WRITTEN}`],
+      ['un commentaire en tête de ligne', `# écrit à Lima\ntitle: T\ndate: ${WRITTEN}`],
+    ])('%s : le jour écrit', async (_label, frontmatter) => {
+      expect(await day(frontmatter)).toBe('2026-06-15T00:00:00.000Z');
+    });
+
+    it('une seconde clé `date` imbriquée ou dans une liste ne change rien', async () => {
+      const yaml = `title: T\ndate: ${WRITTEN}\nliste:\n  - date: 2030-01-01\n  - {date: 2031-01-01}`;
+      expect(await day(yaml)).toBe('2026-06-15T00:00:00.000Z');
+    });
+
+    it('un texte de bloc qui ressemble à une ligne `date:` n\'est pas la clé', async () => {
+      const yaml = `title: T\nnote: |\n  date: 2030-01-01T00:00:00Z\ndate: ${WRITTEN}`;
+      expect(await day(yaml)).toBe('2026-06-15T00:00:00.000Z');
+    });
+
+    it('une étiquette `!!timestamp` est un frontmatter illisible, comme pour la validation', async () => {
+      const yaml = `title: T\ndate: !!timestamp ${WRITTEN}`;
+      await expect(day(yaml)).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md/);
+      expect(parseCore(`---\n${yaml}\n---\n`).status).toBe('invalid');
+    });
+  });
+
+  // Une longue suite d'espaces entre la date et l'heure est un horodatage YAML 1.1
+  // valide pour Astro ; aucune recherche de texte ne doit s'y emmêler.
+  it.each([80_000, 200_000])('un horodatage à %i espaces internes se charge sans retour arrière', async (spaces) => {
+    const written = `2026-06-15${' '.repeat(spaces)}10:00:00`;
+    const started = performance.now();
+    const { entries } = await load2({ 'a/index.md': `---\ntitle: T\ndate: ${written}\n---\n` }, z.object({ date: z.coerce.date() }).passthrough() as Schema);
+    expect(performance.now() - started).toBeLessThan(1500);
+    expect(entries.get('a')!.data.date).toBeInstanceOf(Date);
+  });
+
+  it('une entrée sans `date` reste sans `date`', async () => {
+    const ctx = makeContext(ROOT, baseSeriesSchema({ dateRequired: false }));
+    await seriesLoader({ base: corpus({ 'a/index.md': '---\ntitle: T\n---\n' }) }).load(ctx.context);
+    expect(ctx.entries.get('a')!.data.date).toBeUndefined();
+  });
+});
+
+describe('seriesLoader — clé de fusion YAML 1.1 (§1.12)', () => {
+  // Astro lit avec `merge: true` ; la validation lit en YAML 1.2 core. Le loader
+  // juge avec le lecteur de la validation : ce qu'elle ne voit pas, il ne le publie pas.
+  const permissiveSchema = z.object({}).passthrough() as Schema;
+  const load3 = async (frontmatter: string, options: Omit<SeriesLoaderOptions, 'base'> = {}) => {
+    const dir = corpus({ 'a/index.md': `---\n${frontmatter}\n---\n` });
+    const ctx = makeContext(ROOT, permissiveSchema);
+    await seriesLoader({ base: dir, ...options }).load(ctx.context);
+    return ctx;
+  };
+
+  it.each([
+    ['private: true'],
+    ['cover: ../../../etc/x.jpg'],
+    ['cover: "javascript:alert(1)"'],
+    ['type: section'],
+    ['iptc: {gps: {lat: 48.123456, lng: -4.123456}}'],
+  ])('« %s » caché par `<<` : fichier illisible, chemin à l\'appui', async (hidden) => {
+    const yaml = `title: T\ndate: 2024-01-01\nx: &g\n  ${hidden}\n<<: *g`;
+    await expect(load3(yaml)).rejects.toThrow(/frontmatter illisible dans .*a\/index\.md — clé de fusion/);
+  });
+
+  it('la fusion est refusée avant prepare, et même pour une rubrique que `sections: exclude` écarterait', async () => {
+    const prepare = vi.fn<SeriesPrepare>((data) => data);
+    const yaml = 'title: T\ng: &g {type: section}\n<<: *g';
+    await expect(load3(yaml, { sections: 'exclude', prepare })).rejects.toThrow(/clé de fusion/);
+    expect(prepare).not.toHaveBeenCalled();
+  });
+
+  it('un autre fichier du corpus n\'est pas touché par le refus d\'un seul : l\'erreur dit lequel', async () => {
+    const dir = corpus({
+      'ok/index.md': '---\ntitle: T\n---\n',
+      'mauvais/index.md': '---\ntitle: T\ng: &g {a: 1}\n<<: *g\n---\n',
+    });
+    await expect(seriesLoader({ base: dir }).load(makeContext(ROOT, permissiveSchema).context)).rejects.toThrow(
+      /mauvais\/index\.md/,
+    );
+  });
+
+  it('les alias ordinaires restent lus', async () => {
+    const { entries } = await load3('title: T\nbase: &b {w: 1}\nautre: *b');
+    expect(entries.get('a')!.data.autre).toEqual({ w: 1 });
+  });
+});
+

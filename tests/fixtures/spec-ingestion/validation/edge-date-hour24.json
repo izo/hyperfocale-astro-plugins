@@ -1,0 +1,17 @@
+{
+  "description": "L'heure 24 n'est pas valide (heures 00–23, §4.10, règle 8) : `date-invalid`.",
+  "corpus": "edge-date-hour24",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "date-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

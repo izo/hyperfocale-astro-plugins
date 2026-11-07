@@ -137,9 +137,11 @@ describe('/media et /loader (#130)', () => {
   });
 
   // Sur dist/ : l'exemple JSDoc de la source porte des `import` que le scanner prendrait au mot.
-  it('dist/loader.js ne dépend que de Node et d\'astro/markdown (après build)', () => {
+  // js-yaml : le lecteur de la validation, dont le loader se sert pour refuser ce que la
+  // validation refuse et pour lire la date telle qu'écrite (dépendance déclarée du paquet).
+  it('dist/loader.js ne dépend que de Node, d\'astro/markdown et de js-yaml (après build)', () => {
     const { external } = graph(resolve(ROOT, 'dist/loader.js'), fromDist);
-    expect([...external.keys()].filter((s) => !isNode(s)).sort()).toEqual(['astro/markdown']);
+    expect([...external.keys()].filter((s) => !isNode(s)).sort()).toEqual(['astro/markdown', 'js-yaml']);
   });
 
   it('l\'intégration Astro ne charge ni /media ni /loader', () => {

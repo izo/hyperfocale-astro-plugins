@@ -1,0 +1,22 @@
+{
+  "description": "`iptc.gps` à plus de 2 décimales (§1.12, règle 18) : `bretagne-2024` (4 décimales sur les deux) et `normandie-2023` (3 décimales sur `lng` seulement) produisent un `warning`. `alsace-2022` (2 décimales), `loire-2021` (entier et 1 décimale) n'en produisent aucun ; `provence-2020` écrit ses coordonnées en chaînes : ignorées.",
+  "corpus": "invalid-gps-precision-excessive",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "gps-precision-excessive",
+      "severity": "warning",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "gps-precision-excessive",
+      "severity": "warning",
+      "path": "series/normandie-2023/index.md"
+    }
+  ]
+}

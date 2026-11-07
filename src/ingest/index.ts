@@ -34,19 +34,24 @@ export { ENTRY_KINDS, PUBLICATION_STATES } from './types.js';
 export { isPublicationTransition } from './publication.js';
 
 export {
+  ACTIVE_CONTENT_EXTENSIONS,
   classifyPath,
   collisionKey,
   compareCanonical,
   IMAGE_EXTENSIONS,
+  isActiveContentPath,
   isExcluded,
+  isForbiddenIndexFile,
   isImagePath,
   isIndexFile,
   isOriginalEntry,
   isOriginalPath,
   normalizePath,
   ORIGINAL_EXTENSIONS,
+  referenceProblem,
+  urlFieldProblem,
 } from './paths.js';
-export type { ExclusionRule, NormalizedPath } from './paths.js';
+export type { ExclusionRule, NormalizedPath, UrlFieldOptions, UrlFieldProblem } from './paths.js';
 
 export {
   DROPBOX_BLOCK_SIZE,
@@ -66,8 +71,8 @@ export type { CreateSnapshotOptions, SnapshotFormatErrorCode } from './snapshot.
 export { diffSnapshots } from './diff.js';
 export { validateSnapshot } from './validate.js';
 export type { ValidateSnapshotOptions, ValidationRoot } from './validate.js';
-export { guardChangeSet } from './guard.js';
-export type { GuardOptions, GuardPolicy, GuardSide } from './guard.js';
+export { DEFAULT_GUARD_POLICY, guardChangeSet, resolveGuardPolicy } from './guard.js';
+export type { GuardOptions, GuardPolicy, GuardSide, ResolvedGuardPolicy } from './guard.js';
 export { summarizeChangeSet } from './summary.js';
 export type { ChangeSetSummary, MovedSeries } from './summary.js';
 export { buildImagesManifest } from './manifest.js';
@@ -79,3 +84,13 @@ export { memoizeRead } from './concurrency.js';
 export type { QuiescenceOptions, QuiescenceResult } from './quiescence.js';
 export { parseFrontmatter } from './frontmatter.js';
 export type { FrontmatterResult } from './frontmatter.js';
+export {
+  MAX_EXPANDED_TEXT,
+  MAX_NESTING_DEPTH,
+  MAX_NODES,
+  MAX_READ_BYTES,
+  exceedsReadBytes,
+  jsonExceedsDepth,
+  measureStructure,
+} from './bounds.js';
+export type { BoundViolation, MeasureOptions } from './bounds.js';

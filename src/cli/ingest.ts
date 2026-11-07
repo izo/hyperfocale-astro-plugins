@@ -18,6 +18,7 @@ import {
   validateSnapshot,
 } from '../ingest/index.js';
 import type { ContentSnapshot, Diagnostic, ValidationRoot } from '../ingest/index.js';
+import { finalizeDiagnostics } from '../ingest/diff.js';
 import { FilesystemProvider } from '../ingest/fs.js';
 import { EXIT, type CliIO } from './io.js';
 
@@ -103,17 +104,18 @@ async function snapshotDirectory(dir: string, ignore: readonly string[]) {
     complete: listing.complete,
     source: { provider: 'filesystem' },
   });
-  return { provider, snapshot };
+  return { provider, snapshot, listed: listing.diagnostics ?? [] };
 }
 
 async function validate(args: Parsed, io: CliIO): Promise<number> {
   const dir = resolve(io.cwd, args.positional[0] as string);
-  const { provider, snapshot } = await snapshotDirectory(dir, args.ignore);
-  const diagnostics = await validateSnapshot(snapshot, {
+  const { provider, snapshot, listed } = await snapshotDirectory(dir, args.ignore);
+  const validated = await validateSnapshot(snapshot, {
     read: (path) => provider.read(path),
     ...(args.roots.length > 0 ? { roots: args.roots } : {}),
     astroSchema: args.astroSchema,
   });
+  const diagnostics = finalizeDiagnostics([...listed, ...validated]);
   if (args.json) {
     io.stdout(
       `${JSON.stringify({ snapshot: snapshot.id, complete: snapshot.complete, entries: snapshot.entries.length, diagnostics }, null, 2)}\n`,
@@ -131,8 +133,13 @@ async function validate(args: Parsed, io: CliIO): Promise<number> {
 }
 
 async function snapshot(args: Parsed, io: CliIO): Promise<number> {
-  const { snapshot } = await snapshotDirectory(resolve(io.cwd, args.positional[0] as string), args.ignore);
+  const { snapshot, listed } = await snapshotDirectory(resolve(io.cwd, args.positional[0] as string), args.ignore);
   const json = `${JSON.stringify(snapshot, null, 2)}\n`;
+  // Les diagnostics du listing (`entry-symlink`…) vont dans le JSON de stdout quand
+  // la commande en rend un — `-o fichier --json` — pour qu'un script les lise comme
+  // ceux de `validate --json`. Sans `-o`, stdout est le snapshot lui-même, qui n'a
+  // pas de champ pour eux : ils restent sur stderr, en texte.
+  const diagnosticsInJson = args.output !== undefined && args.json;
   if (args.output === undefined) {
     io.stdout(json);
   } else {
@@ -140,10 +147,11 @@ async function snapshot(args: Parsed, io: CliIO): Promise<number> {
     writeFileSync(output, json, 'utf-8');
     io.stdout(
       args.json
-        ? `${JSON.stringify({ output: args.output, snapshot: snapshot.id, complete: snapshot.complete, entries: snapshot.entries.length }, null, 2)}\n`
+        ? `${JSON.stringify({ output: args.output, snapshot: snapshot.id, complete: snapshot.complete, entries: snapshot.entries.length, diagnostics: listed }, null, 2)}\n`
         : `[hyperfocale] ✓ ${args.output} — ${snapshot.entries.length} entrées, ${snapshot.id}\n`,
     );
   }
+  if (listed.length > 0 && !diagnosticsInJson) io.stderr(formatDiagnostics(listed));
   if (!snapshot.complete) {
     io.stderr('[hyperfocale] ✗ snapshot-incomplete : une lecture a échoué, le snapshot est impubliable.\n');
     return EXIT.diagnostics;

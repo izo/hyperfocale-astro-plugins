@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import type { SchemaContext } from 'astro:content';
+import { isIsoCountryCode } from './iso-countries.js';
+import { isUnsafeReferenceText, urlFieldProblem } from './url-forms.js';
+import type { UrlFieldOptions } from './url-forms.js';
+import { writtenDate } from './written-date.js';
 
 /**
  * Options de génération du schéma series.
@@ -26,6 +30,26 @@ export const CONTENT_TYPES = ['series', 'section'] as const;
 /** Nature d'un contenu (spec §1.10). */
 export type ContentType = (typeof CONTENT_TYPES)[number];
 
+const LAT_MESSAGE = 'La latitude est comprise entre -90 et 90 (spec Annexe A).';
+const LNG_MESSAGE = 'La longitude est comprise entre -180 et 180 (spec Annexe A).';
+
+/** `iptc.gps` : bornes de l'Annexe A, incluses (`z.number()` refuse déjà `NaN` et l'infini). */
+const gpsSchema = z.object({
+  lat: z.number().min(-90, LAT_MESSAGE).max(90, LAT_MESSAGE),
+  lng: z.number().min(-180, LNG_MESSAGE).max(180, LNG_MESSAGE),
+});
+
+/** `iptc.country_code` : un code ISO 3166-1 alpha-2 attribué, en majuscules (spec §1.3, Annexe A). */
+const countryCodeSchema = z.string().check((ctx) => {
+  if (!isIsoCountryCode(ctx.value)) {
+    ctx.issues.push({
+      code: 'custom',
+      input: ctx.value,
+      message: 'Code pays ISO 3166-1 alpha-2 attendu, en majuscules : `FR`, non `fr`, `FRA` ni `UK` (spec Annexe A).',
+    });
+  }
+});
+
 /** Schéma du bloc `iptc.*` (spec §1.3). */
 const iptcSchema = z.looseObject({
   creator: z.string().optional(),
@@ -35,15 +59,46 @@ const iptcSchema = z.looseObject({
   city: z.string().optional(),
   province: z.string().optional(),
   country: z.string().optional(),
-  country_code: z.string().optional(),
+  country_code: countryCodeSchema.optional(),
   camera: z.string().optional(),
   lens: z.string().optional(),
   film: z.string().optional(),
   headline: z.string().optional(),
   instructions: z.string().optional(),
   source: z.string().optional(),
-  gps: z.object({ lat: z.number(), lng: z.number() }).optional(),
+  gps: gpsSchema.optional(),
 });
+
+const URL_MESSAGES = {
+  'url-scheme-forbidden':
+    'URL hors des formes admises : chemin relatif, chemin absolu au site, `http:` ou `https:` (spec §1.12).',
+  'reference-unsafe': 'Référence non sûre : `\\`, caractère de contrôle, `%2e`, `%2f` ou `%5c` (spec §1.12).',
+} as const;
+
+/**
+ * Champ d'URL du core (spec §1.12, *Schémas d'URL*) : une chaîne non vide d'une
+ * forme admise — chemin relatif sûr, chemin absolu au site, `http:` ou
+ * `https:` — et rien d'autre. Liste blanche : `javascript:`, `data:`, `file:`,
+ * `//hôte`, `\`, caractère de contrôle ou espace initiale sont refusés, pour
+ * ce que `z.url()` laisse passer ou ne sait pas dire. La valeur se lit telle
+ * qu'écrite. La sortie du corpus par des `..` dépend du dossier de l'index :
+ * la validation d'ingestion la juge, pas ce schéma.
+ */
+function urlField(options: UrlFieldOptions = {}) {
+  return z.string().min(1).check((ctx) => {
+    const problem = urlFieldProblem(ctx.value, options);
+    if (problem !== null) ctx.issues.push({ code: 'custom', input: ctx.value, message: URL_MESSAGES[problem] });
+  });
+}
+
+/** Référence de fichier (§1.12, *Références de fichiers*) : le texte ne porte ni `\`, ni contrôle, ni `%2e` `%2f` `%5c`. */
+function referenceField() {
+  return z.string().check((ctx) => {
+    if (isUnsafeReferenceText(ctx.value)) {
+      ctx.issues.push({ code: 'custom', input: ctx.value, message: URL_MESSAGES['reference-unsafe'] });
+    }
+  });
+}
 
 /**
  * Schéma d'une image — forme longue de §1.5 / §1.5.1, `url` requis.
@@ -51,11 +106,11 @@ const iptcSchema = z.looseObject({
  * `url` suit la *Résolution des URLs* de §1.5.1 : URL absolue, chemin absolu au
  * site, ou chemin relatif au fichier index (`./media/01.jpg`). La spec 2.12
  * l'étend explicitement aux entrées de `images:` — c'est là que s'écrit un
- * ordre éditorial dans une source distante —, d'où une chaîne non vide plutôt
- * qu'un `z.url()`, qui refusait toute forme relative.
+ * ordre éditorial dans une source distante —, d'où `urlField` plutôt qu'un
+ * `z.url()`, qui refusait toute forme relative.
  */
 const remoteImageSchema = z.object({
-  url: z.string().min(1),
+  url: urlField(),
   alt: z.string().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
@@ -66,7 +121,7 @@ const remoteImageSchema = z.object({
  * Permet de curer l'ordre et les `alt` d'images locales sans passer par `image()`.
  */
 const localFileImageSchema = z.object({
-  file: z.string(),
+  file: referenceField(),
   alt: z.string().optional(),
 });
 
@@ -76,7 +131,8 @@ const localFileImageSchema = z.object({
  * garantie ici : le reste (width, height, format) transite en passthrough.
  */
 const localAssetImageSchema = z.object({
-  src: z.looseObject({ src: z.string() }),
+  // `src.src` est un chemin servi par le site (`/_astro/…`) ou une URL : §1.12 le juge comme tout champ d'URL.
+  src: z.looseObject({ src: urlField() }),
   alt: z.string().optional(),
 });
 
@@ -93,7 +149,7 @@ const localAssetImageSchema = z.object({
  */
 const imageEntrySchema = z.union([
   // Forme courte (§1.5.1) : une chaîne équivaut à `{ url: <chaîne> }`.
-  z.string().min(1),
+  urlField(),
   remoteImageSchema,
   localFileImageSchema,
   localAssetImageSchema,
@@ -156,16 +212,26 @@ const projectSchema = z.looseObject({
 
 /** Métadonnées optionnelles d'un document joint local — bloc `attachments:` (spec §1.9). */
 const attachmentMetaSchema = z.object({
-  file: z.string(),
+  file: referenceField(),
   title: z.string().optional(),
   description: z.string().optional(),
 });
 
 /**
  * URL absolue en `http(s)` — `embeds[].url` et `files[].url` finissent dans un
- * `href` : `javascript:`, `data:` et les autres schémas sont refusés (#152).
+ * `href` : `javascript:`, `data:` et les autres schémas sont refusés (#152). Le
+ * contrôle de §1.12 porte sur la valeur telle qu'écrite, donc avant `z.url()`,
+ * qui lit comme un navigateur — il rogne une espace initiale et retire les
+ * tabulations et sauts de ligne — et rendrait propre ce que la spec refuse.
  */
-const httpUrl = z.url({ protocol: /^https?$/ });
+const httpUrl = z
+  .string()
+  .check((ctx) => {
+    if (urlFieldProblem(ctx.value, { httpOnly: true }) !== null) {
+      ctx.issues.push({ code: 'custom', input: ctx.value, message: URL_MESSAGES['url-scheme-forbidden'] });
+    }
+  })
+  .pipe(z.url({ protocol: /^https?$/ }));
 
 /** Schéma d'un document joint en mode distant — champ `files[]` (spec §1.9). */
 const remoteFileSchema = z.object({
@@ -208,10 +274,45 @@ const embedSchema = z.object({
   description: z.string().optional(),
   // Résolue comme une entrée de manifeste (§1.5.1) : URL absolue, chemin absolu
   // au site, ou chemin relatif à `index.md`.
-  poster: z.string().optional(),
+  poster: urlField().optional(),
   width: z.number().optional(),
   height: z.number().optional(),
 });
+
+/**
+ * Règle 7 de §4.10 : une clé de valeur `null` vaut absente (`private:` sans
+ * valeur, `date: null`). Sans cela, le build refuse `private: null` que
+ * l'ingestion accepte, et — pire — `date: null` devient le 1er janvier 1970 au
+ * lieu de manquer.
+ */
+const absentIfNull = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === null ? undefined : value), schema);
+
+/**
+ * `date` du core (§1.3) : le jour **écrit**, sans conversion de fuseau. Une
+ * chaîne ISO 8601 valide devient ce jour à minuit UTC — l'heure est ignorée —,
+ * là où `z.coerce.date()` en ferait un instant dont le jour UTC peut être la
+ * veille ou le lendemain (`2026-06-15T23:30:00-05:00` est le 15 juin). Un `Date`
+ * déjà construit a perdu son fuseau d'écriture : il est pris tel quel.
+ *
+ * Refusés, comme `date-invalid` (§4.10, règle 8) les refuse à l'ingestion : une
+ * chaîne de forme ISO que le calendrier n'a pas (`2024-02-30`, que
+ * `z.coerce.date()` lisait le 1er mars) et un nombre (`20240101`, lu le 5
+ * janvier 1970). `null` vaut absente (règle 7, `absentIfNull`), non 1970. Un texte libre qui n'a pas la
+ * forme ISO (`June 1, 2024 12:00:00 UTC`) garde la lecture de `Date`, pour ne
+ * pas casser un site qui s'y fie : la validation d'ingestion, elle, le refuse.
+ */
+const frontmatterDate = z.preprocess(
+  (value) => {
+    if (typeof value !== 'string') return value;
+    const written = writtenDate(value);
+    if (written !== null) return written;
+    // Forme `AAAA-MM-JJ…` que le calendrier ou l'horloge refuse : jamais relue comme un autre jour.
+    if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value;
+    return new Date(value);
+  },
+  z.date({ error: 'La date doit être une date ISO 8601 valide du calendrier, par exemple 2024-06-15 (§1.3).' }),
+);
 
 /**
  * Schéma de base sans `cover` — utilisable sans `SchemaContext` (#DATA-004).
@@ -237,44 +338,44 @@ const embedSchema = z.object({
 export function baseSeriesSchema(options: SeriesSchemaOptions = {}) {
   const { dateRequired = true } = options;
   const schema = z.looseObject({
-    type: z.enum(CONTENT_TYPES).default('series'),
+    type: absentIfNull(z.enum(CONTENT_TYPES).default('series')),
     title: z.string(),
     // `date` est déclarée optionnelle ici, puis rendue obligatoire par le
     // `check` ci-dessous : une page d'index de section (§1.10) n'est pas datée,
     // là où une série l'est. Un champ ne pouvant être requis conditionnellement
     // dans un shape Zod, l'arbitrage se fait après coup — et `.check()` survit
     // à `.extend()`, ce dont dépend l'API d'extension (#DATA-004).
-    date: z.coerce.date().optional(),
-    description: z.string().optional(),
-    location: z.string().optional(),
-    lang: z.string().optional(),
+    date: absentIfNull(frontmatterDate.optional()),
+    description: absentIfNull(z.string().optional()),
+    location: absentIfNull(z.string().optional()),
+    lang: absentIfNull(z.string().optional()),
     // `published` est déprécié : `published: false` fait exactement ce que fait
     // `draft: true`, en logique inverse. La spec §0.5 le relève depuis la v2.1
     // comme « extension plugin, redondant avec `draft`, à arbitrer » ; l'arbitrage
     // est fait. Le champ reste accepté et agissant — un site qui l'emploie ne
     // casse pas — avec un avertissement au build, et sera retiré en 1.0.
-    published: z.boolean().default(true),
-    draft: z.boolean().default(false),
-    featured: z.boolean().default(false),
-    tags: z.array(z.string()).default([]),
+    published: absentIfNull(z.boolean().default(true)),
+    draft: absentIfNull(z.boolean().default(false)),
+    featured: absentIfNull(z.boolean().default(false)),
+    tags: absentIfNull(z.array(z.string()).default([])),
     // Tri d'une sous-série dans le line-up de son conteneur (spec §1.8).
     // Absent, la sous-série se range par date décroissante.
-    lineup_order: z.number().optional(),
-    alt_description: z.string().optional(),
-    private: z.boolean().default(false),
-    download: z.boolean().default(false),
-    iptc: iptcSchema.optional(),
-    images: z.array(imageEntrySchema).optional(),
-    attachments: z.array(attachmentMetaSchema).optional(),
-    files: z.array(remoteFileSchema).optional(),
+    lineup_order: absentIfNull(z.number().optional()),
+    alt_description: absentIfNull(z.string().optional()),
+    private: absentIfNull(z.boolean().default(false)),
+    download: absentIfNull(z.boolean().default(false)),
+    iptc: absentIfNull(iptcSchema.optional()),
+    images: absentIfNull(z.array(imageEntrySchema).optional()),
+    attachments: absentIfNull(z.array(attachmentMetaSchema).optional()),
+    files: absentIfNull(z.array(remoteFileSchema).optional()),
     // Médias hébergés chez un tiers et joués dans la page (spec §1.11). À ne pas
     // confondre avec `attachments`/`files`, qui désignent des fichiers dont on
     // sert l'octet : la frontière est l'emplacement du fichier, pas la nature
     // du média.
-    embeds: z.array(embedSchema).optional(),
+    embeds: absentIfNull(z.array(embedSchema).optional()),
     // Données de gestion du profil Projet (spec G.12). Un dossier de travail
     // ne se publie pas tel quel : un adaptateur web ne DOIT PAS rendre ce bloc.
-    project: projectSchema.optional(),
+    project: absentIfNull(projectSchema.optional()),
   });
 
   if (!dateRequired) return schema;
@@ -401,7 +502,8 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number];
  * `poster` est résolu : `ImageMetadata` pour un fichier de `media/` traité par
  * Astro, chaîne pour une URL distante, `undefined` si absent ou introuvable.
  * `playable` dit si un lecteur peut être construit — c'est-à-dire si `platform`
- * est connue **et** `id` présent. Faux, le consommateur rend un lien.
+ * est connue **et** `id` conforme à `^[A-Za-z0-9_-]{1,128}$` (§1.12). Faux, le
+ * consommateur rend un lien.
  */
 export interface Embed {
   url: string;

@@ -1,0 +1,32 @@
+{
+  "description": "Références relatives non sûres (§1.12, règle 17) : `cover` qui remonte hors de la racine du corpus (`bretagne-2024`), `attachments[].file` à antislashs (`normandie-2023`), `embeds[].poster` à `%2e%2e` (`alsace-2022`), entrée relative de `images.json` qui sort de la racine (`loire-2021`). Une référence non sûre ne produit ni `cover-not-found` ni `attachment-not-found`. `provence-2020` remonte d'un dossier mais reste sous la racine et désigne un fichier existant : aucun diagnostic.",
+  "corpus": "invalid-reference-unsafe",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "reference-unsafe",
+      "severity": "error",
+      "path": "series/alsace-2022/index.md"
+    },
+    {
+      "code": "reference-unsafe",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "reference-unsafe",
+      "severity": "error",
+      "path": "series/loire-2021/images.json"
+    },
+    {
+      "code": "reference-unsafe",
+      "severity": "error",
+      "path": "series/normandie-2023/index.md"
+    }
+  ]
+}

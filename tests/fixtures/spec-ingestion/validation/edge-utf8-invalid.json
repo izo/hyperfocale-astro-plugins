@@ -1,0 +1,17 @@
+{
+  "description": "Des octets qui ne forment pas de l'UTF-8 valide (`ff fe c3 28`, dans le body) rendent le fichier illisible (§4.10, règle 4) : `frontmatter-invalid`. Le corpus est sur disque : ces octets sont inexprimables dans un JSON.",
+  "corpus": "edge-utf8-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "frontmatter-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    }
+  ]
+}

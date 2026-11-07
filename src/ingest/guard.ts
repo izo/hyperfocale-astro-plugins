@@ -1,3 +1,4 @@
+import { MAX_READ_BYTES } from './bounds.js';
 import { mapConcurrent } from './concurrency.js';
 import { finalizeDiagnostics } from './diff.js';
 import { parseFrontmatter } from './frontmatter.js';
@@ -5,22 +6,101 @@ import { verifyEntryBytes } from './hash.js';
 import { basename, compareCanonical, dirname, isIndexFile, isOriginalEntry } from './paths.js';
 import { indexFolders } from './series.js';
 import { countKind } from './snapshot.js';
+import { ENTRY_KINDS } from './types.js';
 import type { ContentChangeSet, ContentSnapshot, Diagnostic, EntryKind, SnapshotEntry } from './types.js';
 
 /**
  * Seuils de la garde de publication (§4.11), tous facultatifs. Le mécanisme
- * est générique, les seuils appartiennent au consumer ; un seuil absent
- * désactive son contrôle.
+ * est générique, les seuils appartiennent au consumer. Un seuil **absent**
+ * prend sa valeur par défaut (`DEFAULT_GUARD_POLICY`) ; le consumer le
+ * désactive explicitement en le déclarant `null`.
  */
 export interface GuardPolicy {
-  /** Au-delà de ce nombre de séries supprimées : `guard-mass-deletion`. */
-  readonly maxDeletedSeries?: number;
-  /** Au-delà de cette fraction (0–1) des médias de base supprimés : `guard-mass-deletion`. */
-  readonly maxDeletedMediaRatio?: number;
-  /** Au-delà de ce nombre de séries déplacées : `guard-mass-move` (warning). */
-  readonly maxMovedSeries?: number;
-  /** Taille maximale par classe d'entrée, en octets : `guard-oversize`. */
-  readonly maxFileBytes?: Partial<Record<EntryKind, number>>;
+  /** Au-delà de ce nombre de séries supprimées : `guard-mass-deletion`. Défaut 10. */
+  readonly maxDeletedSeries?: number | null;
+  /** Au-delà de cette fraction (0–1) des médias de base supprimés : `guard-mass-deletion`. Défaut 0,25. */
+  readonly maxDeletedMediaRatio?: number | null;
+  /** Au-delà de ce nombre de séries déplacées : `guard-mass-move` (warning). Défaut 10. */
+  readonly maxMovedSeries?: number | null;
+  /**
+   * Taille maximale par classe d'entrée, en octets : `guard-oversize`. Défaut
+   * 1 Mio pour `content` et `derived`, aucun plafond pour `media` et `other`.
+   * Chaque classe se désactive à part (`{ content: null }`), ou toutes à la
+   * fois (`maxFileBytes: null`).
+   */
+  readonly maxFileBytes?: Partial<Record<EntryKind, number | null>> | null;
+}
+
+/** Seuils effectifs de la garde : aucune valeur absente, `null` pour un contrôle inactif. */
+export interface ResolvedGuardPolicy {
+  readonly maxDeletedSeries: number | null;
+  readonly maxDeletedMediaRatio: number | null;
+  readonly maxMovedSeries: number | null;
+  readonly maxFileBytes: Readonly<Record<EntryKind, number | null>>;
+}
+
+/**
+ * Seuils appliqués quand la politique n'en dit rien (§4.11, v2.17) : les
+ * défauts bornent le cas où personne n'a rien configuré, pour qu'un runner non
+ * surveillé ne publie pas sans limite. `content` et `derived` reprennent la
+ * borne de lecture (§1.12) ; le poids d'un média dépend de l'usage.
+ */
+export const DEFAULT_GUARD_POLICY: ResolvedGuardPolicy = Object.freeze({
+  maxDeletedSeries: 10,
+  maxDeletedMediaRatio: 0.25,
+  maxMovedSeries: 10,
+  maxFileBytes: Object.freeze({ content: MAX_READ_BYTES, media: null, derived: MAX_READ_BYTES, other: null }),
+});
+
+function threshold(name: string, value: unknown, fallback: number | null, max = Infinity): number | null {
+  if (value === undefined) return fallback;
+  if (value === null) return null;
+  if (typeof value !== 'number' || !(value >= 0 && value <= max)) {
+    const range = max === 1 ? 'un nombre entre 0 et 1' : 'un nombre positif ou nul';
+    throw new TypeError(`Politique de garde : ${name} doit être ${range}, ou null pour désactiver (reçu ${String(value)}).`);
+  }
+  return value;
+}
+
+/**
+ * Seuils effectifs d'une politique (§4.11) : absent → défaut, `null` →
+ * désactivé. Une valeur qui n'est ni l'un ni l'autre (`false`, `NaN`, négatif,
+ * chaîne, ratio hors de 0–1) lève une `TypeError` : une faute de frappe ne
+ * doit pas désactiver un contrôle en silence, et un runner qui s'arrête ne
+ * publie rien. Une clé **inconnue** est ignorée — les seuils appartiennent au
+ * consommateur (§4.11), qui peut porter les siens dans le même objet — et le
+ * défaut du seuil visé reste actif : l'erreur de frappe va dans le sens sûr.
+ * Une politique qui n'est pas un objet (`null`, liste, scalaire) lève.
+ */
+export function resolveGuardPolicy(policy: GuardPolicy = {}): ResolvedGuardPolicy {
+  if (typeof policy !== 'object' || policy === null || Array.isArray(policy)) {
+    const received = policy === null ? 'null' : Array.isArray(policy) ? 'une liste' : typeof policy;
+    throw new TypeError(
+      `Politique de garde : la politique doit être un objet { maxDeletedSeries, maxDeletedMediaRatio, maxMovedSeries, maxFileBytes } (reçu ${received}).`,
+    );
+  }
+  const { maxFileBytes } = policy;
+  if (maxFileBytes !== undefined && maxFileBytes !== null && (typeof maxFileBytes !== 'object' || Array.isArray(maxFileBytes))) {
+    throw new TypeError('Politique de garde : maxFileBytes doit être un objet { <classe>: octets }, ou null pour tout désactiver.');
+  }
+  const limits = Object.fromEntries(
+    ENTRY_KINDS.map((kind) => [
+      kind,
+      maxFileBytes === null
+        ? null
+        : threshold(
+            `maxFileBytes.${kind}`,
+            maxFileBytes !== undefined && Object.hasOwn(maxFileBytes, kind) ? maxFileBytes[kind] : undefined,
+            DEFAULT_GUARD_POLICY.maxFileBytes[kind],
+          ),
+    ]),
+  ) as Record<EntryKind, number | null>;
+  return {
+    maxDeletedSeries: threshold('maxDeletedSeries', policy.maxDeletedSeries, DEFAULT_GUARD_POLICY.maxDeletedSeries),
+    maxDeletedMediaRatio: threshold('maxDeletedMediaRatio', policy.maxDeletedMediaRatio, DEFAULT_GUARD_POLICY.maxDeletedMediaRatio, 1),
+    maxMovedSeries: threshold('maxMovedSeries', policy.maxMovedSeries, DEFAULT_GUARD_POLICY.maxMovedSeries),
+    maxFileBytes: limits,
+  };
 }
 
 /** Côté du changeset dont on lit un fichier. */
@@ -49,6 +129,8 @@ function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path:
  *
  * - `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-private-exposed` :
  *   toujours évaluées ;
+ * - les gardes à seuil s'évaluent avec le défaut de leur seuil quand la
+ *   politique l'omet (`DEFAULT_GUARD_POLICY`), et sont inactives à `null` ;
  * - `guard-mass-deletion` : séries supprimées > `maxDeletedSeries`, ou médias
  *   supprimés > `maxDeletedMediaRatio` × médias de base. Une série supprimée
  *   est un dossier porteur dans base qui ne l'est plus dans target, et dont
@@ -58,8 +140,11 @@ function guard(code: Diagnostic['code'], severity: Diagnostic['severity'], path:
  * - `guard-private-exposed` : une série privée dans base (au moins un fichier
  *   index déclare `private: true`, booléen YAML), présente dans target — au
  *   même chemin, ou à la destination de ses fichiers index déplacés — et qui
- *   n'y est plus privée. Diagnostic sur son dossier dans target ; supprimer une
- *   série privée n'est pas l'exposer ;
+ *   n'y est plus privée. `private` se lit en booléen strict, des deux côtés :
+ *   `"true"`, `yes`, `1` ou une clé `Private` ne sont pas un marqueur, si bien
+ *   qu'une série privée dont le `private` de target prend l'une de ces formes
+ *   est exposée. Diagnostic sur son dossier dans target ; supprimer une série
+ *   privée n'est pas l'exposer ;
  * - `guard-oversize` : une entrée de `publishable(target)` dépasse
  *   `maxFileBytes[kind]` — un original exclu ne bloque pas la publication ;
  * - `guard-originals-excluded` (info, toujours évaluée) : target porte au moins
@@ -84,8 +169,8 @@ export async function guardChangeSet(
   target: ContentSnapshot,
   options: GuardOptions,
 ): Promise<Diagnostic[]> {
-  const { read, policy } = options;
-  const { maxDeletedSeries, maxDeletedMediaRatio, maxMovedSeries, maxFileBytes } = policy;
+  const { read } = options;
+  const { maxDeletedSeries, maxDeletedMediaRatio, maxMovedSeries, maxFileBytes } = resolveGuardPolicy(options.policy);
   const diagnostics: Diagnostic[] = [];
 
   if (!target.complete) {
@@ -103,13 +188,13 @@ export async function guardChangeSet(
   // Un seul `guard-mass-deletion` par changeset (au plus un diagnostic par
   // couple code/chemin, §4.10) : ses motifs se cumulent dans le message.
   const massDeletion: string[] = [];
-  if (maxDeletedSeries !== undefined) {
+  if (maxDeletedSeries !== null) {
     const deleted = [...baseFolders.keys()].filter((folder) => !targetFolders.has(folder) && !movedSeries.has(folder));
     if (deleted.length > maxDeletedSeries) {
       massDeletion.push(`${deleted.length} séries supprimées (seuil : ${maxDeletedSeries})`);
     }
   }
-  if (maxDeletedMediaRatio !== undefined) {
+  if (maxDeletedMediaRatio !== null) {
     const baseMedia = countKind(base?.entries ?? [], 'media');
     const deletedMedia = countKind(changeSet.deleted, 'media');
     if (deletedMedia > maxDeletedMediaRatio * baseMedia) {
@@ -119,7 +204,7 @@ export async function guardChangeSet(
   if (massDeletion.length > 0) {
     diagnostics.push(guard('guard-mass-deletion', 'error', '', `${massDeletion.join(' ; ')}.`));
   }
-  if (maxMovedSeries !== undefined && movedSeries.size > maxMovedSeries) {
+  if (maxMovedSeries !== null && movedSeries.size > maxMovedSeries) {
     diagnostics.push(
       guard('guard-mass-move', 'warning', '', `${movedSeries.size} séries déplacées (seuil : ${maxMovedSeries}).`),
     );
@@ -129,13 +214,14 @@ export async function guardChangeSet(
     const entries = { base: new Map(base.entries.map((e) => [e.path, e])), target: new Map(target.entries.map((e) => [e.path, e])) };
     // Une série est privée si l'un de ses fichiers index déclare
     // `private: true` (booléen, pas la chaîne). Un index illisible — non
-    // matérialisé, octets divergents, frontmatter qui ne se lit pas — rend la
-    // série privée côté base (fail-closed) et ne déclare rien côté target.
+    // matérialisé, de plus de 1 Mio (jamais lu, §1.12), octets divergents,
+    // frontmatter qui ne se lit pas — rend la série privée côté base
+    // (fail-closed) et ne déclare rien côté target.
     const isPrivate = async (side: GuardSide, indexPaths: readonly string[]): Promise<boolean> => {
       const unreadable = side === 'base';
       for (const path of indexPaths) {
         const entry = entries[side].get(path) as SnapshotEntry;
-        if ((entry.state ?? 'materialized') !== 'materialized') {
+        if ((entry.state ?? 'materialized') !== 'materialized' || entry.size > MAX_READ_BYTES) {
           if (unreadable) return true;
           continue;
         }
@@ -185,15 +271,13 @@ export async function guardChangeSet(
     });
   }
 
-  if (maxFileBytes !== undefined) {
-    for (const entry of target.entries) {
-      if (isOriginalEntry(entry)) continue;
-      const limit = maxFileBytes[entry.kind];
-      if (limit !== undefined && entry.size > limit) {
-        diagnostics.push(
-          guard('guard-oversize', 'error', entry.path, `${entry.size} octets (seuil ${entry.kind} : ${limit}).`),
-        );
-      }
+  for (const entry of target.entries) {
+    if (isOriginalEntry(entry)) continue;
+    const limit = maxFileBytes[entry.kind];
+    if (limit !== null && entry.size > limit) {
+      diagnostics.push(
+        guard('guard-oversize', 'error', entry.path, `${entry.size} octets (seuil ${entry.kind} : ${limit}).`),
+      );
     }
   }
 

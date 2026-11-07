@@ -8,6 +8,7 @@
  */
 import { absoluteUrl, buildJsonFeed, buildRss, buildSitemap, type FeedChannel, type FeedEntry } from '../feeds.js';
 import { HF_DEFAULT_LOCALE, resolveLabels } from '../i18n.js';
+import { calendarDay } from '../order.js';
 import { getSeriesList, type Series } from './index.js';
 
 /** Nombre maximal d'items par flux : les plus récentes. */
@@ -48,12 +49,17 @@ function entryOf(series: Series, site: string, prefix: string): FeedEntry {
   };
 }
 
-/** Plus récentes d'abord ; les séries sans date à la fin. */
+/**
+ * Plus récentes d'abord, au jour écrit (§1.6) ; les séries sans date à la fin.
+ * À jour égal l'ordre reçu de `getSeriesList` est conservé : titre, puis chemin.
+ */
 function newestFirst(a: FeedEntry, b: FeedEntry): number {
-  if (a.date && b.date) return b.date.getTime() - a.date.getTime();
-  if (a.date) return -1;
-  if (b.date) return 1;
-  return 0;
+  const dayA = calendarDay(a.date);
+  const dayB = calendarDay(b.date);
+  if (dayA === dayB) return 0;
+  if (dayA === null) return 1;
+  if (dayB === null) return -1;
+  return dayA < dayB ? 1 : -1;
 }
 
 /** Corps d'un flux, `rss` ou `json`, pour une langue. */

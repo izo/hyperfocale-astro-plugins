@@ -1,0 +1,22 @@
+{
+  "description": "Valeurs de champs d'URL hors des formes admises (§1.12, règle 15) : `cover` en `javascript:` et `files[].url` en `file:` (frontmatter), entrées de `images.json` en `data:` et en `//hôte`. `alsace-2022` n'en produit aucun : chemin absolu au site, schéma `HTTPS` en majuscules, chemin relatif.",
+  "corpus": "invalid-url-scheme-forbidden",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "url-scheme-forbidden",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "url-scheme-forbidden",
+      "severity": "error",
+      "path": "series/normandie-2023/images.json"
+    }
+  ]
+}

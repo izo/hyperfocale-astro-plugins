@@ -1,0 +1,63 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:36e51fa8bdc2f766a001babc35f54adffe562b8d3aa8a9d9c21030fa0e021cb1",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 88,
+      "hashes": {
+        "dropbox": "d4e6cd7f5ba1ae7186a055f3ddb123480a9a2ad6896276556712d5c62794a1fd",
+        "sha256": "90cbedcaefbbdaecdce2e896f130e0ede91460146f3b398dada33af1698addc0"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "kind": "media",
+      "size": 34,
+      "hashes": {
+        "dropbox": "3264895753e7729482386b537099020f94ac5fd20cc43f45f67212f0970ab275",
+        "sha256": "19eebcd5ebdfb7fbcbaa87b5b7a0029f66c71c9e60d7105b79ad15ed758c011c"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/Page.HTML",
+      "kind": "media",
+      "size": 37,
+      "hashes": {
+        "dropbox": "0562d2ffb6ce2868350212e1ccfc4f2a707330c4697ddf572b30ba6767d83d0b",
+        "sha256": "761d5cc2c779f6a210101753cd26428f6a7ba5d413784406a05dccdaeb4043e3"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/app.JS",
+      "kind": "media",
+      "size": 34,
+      "hashes": {
+        "dropbox": "0ddb4f9ea80d6822c0f8588d2f64695d357c68a19245afe56f8cb4e86378695b",
+        "sha256": "b5a87259037e5dbeba289a26fa84003c66f2dfc7755991866b24e48ca079b669"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/dossier-de-presse.pdf",
+      "kind": "media",
+      "size": 49,
+      "hashes": {
+        "dropbox": "324974b59f7bdade7dcafeca87d8f5d80fdef070588b3ca29878291126ec5e71",
+        "sha256": "5a752dbecdf213fb3465d14a7d4b3de9a1db3a49975767dab7a6c94bdf46782f"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/media/plan.svg",
+      "kind": "media",
+      "size": 36,
+      "hashes": {
+        "dropbox": "0df17922bec46befaddd782fc7fabdfb65508d55fb9544ba61ebdc6ff9fc8876",
+        "sha256": "befcb9f0011b019beea55efe38d237ba60c61416c5cff01d27dd2b76287bd13d"
+      }
+    }
+  ]
+}

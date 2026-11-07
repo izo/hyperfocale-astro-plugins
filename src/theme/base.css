@@ -37,6 +37,8 @@
   --hf-color-btn-overlay-hover: rgba(255, 255, 255, 0.15);
   /* Voile léger au survol d'une façade d'embed */
   --hf-color-scrim: rgba(0, 0, 0, 0.15);
+  /* Fond de la lightbox (Annexe D) : suit l'overlay tant qu'on ne le surcharge pas */
+  --hf-lightbox-bg: var(--hf-color-overlay);
 
   /* Typographie */
   --hf-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

@@ -1,0 +1,22 @@
+{
+  "description": "Clés quasi-homonymes de `private` (§1.12) : `Private` et `private_` ne protègent rien et sont signalées en `warning`. `alsace-2022` écrit la clé exacte : aucun diagnostic.",
+  "corpus": "invalid-private-key-suspect",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "private-key-suspect",
+      "severity": "warning",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "private-key-suspect",
+      "severity": "warning",
+      "path": "series/normandie-2023/index.md"
+    }
+  ]
+}

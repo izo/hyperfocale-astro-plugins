@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { createSnapshot, diffSnapshots } from '../../../src/ingest/index.js';
+import { createSnapshot, diffSnapshots, validateSnapshot } from '../../../src/ingest/index.js';
 import {
   ContentMismatchError,
   FilesystemProvider,
@@ -80,7 +80,7 @@ describe('FilesystemProvider', () => {
     expect(new TextDecoder().decode(await provider.read('archives/café/media/01.jpg'))).toBe('jpg');
   });
 
-  describe('liens symboliques', () => {
+  describe('liens symboliques (§4.0)', () => {
     function links() {
       const root = join(work, 'root');
       tree(root, { 'real/a.md': 'a', 'real/b.md': 'b' });
@@ -95,52 +95,104 @@ describe('FilesystemProvider', () => {
       return root;
     }
 
-    it('par défaut : tout lien est écarté, le listing est incomplet et dit pourquoi', async () => {
+    const LINKS = ['a-link.md', 'alias', 'broken', 'escape-dir', 'escape.txt', 'real/self'];
+    const warnings = (listing: { diagnostics?: readonly { code: string; severity: string; path: string }[] }) =>
+      (listing.diagnostics ?? []).map(({ code, severity, path }) => ({ code, severity, path }));
+
+    it('jamais suivis : ignorés, signalés par entry-symlink, le listing reste complet', async () => {
       const root = links();
       const listing = await new FilesystemProvider({ root }).list();
-      expect(listing.complete).toBe(false);
       expect(listing.entries.map((e) => e.path)).toEqual(['real/a.md', 'real/b.md']);
-      expect(listing.problems?.map((p) => p.path)).toEqual([
-        'a-link.md',
-        'alias',
-        'broken',
-        'escape-dir',
-        'escape.txt',
-        'real/self',
-      ]);
-      expect(listing.problems?.every((p) => p.reason.includes('followSymlinks: false'))).toBe(true);
+      expect(warnings(listing)).toEqual(LINKS.map((path) => ({ code: 'entry-symlink', severity: 'warning', path })));
+      expect(listing.diagnostics?.every((d) => d.rule === '§4.0' && d.message.length > 0)).toBe(true);
+      expect(listing.complete).toBe(true);
+      expect(listing.problems).toBeUndefined();
     });
 
-    it('followSymlinks : suivis sous la racine, écartés hors racine, cassés ou en cycle', async () => {
+    it('followSymlinks, obsolète, reste sans effet : mêmes entrées, mêmes diagnostics', async () => {
       const root = links();
-      const listing = await new FilesystemProvider({ root, followSymlinks: true }).list();
-      expect(listing.complete).toBe(false);
-      expect(listing.entries.map((e) => e.path)).toEqual(['a-link.md', 'alias/a.md', 'alias/b.md', 'real/a.md', 'real/b.md']);
-      expect(listing.problems?.map((p) => [p.path, p.reason.split(' (')[0]])).toEqual([
-        ['alias/self', 'lien symbolique en cycle'],
-        ['broken', 'lien symbolique cassé'],
-        ['escape-dir', 'lien symbolique hors de la racine'],
-        ['escape.txt', 'lien symbolique hors de la racine'],
-        ['real/self', 'lien symbolique en cycle'],
-      ]);
+      const strict = await new FilesystemProvider({ root }).list();
+      const following = await new FilesystemProvider({ root, followSymlinks: true }).list();
+      expect(following.entries).toEqual(strict.entries);
+      expect(warnings(following)).toEqual(warnings(strict));
+      expect(following.complete).toBe(true);
     });
 
-    it('un corpus sans lien reste complet, sans problems', async () => {
+    it('un lien dont le chemin est exclu (§4.2) reste muet, dans un dossier ignoré comme sous un nom de point', async () => {
+      const root = join(work, 'root');
+      tree(root, { 'a/index.md': 'a', '_todo/x.md': 'x' });
+      tree(work, { 'outside.txt': 'o' });
+      symlinkSync(join(work, 'outside.txt'), join(root, '.git'));
+      symlinkSync(join(work, 'outside.txt'), join(root, '_todo', 'lien.md'));
+      symlinkSync(join(work, 'outside.txt'), join(root, 'a', 'lien.md'));
+      const listing = await new FilesystemProvider({ root, ignore: ['_todo/'] }).list();
+      expect(warnings(listing)).toEqual([{ code: 'entry-symlink', severity: 'warning', path: 'a/lien.md' }]);
+    });
+
+    it('le chemin du diagnostic est celui du contrat : NFC, même si le disque garde NFD', async () => {
+      const root = join(work, 'root');
+      tree(root, { 'a/index.md': 'a' });
+      tree(work, { 'outside.txt': 'o' });
+      symlinkSync(join(work, 'outside.txt'), join(root, 'a', 'cafe\u0301.jpg'));
+      const listing = await new FilesystemProvider({ root }).list();
+      expect(listing.diagnostics?.map((d) => d.path)).toEqual(['a/caf\u00e9.jpg']);
+    });
+
+    it('deux liens de même chemin NFC ne donnent qu\'un diagnostic par couple (code, path)', async () => {
+      const root = join(work, 'root');
+      tree(root, { 'a/index.md': 'a' });
+      tree(work, { 'outside.txt': 'o' });
+      symlinkSync(join(work, 'outside.txt'), join(root, 'a', 'cafe\u0301.jpg'));
+      symlinkSync(join(work, 'outside.txt'), join(root, 'a', 'caf\u00e9.jpg'));
+      const listing = await new FilesystemProvider({ root }).list();
+      expect(listing.diagnostics?.map((d) => d.path)).toEqual(['a/caf\u00e9.jpg']);
+    });
+
+    it('un lien ne rend pas le snapshot impubliable : le listing est complet, la validation ne dit rien de plus', async () => {
+      const root = join(work, 'root');
+      tree(root, { 's/index.md': '---\ntitle: T\ndate: 2024-01-01\n---\n', 's/media/01.jpg': 'jpg' });
+      tree(work, { 'secret.jpg': 'secret' });
+      symlinkSync(join(work, 'secret.jpg'), join(root, 's', 'media', '02.jpg'));
+      const provider = new FilesystemProvider({ root });
+      const listing = await provider.list();
+      const snapshot = await createSnapshot(listing.entries, { complete: listing.complete });
+      expect(snapshot.entries.map((e) => e.path)).toEqual(['s/index.md', 's/media/01.jpg']);
+      expect(await validateSnapshot(snapshot, { read: (path) => provider.read(path) })).toEqual([]);
+    });
+
+    it('un fichier remplacé par un lien quitte le listing, signalé : le diff le voit supprimé, sans le suivre', async () => {
+      const root = join(work, 'root');
+      tree(root, { 's/index.md': 'a', 's/media/01.jpg': 'jpg' });
+      tree(work, { 'secret.jpg': 'secret' });
+      const before = await snapshotOf(root);
+      rmSync(join(root, 's', 'media', '01.jpg'));
+      symlinkSync(join(work, 'secret.jpg'), join(root, 's', 'media', '01.jpg'));
+      const listing = await new FilesystemProvider({ root }).list();
+      const after = await createSnapshot(listing.entries, { complete: listing.complete });
+      expect(after.entries.map((e) => e.path)).toEqual(['s/index.md']);
+      expect(warnings(listing)).toEqual([{ code: 'entry-symlink', severity: 'warning', path: 's/media/01.jpg' }]);
+      expect(diffSnapshots(before, after).deleted.map((e) => e.path)).toEqual(['s/media/01.jpg']);
+    });
+
+    it('un corpus sans lien reste complet, sans problems ni diagnostics', async () => {
       tree(work, { 'c/index.md': 'x' });
       const listing = await new FilesystemProvider({ root: join(work, 'c') }).list();
       expect(listing).toMatchObject({ complete: true });
       expect(listing.problems).toBeUndefined();
+      expect(listing.diagnostics).toBeUndefined();
     });
 
-    it('read et write refusent de traverser un lien — hors racine même avec followSymlinks', async () => {
+    it('read et write refusent de traverser un lien, followSymlinks compris', async () => {
       const root = links();
-      await expect(new FilesystemProvider({ root }).read('alias/a.md')).rejects.toBeInstanceOf(UnsafePathError);
-      await expect(new FilesystemProvider({ root }).write('alias/new.md', new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
-      const following = new FilesystemProvider({ root, followSymlinks: true });
-      expect(new TextDecoder().decode(await following.read('alias/a.md'))).toBe('a');
-      await expect(following.read('escape-dir/x.md')).rejects.toBeInstanceOf(UnsafePathError);
-      await expect(following.write('escape-dir/new.md', new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
+      for (const provider of [new FilesystemProvider({ root }), new FilesystemProvider({ root, followSymlinks: true })]) {
+        await expect(provider.read('alias/a.md')).rejects.toBeInstanceOf(UnsafePathError);
+        await expect(provider.read('a-link.md')).rejects.toBeInstanceOf(UnsafePathError);
+        await expect(provider.read('escape-dir/x.md')).rejects.toBeInstanceOf(UnsafePathError);
+        await expect(provider.write('alias/new.md', new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
+        await expect(provider.write('escape-dir/new.md', new Uint8Array())).rejects.toBeInstanceOf(UnsafePathError);
+      }
       expect(existsSync(join(work, 'outdir', 'new.md'))).toBe(false);
+      expect(existsSync(join(root, 'real', 'new.md'))).toBe(false);
     });
   });
 
@@ -153,7 +205,26 @@ describe('FilesystemProvider', () => {
     await provider.list();
     rmSync(join(root, 'a.md'));
     symlinkSync(join(work, 'outside.txt'), join(root, 'a.md'));
-    await expect(provider.read('a.md')).rejects.toThrow();
+    await expect(provider.read('a.md')).rejects.toBeInstanceOf(UnsafePathError);
+  });
+
+  // §4.0 : `O_NOFOLLOW` ne protège que le dernier composant. Un dossier intermédiaire
+  // remplacé par un lien depuis le listing doit être refusé comme le fichier final.
+  it.skipIf(process.platform === 'win32')('read refuse un dossier listé remplacé par un lien symbolique depuis le listing', async () => {
+    tree(work, { 'root/serie-a/index.md': 'dans la racine', 'other/serie-a/index.md': 'EXTERIEUR' });
+    const root = join(work, 'root');
+    const provider = new FilesystemProvider({ root });
+    await provider.list();
+    rmSync(join(root, 'serie-a'), { recursive: true });
+    symlinkSync(join(work, 'other', 'serie-a'), join(root, 'serie-a'));
+    await expect(provider.read('serie-a/index.md')).rejects.toBeInstanceOf(UnsafePathError);
+  });
+
+  it('read lit toujours un fichier listé dans un dossier ordinaire', async () => {
+    tree(work, { 'root/serie-a/index.md': 'dans la racine' });
+    const provider = new FilesystemProvider({ root: join(work, 'root') });
+    await provider.list();
+    expect(new TextDecoder().decode(await provider.read('serie-a/index.md'))).toBe('dans la racine');
   });
 
   it.skipIf(process.platform === 'win32')('avec followSymlinks, un lien sorti de la racine depuis le listing est refusé à la lecture', async () => {

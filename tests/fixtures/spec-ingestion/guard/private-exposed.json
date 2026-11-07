@@ -302,7 +302,12 @@
       "series/garde-2024/index.md": "---\ntitle: \"Gardée 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n"
     }
   },
-  "policy": {},
+  "policy": {
+    "maxDeletedSeries": null,
+    "maxDeletedMediaRatio": null,
+    "maxMovedSeries": null,
+    "maxFileBytes": null
+  },
   "expected": [
     {
       "code": "guard-private-exposed",

@@ -130,7 +130,7 @@ const lightboxData = scriptJson(images.map((img) => ({ src: img.src, alt: img.al
   }
 
   .hf-lightbox::backdrop {
-    background: var(--hf-color-overlay);
+    background: var(--hf-lightbox-bg, var(--hf-color-overlay));
   }
 
   .hf-lightbox[open] {

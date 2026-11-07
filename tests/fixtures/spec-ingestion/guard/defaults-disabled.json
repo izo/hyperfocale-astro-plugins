@@ -1,0 +1,130 @@
+{
+  "description": "Mêmes entrées que `defaults-oversize`, seuils désactivés par `null` : `maxFileBytes.content` à `null` (`index.md` n'est plus plafonné) mais `derived` garde son défaut → seul `images.json` est signalé.",
+  "base": null,
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:a021d91285c7c234d69831b2fd49df2d25f7fec19768fc39c08491e80e69933d",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/images.json",
+        "kind": "derived",
+        "size": 1048577,
+        "hashes": {
+          "dropbox": "754a3acb3e2908a363bcbcb702e5b03ab559fc2043143d34ed95c11394e973f1",
+          "sha256": "c977264187ea45b22bfaded73d6890dcd2abeec8238790372ae2143e15dbe46b"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/index.en.md",
+        "kind": "content",
+        "size": 1048576,
+        "hashes": {
+          "dropbox": "e9571d63825e1bdb33d8420a1859c93b1fd7cad11977387518a6bb2117c3b5ca",
+          "sha256": "4307b68ca99908394c7037f49c6836a24e3f6e97e48e1814411dd02f3d2c5f32"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 1048577,
+        "hashes": {
+          "dropbox": "9b984f473a13e6a723778651b09765d187aeeeb886c832135620af4557dfe699",
+          "sha256": "81d11e165c77f6f0393618c5c652510cc1dd424a2ecaea225bcc9d07e15f275d"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 2147483648,
+        "hashes": {
+          "dropbox": "319bd8351500a17f80999bf6beb03f8068b8a366d9eb79de32aec43b1ed8d5d0",
+          "sha256": "2ee7b378e1164d767ce9297e81c12b044fa0dff5512e03550a1b1c6647471b76"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/notes/grand.bin",
+        "kind": "other",
+        "size": 2147483648,
+        "hashes": {
+          "dropbox": "9e71f0a595d0a0b33c7e00271fa3f2360f388aa0a71ab7d9dd08dbbd0bf16fa0",
+          "sha256": "7bc362128480c1a736f5d154904dfc91c07bd7ce636c721053914debc5fb3894"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": null,
+    "target": "sha256:a021d91285c7c234d69831b2fd49df2d25f7fec19768fc39c08491e80e69933d",
+    "added": [
+      {
+        "path": "series/bretagne-2024/images.json",
+        "kind": "derived",
+        "size": 1048577,
+        "hashes": {
+          "dropbox": "754a3acb3e2908a363bcbcb702e5b03ab559fc2043143d34ed95c11394e973f1",
+          "sha256": "c977264187ea45b22bfaded73d6890dcd2abeec8238790372ae2143e15dbe46b"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/index.en.md",
+        "kind": "content",
+        "size": 1048576,
+        "hashes": {
+          "dropbox": "e9571d63825e1bdb33d8420a1859c93b1fd7cad11977387518a6bb2117c3b5ca",
+          "sha256": "4307b68ca99908394c7037f49c6836a24e3f6e97e48e1814411dd02f3d2c5f32"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 1048577,
+        "hashes": {
+          "dropbox": "9b984f473a13e6a723778651b09765d187aeeeb886c832135620af4557dfe699",
+          "sha256": "81d11e165c77f6f0393618c5c652510cc1dd424a2ecaea225bcc9d07e15f275d"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 2147483648,
+        "hashes": {
+          "dropbox": "319bd8351500a17f80999bf6beb03f8068b8a366d9eb79de32aec43b1ed8d5d0",
+          "sha256": "2ee7b378e1164d767ce9297e81c12b044fa0dff5512e03550a1b1c6647471b76"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/notes/grand.bin",
+        "kind": "other",
+        "size": 2147483648,
+        "hashes": {
+          "dropbox": "9e71f0a595d0a0b33c7e00271fa3f2360f388aa0a71ab7d9dd08dbbd0bf16fa0",
+          "sha256": "7bc362128480c1a736f5d154904dfc91c07bd7ce636c721053914debc5fb3894"
+        }
+      }
+    ],
+    "modified": [],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  },
+  "files": {
+    "target": {}
+  },
+  "policy": {
+    "maxFileBytes": {
+      "content": null
+    }
+  },
+  "expected": [
+    {
+      "code": "guard-oversize",
+      "severity": "error",
+      "path": "series/bretagne-2024/images.json"
+    }
+  ]
+}

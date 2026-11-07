@@ -1,0 +1,993 @@
+{
+  "description": "Politique vide `{}` : onze séries déplacées de `series/` vers `archives/` (par contenu, §4.7) : 11 > `maxMovedSeries` par défaut (10) → `guard-mass-move` (warning). Rien n'est supprimé.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:9bc6f79f6c8151bfbb27074385f6be4d4ed16c2031e7400970d59ac35d0a4028",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/serie-01/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "0a077c2b82f5c251c54019f2dbf62aec027d90633e64ae365dfb6918332abbdb",
+          "sha256": "0e44136f87316275085d18e00d3629f7c70e3f23e71cfd7d3edfe2d660d8a183"
+        }
+      },
+      {
+        "path": "series/serie-01/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "49eb6beaa243c860137b7e27b01e54cc7b0b493ea6dec205775cdfaed3116168",
+          "sha256": "e048a5aac4e45b4d1c965aac38ea31b24cce106a0c347d906b54c3a95d168336"
+        }
+      },
+      {
+        "path": "series/serie-02/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "7122ca2f98ae38e8e3f9f3df6ce370e1f28188e1b174f0be23e48f846aac0e17",
+          "sha256": "37e5bd08f8cb8a77c25da93ade4423eca4c6798b51d397aa6468bd9d4f996192"
+        }
+      },
+      {
+        "path": "series/serie-02/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "2011ef4e7222660382f5e4532c6043a212f9a01c2d728e5548ab40b688facf96",
+          "sha256": "09fef7e414890636bd23cff295ec2b01bbb17d3d33341c8b8f62aa5c3d90b204"
+        }
+      },
+      {
+        "path": "series/serie-03/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "c649b0f9426aae34c40616feeaf11da7ffbbdb3c4c132483dd15a78f6d8391e6",
+          "sha256": "3f3abea853efc54bb4477ec717563540d865daa81cd802eedb1b4125dc17c1b1"
+        }
+      },
+      {
+        "path": "series/serie-03/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "905b0b0fcf2b2cc977dab43b91d4b58c25b6b62c21428f5ece44f65d5312a69a",
+          "sha256": "6f7e9fd048dca3b2e05679db5409d8860dc3b073c2f39e7e2173a36b39006cf0"
+        }
+      },
+      {
+        "path": "series/serie-04/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "65e409717ba158ff4f0a3c65330bd723360c169a691378448d72cfa526b18ee4",
+          "sha256": "57598df0a29d0e67ab8562c80eeaeb892255d119f6c03d1eb7e1cb8f828033e4"
+        }
+      },
+      {
+        "path": "series/serie-04/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "dc2e13146871879ceca81c8769947776222faf53c71187e6e402e509802972fb",
+          "sha256": "0c7552290901c07319af739dc2310757436e75f7a35282d442970ed30d98c9f3"
+        }
+      },
+      {
+        "path": "series/serie-05/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "58e5c1d9d6eafcc95ffba0e9565d0a4a73d744a8b977fb53468107235bd2d4df",
+          "sha256": "61065ac6d3c7c1d198d3ee0c95773a2d149063897f51b4bfabe97238843a9d29"
+        }
+      },
+      {
+        "path": "series/serie-05/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "35d39c359c2b16aca2d7c0aebaf4cfdcb39403ef94b6bd885d4e4b65ea0c4509",
+          "sha256": "e678556ecf91bb4d2ab0e9594ebd9800ee14ebe21b06ef9dd40f57bbcfda45de"
+        }
+      },
+      {
+        "path": "series/serie-06/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "f198ceb8cf0adf612be10c68f28f35fc8c16086fab1bbb8887c7b87571337381",
+          "sha256": "605abb85bc245e8a11a3d3aa7ed4ac021791fa5b1c96d572323b10356568bd7c"
+        }
+      },
+      {
+        "path": "series/serie-06/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "d3b1f3ecb1774a4762cf5945a68df2365add761eeeb6161722c726519dc0396a",
+          "sha256": "af65bd16971637d8a5f3d4d1500e217a42f51303fb485d0f3b01c32cf0795320"
+        }
+      },
+      {
+        "path": "series/serie-07/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "eb9e629c4fadcaf24a7c84dabad605d67707cd8518092451c67699f82290f042",
+          "sha256": "b297eca2c59cdaf5a9ec956a7515d6e1035d49c70b1ddc02aaca0636b9b008cb"
+        }
+      },
+      {
+        "path": "series/serie-07/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "0d359978b855ae925c343d560c3749c2fc1ac36783cb61d1ea0515557bbadbfe",
+          "sha256": "1e2d173c070822533b6858894465dbef03404fcc712362dac682581db62fea15"
+        }
+      },
+      {
+        "path": "series/serie-08/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "3b7889770ab709319de9b5b4dedeaf77262cdb059ea813bd75f5ca68e586c169",
+          "sha256": "1f1b1421e380743512f9ab2ab2c69bd22791ab59e072ebf840d177316c573d2e"
+        }
+      },
+      {
+        "path": "series/serie-08/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "a9183b93bab431855fc5f80beac1305d9ed96ad015bd927df7a06448a3f25193",
+          "sha256": "175f8611dda06cdfb5fbf21aec887691ae71d0fcbb8d1aeb9f72489689435d7e"
+        }
+      },
+      {
+        "path": "series/serie-09/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "f1c480a30734176fd917048259fb5ea5896f0a8f0db5072c9022594f8a4f12a8",
+          "sha256": "c089ed6fa96d17bd3fbdfbc58339f53b7b5e5b28a8f756f796924a7e0ccece41"
+        }
+      },
+      {
+        "path": "series/serie-09/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "12c194a63efdba5d18d257ee3d392ff4e05e75ac578eb488fc949c82ad1ae09f",
+          "sha256": "3518b2e888c73f5a29e64486730456fb484a135a89a5652f2549da18cd5dfe2d"
+        }
+      },
+      {
+        "path": "series/serie-10/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "b1c522209483e15017114598b59b19eb8797dd7a96c8f09515e2c377e29be679",
+          "sha256": "4dcc3e10b91742e58400255b17a6413515b28c86e05deffb1e7be4c2ffdd6ec1"
+        }
+      },
+      {
+        "path": "series/serie-10/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "59731f69f92b2efb451567072044dd31d9c862341c614e31e5fc786f8e7ffac2",
+          "sha256": "62f6d7a47ca8627149579e5798a9b489d5b0cfbdd1070936b0b543fd430ea3d5"
+        }
+      },
+      {
+        "path": "series/serie-11/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "47335693ce78a5a3f4636410a943b627444b96e3a5b8c3131244f6b0b66a87aa",
+          "sha256": "86fbb093f7599bd971d159b9af4126b7d6739fd51dbbcaad8c276e90411660a4"
+        }
+      },
+      {
+        "path": "series/serie-11/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "9eddd19cfbff0b56581ceb308ddd037142ebd8be3a5915ed35657ff83e87a8f3",
+          "sha256": "60b724b4b7a93533aa2822553cce6b4c6c485a0ac3cd4795238345b8f17060af"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:b971f2a6ebef4a814dfb9aa9b77ef8f97515b1e70de5271a81f452d1f932cda4",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "archives/serie-01/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "0a077c2b82f5c251c54019f2dbf62aec027d90633e64ae365dfb6918332abbdb",
+          "sha256": "0e44136f87316275085d18e00d3629f7c70e3f23e71cfd7d3edfe2d660d8a183"
+        }
+      },
+      {
+        "path": "archives/serie-01/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "49eb6beaa243c860137b7e27b01e54cc7b0b493ea6dec205775cdfaed3116168",
+          "sha256": "e048a5aac4e45b4d1c965aac38ea31b24cce106a0c347d906b54c3a95d168336"
+        }
+      },
+      {
+        "path": "archives/serie-02/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "7122ca2f98ae38e8e3f9f3df6ce370e1f28188e1b174f0be23e48f846aac0e17",
+          "sha256": "37e5bd08f8cb8a77c25da93ade4423eca4c6798b51d397aa6468bd9d4f996192"
+        }
+      },
+      {
+        "path": "archives/serie-02/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "2011ef4e7222660382f5e4532c6043a212f9a01c2d728e5548ab40b688facf96",
+          "sha256": "09fef7e414890636bd23cff295ec2b01bbb17d3d33341c8b8f62aa5c3d90b204"
+        }
+      },
+      {
+        "path": "archives/serie-03/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "c649b0f9426aae34c40616feeaf11da7ffbbdb3c4c132483dd15a78f6d8391e6",
+          "sha256": "3f3abea853efc54bb4477ec717563540d865daa81cd802eedb1b4125dc17c1b1"
+        }
+      },
+      {
+        "path": "archives/serie-03/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "905b0b0fcf2b2cc977dab43b91d4b58c25b6b62c21428f5ece44f65d5312a69a",
+          "sha256": "6f7e9fd048dca3b2e05679db5409d8860dc3b073c2f39e7e2173a36b39006cf0"
+        }
+      },
+      {
+        "path": "archives/serie-04/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "65e409717ba158ff4f0a3c65330bd723360c169a691378448d72cfa526b18ee4",
+          "sha256": "57598df0a29d0e67ab8562c80eeaeb892255d119f6c03d1eb7e1cb8f828033e4"
+        }
+      },
+      {
+        "path": "archives/serie-04/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "dc2e13146871879ceca81c8769947776222faf53c71187e6e402e509802972fb",
+          "sha256": "0c7552290901c07319af739dc2310757436e75f7a35282d442970ed30d98c9f3"
+        }
+      },
+      {
+        "path": "archives/serie-05/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "58e5c1d9d6eafcc95ffba0e9565d0a4a73d744a8b977fb53468107235bd2d4df",
+          "sha256": "61065ac6d3c7c1d198d3ee0c95773a2d149063897f51b4bfabe97238843a9d29"
+        }
+      },
+      {
+        "path": "archives/serie-05/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "35d39c359c2b16aca2d7c0aebaf4cfdcb39403ef94b6bd885d4e4b65ea0c4509",
+          "sha256": "e678556ecf91bb4d2ab0e9594ebd9800ee14ebe21b06ef9dd40f57bbcfda45de"
+        }
+      },
+      {
+        "path": "archives/serie-06/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "f198ceb8cf0adf612be10c68f28f35fc8c16086fab1bbb8887c7b87571337381",
+          "sha256": "605abb85bc245e8a11a3d3aa7ed4ac021791fa5b1c96d572323b10356568bd7c"
+        }
+      },
+      {
+        "path": "archives/serie-06/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "d3b1f3ecb1774a4762cf5945a68df2365add761eeeb6161722c726519dc0396a",
+          "sha256": "af65bd16971637d8a5f3d4d1500e217a42f51303fb485d0f3b01c32cf0795320"
+        }
+      },
+      {
+        "path": "archives/serie-07/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "eb9e629c4fadcaf24a7c84dabad605d67707cd8518092451c67699f82290f042",
+          "sha256": "b297eca2c59cdaf5a9ec956a7515d6e1035d49c70b1ddc02aaca0636b9b008cb"
+        }
+      },
+      {
+        "path": "archives/serie-07/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "0d359978b855ae925c343d560c3749c2fc1ac36783cb61d1ea0515557bbadbfe",
+          "sha256": "1e2d173c070822533b6858894465dbef03404fcc712362dac682581db62fea15"
+        }
+      },
+      {
+        "path": "archives/serie-08/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "3b7889770ab709319de9b5b4dedeaf77262cdb059ea813bd75f5ca68e586c169",
+          "sha256": "1f1b1421e380743512f9ab2ab2c69bd22791ab59e072ebf840d177316c573d2e"
+        }
+      },
+      {
+        "path": "archives/serie-08/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "a9183b93bab431855fc5f80beac1305d9ed96ad015bd927df7a06448a3f25193",
+          "sha256": "175f8611dda06cdfb5fbf21aec887691ae71d0fcbb8d1aeb9f72489689435d7e"
+        }
+      },
+      {
+        "path": "archives/serie-09/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "f1c480a30734176fd917048259fb5ea5896f0a8f0db5072c9022594f8a4f12a8",
+          "sha256": "c089ed6fa96d17bd3fbdfbc58339f53b7b5e5b28a8f756f796924a7e0ccece41"
+        }
+      },
+      {
+        "path": "archives/serie-09/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "12c194a63efdba5d18d257ee3d392ff4e05e75ac578eb488fc949c82ad1ae09f",
+          "sha256": "3518b2e888c73f5a29e64486730456fb484a135a89a5652f2549da18cd5dfe2d"
+        }
+      },
+      {
+        "path": "archives/serie-10/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "b1c522209483e15017114598b59b19eb8797dd7a96c8f09515e2c377e29be679",
+          "sha256": "4dcc3e10b91742e58400255b17a6413515b28c86e05deffb1e7be4c2ffdd6ec1"
+        }
+      },
+      {
+        "path": "archives/serie-10/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "59731f69f92b2efb451567072044dd31d9c862341c614e31e5fc786f8e7ffac2",
+          "sha256": "62f6d7a47ca8627149579e5798a9b489d5b0cfbdd1070936b0b543fd430ea3d5"
+        }
+      },
+      {
+        "path": "archives/serie-11/index.md",
+        "kind": "content",
+        "size": 84,
+        "hashes": {
+          "dropbox": "47335693ce78a5a3f4636410a943b627444b96e3a5b8c3131244f6b0b66a87aa",
+          "sha256": "86fbb093f7599bd971d159b9af4126b7d6739fd51dbbcaad8c276e90411660a4"
+        }
+      },
+      {
+        "path": "archives/serie-11/media/01.jpg",
+        "kind": "media",
+        "size": 22,
+        "hashes": {
+          "dropbox": "9eddd19cfbff0b56581ceb308ddd037142ebd8be3a5915ed35657ff83e87a8f3",
+          "sha256": "60b724b4b7a93533aa2822553cce6b4c6c485a0ac3cd4795238345b8f17060af"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:9bc6f79f6c8151bfbb27074385f6be4d4ed16c2031e7400970d59ac35d0a4028",
+    "target": "sha256:b971f2a6ebef4a814dfb9aa9b77ef8f97515b1e70de5271a81f452d1f932cda4",
+    "added": [],
+    "modified": [],
+    "deleted": [],
+    "moved": [
+      {
+        "from": "series/serie-01/index.md",
+        "to": "archives/serie-01/index.md",
+        "before": {
+          "path": "series/serie-01/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "0a077c2b82f5c251c54019f2dbf62aec027d90633e64ae365dfb6918332abbdb",
+            "sha256": "0e44136f87316275085d18e00d3629f7c70e3f23e71cfd7d3edfe2d660d8a183"
+          }
+        },
+        "after": {
+          "path": "archives/serie-01/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "0a077c2b82f5c251c54019f2dbf62aec027d90633e64ae365dfb6918332abbdb",
+            "sha256": "0e44136f87316275085d18e00d3629f7c70e3f23e71cfd7d3edfe2d660d8a183"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-01/media/01.jpg",
+        "to": "archives/serie-01/media/01.jpg",
+        "before": {
+          "path": "series/serie-01/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "49eb6beaa243c860137b7e27b01e54cc7b0b493ea6dec205775cdfaed3116168",
+            "sha256": "e048a5aac4e45b4d1c965aac38ea31b24cce106a0c347d906b54c3a95d168336"
+          }
+        },
+        "after": {
+          "path": "archives/serie-01/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "49eb6beaa243c860137b7e27b01e54cc7b0b493ea6dec205775cdfaed3116168",
+            "sha256": "e048a5aac4e45b4d1c965aac38ea31b24cce106a0c347d906b54c3a95d168336"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-02/index.md",
+        "to": "archives/serie-02/index.md",
+        "before": {
+          "path": "series/serie-02/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "7122ca2f98ae38e8e3f9f3df6ce370e1f28188e1b174f0be23e48f846aac0e17",
+            "sha256": "37e5bd08f8cb8a77c25da93ade4423eca4c6798b51d397aa6468bd9d4f996192"
+          }
+        },
+        "after": {
+          "path": "archives/serie-02/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "7122ca2f98ae38e8e3f9f3df6ce370e1f28188e1b174f0be23e48f846aac0e17",
+            "sha256": "37e5bd08f8cb8a77c25da93ade4423eca4c6798b51d397aa6468bd9d4f996192"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-02/media/01.jpg",
+        "to": "archives/serie-02/media/01.jpg",
+        "before": {
+          "path": "series/serie-02/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "2011ef4e7222660382f5e4532c6043a212f9a01c2d728e5548ab40b688facf96",
+            "sha256": "09fef7e414890636bd23cff295ec2b01bbb17d3d33341c8b8f62aa5c3d90b204"
+          }
+        },
+        "after": {
+          "path": "archives/serie-02/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "2011ef4e7222660382f5e4532c6043a212f9a01c2d728e5548ab40b688facf96",
+            "sha256": "09fef7e414890636bd23cff295ec2b01bbb17d3d33341c8b8f62aa5c3d90b204"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-03/index.md",
+        "to": "archives/serie-03/index.md",
+        "before": {
+          "path": "series/serie-03/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "c649b0f9426aae34c40616feeaf11da7ffbbdb3c4c132483dd15a78f6d8391e6",
+            "sha256": "3f3abea853efc54bb4477ec717563540d865daa81cd802eedb1b4125dc17c1b1"
+          }
+        },
+        "after": {
+          "path": "archives/serie-03/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "c649b0f9426aae34c40616feeaf11da7ffbbdb3c4c132483dd15a78f6d8391e6",
+            "sha256": "3f3abea853efc54bb4477ec717563540d865daa81cd802eedb1b4125dc17c1b1"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-03/media/01.jpg",
+        "to": "archives/serie-03/media/01.jpg",
+        "before": {
+          "path": "series/serie-03/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "905b0b0fcf2b2cc977dab43b91d4b58c25b6b62c21428f5ece44f65d5312a69a",
+            "sha256": "6f7e9fd048dca3b2e05679db5409d8860dc3b073c2f39e7e2173a36b39006cf0"
+          }
+        },
+        "after": {
+          "path": "archives/serie-03/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "905b0b0fcf2b2cc977dab43b91d4b58c25b6b62c21428f5ece44f65d5312a69a",
+            "sha256": "6f7e9fd048dca3b2e05679db5409d8860dc3b073c2f39e7e2173a36b39006cf0"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-04/index.md",
+        "to": "archives/serie-04/index.md",
+        "before": {
+          "path": "series/serie-04/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "65e409717ba158ff4f0a3c65330bd723360c169a691378448d72cfa526b18ee4",
+            "sha256": "57598df0a29d0e67ab8562c80eeaeb892255d119f6c03d1eb7e1cb8f828033e4"
+          }
+        },
+        "after": {
+          "path": "archives/serie-04/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "65e409717ba158ff4f0a3c65330bd723360c169a691378448d72cfa526b18ee4",
+            "sha256": "57598df0a29d0e67ab8562c80eeaeb892255d119f6c03d1eb7e1cb8f828033e4"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-04/media/01.jpg",
+        "to": "archives/serie-04/media/01.jpg",
+        "before": {
+          "path": "series/serie-04/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "dc2e13146871879ceca81c8769947776222faf53c71187e6e402e509802972fb",
+            "sha256": "0c7552290901c07319af739dc2310757436e75f7a35282d442970ed30d98c9f3"
+          }
+        },
+        "after": {
+          "path": "archives/serie-04/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "dc2e13146871879ceca81c8769947776222faf53c71187e6e402e509802972fb",
+            "sha256": "0c7552290901c07319af739dc2310757436e75f7a35282d442970ed30d98c9f3"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-05/index.md",
+        "to": "archives/serie-05/index.md",
+        "before": {
+          "path": "series/serie-05/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "58e5c1d9d6eafcc95ffba0e9565d0a4a73d744a8b977fb53468107235bd2d4df",
+            "sha256": "61065ac6d3c7c1d198d3ee0c95773a2d149063897f51b4bfabe97238843a9d29"
+          }
+        },
+        "after": {
+          "path": "archives/serie-05/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "58e5c1d9d6eafcc95ffba0e9565d0a4a73d744a8b977fb53468107235bd2d4df",
+            "sha256": "61065ac6d3c7c1d198d3ee0c95773a2d149063897f51b4bfabe97238843a9d29"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-05/media/01.jpg",
+        "to": "archives/serie-05/media/01.jpg",
+        "before": {
+          "path": "series/serie-05/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "35d39c359c2b16aca2d7c0aebaf4cfdcb39403ef94b6bd885d4e4b65ea0c4509",
+            "sha256": "e678556ecf91bb4d2ab0e9594ebd9800ee14ebe21b06ef9dd40f57bbcfda45de"
+          }
+        },
+        "after": {
+          "path": "archives/serie-05/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "35d39c359c2b16aca2d7c0aebaf4cfdcb39403ef94b6bd885d4e4b65ea0c4509",
+            "sha256": "e678556ecf91bb4d2ab0e9594ebd9800ee14ebe21b06ef9dd40f57bbcfda45de"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-06/index.md",
+        "to": "archives/serie-06/index.md",
+        "before": {
+          "path": "series/serie-06/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "f198ceb8cf0adf612be10c68f28f35fc8c16086fab1bbb8887c7b87571337381",
+            "sha256": "605abb85bc245e8a11a3d3aa7ed4ac021791fa5b1c96d572323b10356568bd7c"
+          }
+        },
+        "after": {
+          "path": "archives/serie-06/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "f198ceb8cf0adf612be10c68f28f35fc8c16086fab1bbb8887c7b87571337381",
+            "sha256": "605abb85bc245e8a11a3d3aa7ed4ac021791fa5b1c96d572323b10356568bd7c"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-06/media/01.jpg",
+        "to": "archives/serie-06/media/01.jpg",
+        "before": {
+          "path": "series/serie-06/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "d3b1f3ecb1774a4762cf5945a68df2365add761eeeb6161722c726519dc0396a",
+            "sha256": "af65bd16971637d8a5f3d4d1500e217a42f51303fb485d0f3b01c32cf0795320"
+          }
+        },
+        "after": {
+          "path": "archives/serie-06/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "d3b1f3ecb1774a4762cf5945a68df2365add761eeeb6161722c726519dc0396a",
+            "sha256": "af65bd16971637d8a5f3d4d1500e217a42f51303fb485d0f3b01c32cf0795320"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-07/index.md",
+        "to": "archives/serie-07/index.md",
+        "before": {
+          "path": "series/serie-07/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "eb9e629c4fadcaf24a7c84dabad605d67707cd8518092451c67699f82290f042",
+            "sha256": "b297eca2c59cdaf5a9ec956a7515d6e1035d49c70b1ddc02aaca0636b9b008cb"
+          }
+        },
+        "after": {
+          "path": "archives/serie-07/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "eb9e629c4fadcaf24a7c84dabad605d67707cd8518092451c67699f82290f042",
+            "sha256": "b297eca2c59cdaf5a9ec956a7515d6e1035d49c70b1ddc02aaca0636b9b008cb"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-07/media/01.jpg",
+        "to": "archives/serie-07/media/01.jpg",
+        "before": {
+          "path": "series/serie-07/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "0d359978b855ae925c343d560c3749c2fc1ac36783cb61d1ea0515557bbadbfe",
+            "sha256": "1e2d173c070822533b6858894465dbef03404fcc712362dac682581db62fea15"
+          }
+        },
+        "after": {
+          "path": "archives/serie-07/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "0d359978b855ae925c343d560c3749c2fc1ac36783cb61d1ea0515557bbadbfe",
+            "sha256": "1e2d173c070822533b6858894465dbef03404fcc712362dac682581db62fea15"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-08/index.md",
+        "to": "archives/serie-08/index.md",
+        "before": {
+          "path": "series/serie-08/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "3b7889770ab709319de9b5b4dedeaf77262cdb059ea813bd75f5ca68e586c169",
+            "sha256": "1f1b1421e380743512f9ab2ab2c69bd22791ab59e072ebf840d177316c573d2e"
+          }
+        },
+        "after": {
+          "path": "archives/serie-08/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "3b7889770ab709319de9b5b4dedeaf77262cdb059ea813bd75f5ca68e586c169",
+            "sha256": "1f1b1421e380743512f9ab2ab2c69bd22791ab59e072ebf840d177316c573d2e"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-08/media/01.jpg",
+        "to": "archives/serie-08/media/01.jpg",
+        "before": {
+          "path": "series/serie-08/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "a9183b93bab431855fc5f80beac1305d9ed96ad015bd927df7a06448a3f25193",
+            "sha256": "175f8611dda06cdfb5fbf21aec887691ae71d0fcbb8d1aeb9f72489689435d7e"
+          }
+        },
+        "after": {
+          "path": "archives/serie-08/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "a9183b93bab431855fc5f80beac1305d9ed96ad015bd927df7a06448a3f25193",
+            "sha256": "175f8611dda06cdfb5fbf21aec887691ae71d0fcbb8d1aeb9f72489689435d7e"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-09/index.md",
+        "to": "archives/serie-09/index.md",
+        "before": {
+          "path": "series/serie-09/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "f1c480a30734176fd917048259fb5ea5896f0a8f0db5072c9022594f8a4f12a8",
+            "sha256": "c089ed6fa96d17bd3fbdfbc58339f53b7b5e5b28a8f756f796924a7e0ccece41"
+          }
+        },
+        "after": {
+          "path": "archives/serie-09/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "f1c480a30734176fd917048259fb5ea5896f0a8f0db5072c9022594f8a4f12a8",
+            "sha256": "c089ed6fa96d17bd3fbdfbc58339f53b7b5e5b28a8f756f796924a7e0ccece41"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-09/media/01.jpg",
+        "to": "archives/serie-09/media/01.jpg",
+        "before": {
+          "path": "series/serie-09/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "12c194a63efdba5d18d257ee3d392ff4e05e75ac578eb488fc949c82ad1ae09f",
+            "sha256": "3518b2e888c73f5a29e64486730456fb484a135a89a5652f2549da18cd5dfe2d"
+          }
+        },
+        "after": {
+          "path": "archives/serie-09/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "12c194a63efdba5d18d257ee3d392ff4e05e75ac578eb488fc949c82ad1ae09f",
+            "sha256": "3518b2e888c73f5a29e64486730456fb484a135a89a5652f2549da18cd5dfe2d"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-10/index.md",
+        "to": "archives/serie-10/index.md",
+        "before": {
+          "path": "series/serie-10/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "b1c522209483e15017114598b59b19eb8797dd7a96c8f09515e2c377e29be679",
+            "sha256": "4dcc3e10b91742e58400255b17a6413515b28c86e05deffb1e7be4c2ffdd6ec1"
+          }
+        },
+        "after": {
+          "path": "archives/serie-10/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "b1c522209483e15017114598b59b19eb8797dd7a96c8f09515e2c377e29be679",
+            "sha256": "4dcc3e10b91742e58400255b17a6413515b28c86e05deffb1e7be4c2ffdd6ec1"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-10/media/01.jpg",
+        "to": "archives/serie-10/media/01.jpg",
+        "before": {
+          "path": "series/serie-10/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "59731f69f92b2efb451567072044dd31d9c862341c614e31e5fc786f8e7ffac2",
+            "sha256": "62f6d7a47ca8627149579e5798a9b489d5b0cfbdd1070936b0b543fd430ea3d5"
+          }
+        },
+        "after": {
+          "path": "archives/serie-10/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "59731f69f92b2efb451567072044dd31d9c862341c614e31e5fc786f8e7ffac2",
+            "sha256": "62f6d7a47ca8627149579e5798a9b489d5b0cfbdd1070936b0b543fd430ea3d5"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-11/index.md",
+        "to": "archives/serie-11/index.md",
+        "before": {
+          "path": "series/serie-11/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "47335693ce78a5a3f4636410a943b627444b96e3a5b8c3131244f6b0b66a87aa",
+            "sha256": "86fbb093f7599bd971d159b9af4126b7d6739fd51dbbcaad8c276e90411660a4"
+          }
+        },
+        "after": {
+          "path": "archives/serie-11/index.md",
+          "kind": "content",
+          "size": 84,
+          "hashes": {
+            "dropbox": "47335693ce78a5a3f4636410a943b627444b96e3a5b8c3131244f6b0b66a87aa",
+            "sha256": "86fbb093f7599bd971d159b9af4126b7d6739fd51dbbcaad8c276e90411660a4"
+          }
+        },
+        "modified": false
+      },
+      {
+        "from": "series/serie-11/media/01.jpg",
+        "to": "archives/serie-11/media/01.jpg",
+        "before": {
+          "path": "series/serie-11/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "9eddd19cfbff0b56581ceb308ddd037142ebd8be3a5915ed35657ff83e87a8f3",
+            "sha256": "60b724b4b7a93533aa2822553cce6b4c6c485a0ac3cd4795238345b8f17060af"
+          }
+        },
+        "after": {
+          "path": "archives/serie-11/media/01.jpg",
+          "kind": "media",
+          "size": 22,
+          "hashes": {
+            "dropbox": "9eddd19cfbff0b56581ceb308ddd037142ebd8be3a5915ed35657ff83e87a8f3",
+            "sha256": "60b724b4b7a93533aa2822553cce6b4c6c485a0ac3cd4795238345b8f17060af"
+          }
+        },
+        "modified": false
+      }
+    ],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {
+      "series/serie-01/index.md": "---\ntitle: \"Série 01\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-01/media/01.jpg": "serie-01/media/01.jpg\n",
+      "series/serie-02/index.md": "---\ntitle: \"Série 02\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-02/media/01.jpg": "serie-02/media/01.jpg\n",
+      "series/serie-03/index.md": "---\ntitle: \"Série 03\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-03/media/01.jpg": "serie-03/media/01.jpg\n",
+      "series/serie-04/index.md": "---\ntitle: \"Série 04\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-04/media/01.jpg": "serie-04/media/01.jpg\n",
+      "series/serie-05/index.md": "---\ntitle: \"Série 05\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-05/media/01.jpg": "serie-05/media/01.jpg\n",
+      "series/serie-06/index.md": "---\ntitle: \"Série 06\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-06/media/01.jpg": "serie-06/media/01.jpg\n",
+      "series/serie-07/index.md": "---\ntitle: \"Série 07\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-07/media/01.jpg": "serie-07/media/01.jpg\n",
+      "series/serie-08/index.md": "---\ntitle: \"Série 08\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-08/media/01.jpg": "serie-08/media/01.jpg\n",
+      "series/serie-09/index.md": "---\ntitle: \"Série 09\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-09/media/01.jpg": "serie-09/media/01.jpg\n",
+      "series/serie-10/index.md": "---\ntitle: \"Série 10\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-10/media/01.jpg": "serie-10/media/01.jpg\n",
+      "series/serie-11/index.md": "---\ntitle: \"Série 11\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/serie-11/media/01.jpg": "serie-11/media/01.jpg\n"
+    },
+    "target": {
+      "archives/serie-01/index.md": "---\ntitle: \"Série 01\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-01/media/01.jpg": "serie-01/media/01.jpg\n",
+      "archives/serie-02/index.md": "---\ntitle: \"Série 02\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-02/media/01.jpg": "serie-02/media/01.jpg\n",
+      "archives/serie-03/index.md": "---\ntitle: \"Série 03\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-03/media/01.jpg": "serie-03/media/01.jpg\n",
+      "archives/serie-04/index.md": "---\ntitle: \"Série 04\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-04/media/01.jpg": "serie-04/media/01.jpg\n",
+      "archives/serie-05/index.md": "---\ntitle: \"Série 05\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-05/media/01.jpg": "serie-05/media/01.jpg\n",
+      "archives/serie-06/index.md": "---\ntitle: \"Série 06\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-06/media/01.jpg": "serie-06/media/01.jpg\n",
+      "archives/serie-07/index.md": "---\ntitle: \"Série 07\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-07/media/01.jpg": "serie-07/media/01.jpg\n",
+      "archives/serie-08/index.md": "---\ntitle: \"Série 08\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-08/media/01.jpg": "serie-08/media/01.jpg\n",
+      "archives/serie-09/index.md": "---\ntitle: \"Série 09\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-09/media/01.jpg": "serie-09/media/01.jpg\n",
+      "archives/serie-10/index.md": "---\ntitle: \"Série 10\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-10/media/01.jpg": "serie-10/media/01.jpg\n",
+      "archives/serie-11/index.md": "---\ntitle: \"Série 11\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n",
+      "archives/serie-11/media/01.jpg": "serie-11/media/01.jpg\n"
+    }
+  },
+  "policy": {},
+  "expected": [
+    {
+      "code": "guard-mass-move",
+      "severity": "warning",
+      "path": ""
+    }
+  ]
+}

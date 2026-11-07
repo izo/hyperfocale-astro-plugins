@@ -1,0 +1,27 @@
+{
+  "description": "`index.mdx` et `index.<lang>.mdx` (§1.12) : un fichier MDX est du code exécuté au build. `bretagne-2024` porte `index.md` et `index.mdx` (l'ancien « `index.md` fait foi » n'existe plus), `normandie-2023` un `index.en.mdx`, `alsace-2022` un `index.mdx` seul : ce dossier n'est pas porteur, le diagnostic est le seul produit.",
+  "corpus": "invalid-index-mdx-forbidden",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "index-mdx-forbidden",
+      "severity": "error",
+      "path": "series/alsace-2022/index.mdx"
+    },
+    {
+      "code": "index-mdx-forbidden",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.mdx"
+    },
+    {
+      "code": "index-mdx-forbidden",
+      "severity": "error",
+      "path": "series/normandie-2023/index.en.mdx"
+    }
+  ]
+}

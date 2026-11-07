@@ -1,0 +1,77 @@
+{
+  "description": "R\u00e9f\u00e9rences relatives (\u00a74.10, r\u00e8gles 9 et 10). `nfc-2024` : `cover` et `attachments[].file` saisis en NFD (`e` + U+0301) retrouvent leurs fichiers, dont les chemins de snapshot sont NFC \u2014 la r\u00e9f\u00e9rence est normalis\u00e9e avant la comparaison. `casse-2024` : `./media/DSCF0001.JPG` ne d\u00e9signe pas `media/dscf0001.jpg` \u2014 comparaison octet \u00e0 octet, casse comprise \u2192 `cover-not-found`. Les chemins non ASCII sont \u00e9crits en `\\uXXXX` dans ce fichier.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:e0fa2dfcef78044dcbd8e9380e68c776cc73b2b3201050f2441a3d4ab6c1fc9d",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/casse-2024/index.md",
+        "kind": "content",
+        "size": 75,
+        "hashes": {
+          "dropbox": "78c253e11bbfc0f92999241866f668c30dd20e89b6721e86883aa8514e1a7570",
+          "sha256": "afefd09c3132aead37ffa05afdff855c89748e6cd83ab7d7a9bc874e2e1c9342"
+        }
+      },
+      {
+        "path": "series/casse-2024/media/dscf0001.jpg",
+        "kind": "media",
+        "size": 2,
+        "hashes": {
+          "dropbox": "13f7360b238504ed649d7d7e1aed44f0dffd0635fdb4faf22c8df2d9866b6221",
+          "sha256": "8d74beec1be996322ad76813bafb92d40839895d6dd7ee808b17ca201eac98be"
+        }
+      },
+      {
+        "path": "series/nfc-2024/index.md",
+        "kind": "content",
+        "size": 116,
+        "hashes": {
+          "dropbox": "ec02fe7ac01b40af0d89dcca32ee768095400af18add97855e04a59b03c31a62",
+          "sha256": "c0989fe93b7c3c8b26a6aa5d6b7df495e40a8e31da266b6335b249914770787e"
+        }
+      },
+      {
+        "path": "series/nfc-2024/media/r\u00e9sum\u00e9.pdf",
+        "kind": "media",
+        "size": 2,
+        "hashes": {
+          "dropbox": "d5e3b3f9c218de41afb5e516be72da7511859f481073baac5fb4ca0091c97554",
+          "sha256": "8e54b0ca18020275e4aef1ca0eb5e197e066c065c1864817652a8a39c55402cd"
+        }
+      },
+      {
+        "path": "series/nfc-2024/media/\u00e9.jpg",
+        "kind": "media",
+        "size": 2,
+        "hashes": {
+          "dropbox": "1deacebd466ffa16c639b8576a3e68fea6a968f28f1ddfa947a23627f055d0db",
+          "sha256": "a2bbdb2de53523b8099b37013f251546f3d65dbe7a0774fa41af0a4176992fd4"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/nfc-2024/index.md": "---\ntitle: \"NFC 2024\"\ndate: 2024-06-15\ncover: \"./media/e\u0301.jpg\"\nattachments:\n  - file: \"./media/re\u0301sume\u0301.pdf\"\n---\n",
+    "series/nfc-2024/media/\u00e9.jpg": "e\n",
+    "series/nfc-2024/media/r\u00e9sum\u00e9.pdf": "r\n",
+    "series/casse-2024/index.md": "---\ntitle: \"Casse 2024\"\ndate: 2024-06-15\ncover: \"./media/DSCF0001.JPG\"\n---\n",
+    "series/casse-2024/media/dscf0001.jpg": "d\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "cover-not-found",
+      "severity": "warning",
+      "path": "series/casse-2024/index.md"
+    }
+  ]
+}

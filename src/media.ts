@@ -15,6 +15,7 @@
  */
 
 import type { Attachment, AttachmentKind } from './schema.js';
+import { truncate } from './preview.js';
 import type { DiagnosticCode, Severity } from './ingest/types.js';
 import {
   basename,
@@ -26,9 +27,13 @@ import {
   isImagePath,
   isOriginalPath,
   isRelativeReference,
+  isUnsafeReferenceText,
   ORIGINAL_EXTENSIONS,
+  referenceProblem,
   resolveReference,
+  urlFieldProblem,
 } from './ingest/paths.js';
+import type { UrlFieldOptions, UrlFieldProblem } from './ingest/paths.js';
 import { manifestEntryReferences, readImagesManifest } from './ingest/manifest.js';
 import type { ManifestProblem } from './ingest/manifest.js';
 
@@ -88,6 +93,7 @@ const MANIFEST_PROBLEMS: Readonly<Record<ManifestProblem, string>> = {
   json: "n'est pas un JSON valide",
   'not-object': 'ne contient pas un objet',
   images: ': la clé "images" est absente ou n\'est pas un tableau',
+  limits: 'dépasse les bornes de lecture (1 Mio, 32 niveaux d\'imbrication, §1.12)',
 };
 
 /**
@@ -121,6 +127,7 @@ export function posterFilenames(embeds: unknown): Set<string> {
   for (const embed of embeds) {
     const poster = isRecord(embed) ? embed.poster : undefined;
     if (typeof poster !== 'string' || poster === '' || !isRelativeReference(poster)) continue;
+    if (urlFieldProblem(poster) !== null) continue;
     const filename = basename(poster.replace(/^\.\//, '')).trim();
     if (filename !== '') names.add(filename.normalize('NFC'));
   }
@@ -161,6 +168,14 @@ export interface ResolveSeriesMediaInput {
    * non encodé. Défaut : `./<chemin>`, la forme relative de §3.2.
    */
   readonly url?: (path: string) => string;
+  /**
+   * Dossier de la série, relatif à la racine du corpus, POSIX
+   * (`series/provence-2020`). Il situe la série pour juger si une référence qui
+   * remonte (`../autre-serie/media/01.jpg`) sort du corpus (`reference-unsafe`,
+   * §1.12). Défaut `''` : la série est à la racine du corpus, et toute
+   * remontée en sort.
+   */
+  readonly folder?: string;
 }
 
 /** Image résolue (spec §3.2, `Image`). */
@@ -226,7 +241,14 @@ export function fallbackSrc(original: ResolvedImage, applied: ResolvedImage): st
 /** Codes de diagnostic de §4.10 que le résolveur peut produire. */
 export type MediaDiagnosticCode = Extract<
   DiagnosticCode,
-  'images-conflict' | 'images-json-invalid' | 'media-nested' | 'cover-not-found' | 'cover-not-image' | 'attachment-not-found'
+  | 'images-conflict'
+  | 'images-json-invalid'
+  | 'media-nested'
+  | 'cover-not-found'
+  | 'cover-not-image'
+  | 'attachment-not-found'
+  | 'url-scheme-forbidden'
+  | 'reference-unsafe'
 >;
 
 /** Anomalie relevée en résolvant — mêmes codes et sévérités qu'en §4.10. */
@@ -255,6 +277,8 @@ const SEVERITY: Readonly<Record<MediaDiagnosticCode, Severity>> = {
   'images-conflict': 'error',
   'media-nested': 'error',
   'cover-not-image': 'error',
+  'url-scheme-forbidden': 'error',
+  'reference-unsafe': 'error',
   'images-json-invalid': 'warning',
   'cover-not-found': 'warning',
   'attachment-not-found': 'warning',
@@ -268,6 +292,11 @@ function field(data: Readonly<Record<string, unknown>>, key: string): unknown {
 function isAbsoluteUrl(ref: string): boolean {
   return !isRelativeReference(ref);
 }
+
+const REFUSED: Readonly<Record<UrlFieldProblem, string>> = {
+  'url-scheme-forbidden': 'forme d\'URL refusée (§1.12) — ignorée.',
+  'reference-unsafe': 'référence non sûre (§1.12) — ignorée.',
+};
 
 function dimensions(entry: Record<string, unknown>): Pick<ResolvedImage, 'alt' | 'width' | 'height'> {
   return {
@@ -305,12 +334,22 @@ function dimensions(entry: Record<string, unknown>): Pick<ResolvedImage, 'alt' |
  * manifeste > fichiers de `media/` qui ne sont ni images ni originaux, triés,
  * enrichis par le bloc `attachments:`.
  *
+ * **Valeurs refusées** (§1.12) — une valeur d'URL hors des formes admises
+ * (`javascript:`, `data:`, `file:`, `//hôte`, caractère de contrôle…) est
+ * ignorée et signalée en `url-scheme-forbidden` ; une référence relative non
+ * sûre (`\`, `%2e` `%2f` `%5c`, caractère de contrôle, sortie du corpus — voir
+ * `folder`) l'est en `reference-unsafe`, qui remplace `cover-not-found` et
+ * `attachment-not-found`. Une valeur ignorée ne produit ni image, ni couverture,
+ * ni document joint, et ne subit aucun autre contrôle.
+ *
  * Ne lève jamais : une anomalie devient un diagnostic (codes et sévérités de
  * §4.10), et la résolution continue avec le repli que la spec prévoit.
  */
 export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeriesMedia {
   const fm = input.frontmatter;
   const url = input.url ?? ((path: string) => `./${path}`);
+  const folder = input.folder ?? '';
+  const escapesRoot = (reference: string) => resolveReference(folder, reference) === null;
   const diagnostics: MediaDiagnostic[] = [];
   const report = (code: MediaDiagnosticCode, message: string) => {
     if (!diagnostics.some((d) => d.code === code && d.message === message)) {
@@ -334,6 +373,15 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
   }
   const inMedia = (target: string) => dirname(target) === 'media' && listing?.has(basename(target)) === true;
 
+  /** Écarte une valeur d'URL refusée par §1.12 : signalée, jamais rendue. */
+  const refused = (value: unknown, label: string, options: UrlFieldOptions = {}): boolean => {
+    if (typeof value !== 'string') return false;
+    const problem = urlFieldProblem(value, { ...options, escapesRoot });
+    if (problem === null) return false;
+    report(problem, `${label} ${JSON.stringify(truncate(value))} : ${REFUSED[problem]}`);
+    return true;
+  };
+
   // ── images.json ───────────────────────────────────────────────────────────
   const manifestPresent = input.manifest !== undefined && input.manifest !== null;
   let manifest: { images: readonly unknown[]; files?: readonly unknown[] } | null = null;
@@ -349,8 +397,20 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
     report('images-conflict', '`images:` du frontmatter et `images.json` dans la même série : le frontmatter l\'emporte (§1.5.1).');
   }
 
-  /** Résout une URL de §1.5.1 ; `null` pour un original, un non-image local ou une référence hors corpus. */
-  const fromRef = (ref: string): ResolvedImage | null => {
+  // Embeds : l'`url` et le `poster` suivent les mêmes règles (§1.12) ; le résolveur
+  // ne rend pas d'embed, il signale seulement ce qu'il aurait refusé.
+  const embedsField = field(fm, 'embeds');
+  if (Array.isArray(embedsField)) {
+    embedsField.forEach((embed, i) => {
+      if (!isRecord(embed)) return;
+      refused(embed.url, `\`embeds[${i}].url\``, { httpOnly: true });
+      refused(embed.poster, `\`embeds[${i}].poster\``);
+    });
+  }
+
+  /** Résout une URL de §1.5.1 ; `null` pour une valeur refusée, un original, un non-image local ou une référence hors série. */
+  const fromRef = (ref: string, label: string): ResolvedImage | null => {
+    if (refused(ref, label)) return null;
     if (isOriginal(ref)) return null;
     if (isAbsoluteUrl(ref)) return { src: ref };
     const target = resolveReference('', ref);
@@ -364,21 +424,23 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
 
   if (Array.isArray(frontImages) && frontImages.length > 0) {
     source = 'frontmatter';
-    for (const entry of frontImages) {
+    for (const [i, entry] of frontImages.entries()) {
       let image: ResolvedImage | null = null;
       if (typeof entry === 'string') {
-        image = fromRef(entry);
+        image = fromRef(entry, `\`images[${i}]\``);
       } else if (isRecord(entry)) {
         if (typeof entry.url === 'string' && entry.url !== '') {
-          const base = fromRef(entry.url);
+          const base = fromRef(entry.url, `\`images[${i}].url\``);
           image = base && { ...base, ...dimensions(entry) };
         } else if (typeof entry.file === 'string' && entry.file !== '') {
           const name = basename(entry.file.replace(/^\.\//, '')).normalize('NFC');
           const target = `media/${name}`;
-          if (isImagePath(name) && (listing === null || listing.has(name))) {
+          if (isUnsafeReferenceText(entry.file)) {
+            report('reference-unsafe', `\`images[${i}].file\` ${JSON.stringify(entry.file)} : ${REFUSED['reference-unsafe']}`);
+          } else if (isImagePath(name) && (listing === null || listing.has(name))) {
             image = { src: url(target), path: target, ...dimensions(entry) };
           }
-        } else if (isRecord(entry.src) && typeof entry.src.src === 'string') {
+        } else if (isRecord(entry.src) && typeof entry.src.src === 'string' && !refused(entry.src.src, `\`images[${i}].src.src\``)) {
           image = { src: entry.src.src, ...dimensions(entry.src), ...dimensions(entry) };
         }
       }
@@ -386,9 +448,9 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
     }
   } else if (manifest !== null) {
     source = 'manifest';
-    for (const entry of manifest.images) {
+    for (const [i, entry] of manifest.images.entries()) {
       const ref = typeof entry === 'string' ? entry : isRecord(entry) && typeof entry.url === 'string' ? entry.url : '';
-      const base = ref === '' ? null : fromRef(ref);
+      const base = ref === '' ? null : fromRef(ref, `images.json \`images[${i}]\``);
       if (base !== null) gallery.push({ image: isRecord(entry) ? { ...base, ...dimensions(entry) } : base, raw: entry });
     }
   } else if (listing !== null) {
@@ -406,33 +468,35 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
   let cover: ResolvedImage | undefined = images[0];
   const coverField = field(fm, 'cover');
   if (typeof coverField === 'string' && coverField !== '') {
-    if (isAbsoluteUrl(coverField)) {
+    if (refused(coverField, '`cover`')) {
+      // Valeur refusée (§1.12) : aucun autre contrôle, repli sur la première image.
+    } else if (isAbsoluteUrl(coverField)) {
       cover = images.find((image) => image.src === coverField) ?? { src: coverField };
     } else {
       const target = resolveReference('', coverField);
       const notImage = !isImagePath(coverField);
-      if (notImage) report('cover-not-image', `\`cover\` « ${coverField} » ne désigne pas une image (§1.9).`);
-      const matched =
-        target === null
-          ? undefined
-          : gallery.find(({ image, raw }) => image.path === target || manifestEntryReferences(raw, '', target));
-      // Vérifiable : la cible est dans `media/` et l'on connaît `media/` ou la liste d'images.
-      const checkable = target !== null && dirname(target) === 'media' && (listing !== null || source !== 'none');
-      const missing = target === null || (matched === undefined && !inMedia(target) && checkable);
-      if (missing) report('cover-not-found', `\`cover\` « ${coverField} » introuvable.`);
-      if (!notImage && !missing && target !== null) {
-        cover = matched?.image ?? { src: url(target), path: target };
+      if (notImage) report('cover-not-image', `\`cover\` « ${truncate(coverField)} » ne désigne pas une image (§1.9).`);
+      // Hors du dossier de la série mais sous la racine du corpus : le résolveur ne
+      // voit que le `media/` de la série, il ne peut ni la vérifier ni la rendre.
+      if (target !== null) {
+        const matched = gallery.find(({ image, raw }) => image.path === target || manifestEntryReferences(raw, '', target));
+        // Vérifiable : la cible est dans `media/` et l'on connaît `media/` ou la liste d'images.
+        const checkable = dirname(target) === 'media' && (listing !== null || source !== 'none');
+        const missing = matched === undefined && !inMedia(target) && checkable;
+        if (missing) report('cover-not-found', `\`cover\` « ${truncate(coverField)} » introuvable.`);
+        if (!notImage && !missing) cover = matched?.image ?? { src: url(target), path: target };
       }
     }
-  } else if (isRecord(coverField) && typeof coverField.src === 'string') {
-    // `cover` déjà traité par `image()` d'Astro.
+  } else if (isRecord(coverField) && typeof coverField.src === 'string' && !refused(coverField.src, '`cover.src`')) {
+    // `cover` déjà traité par `image()` d'Astro. Valeur refusée (§1.12) : repli sur la première image.
     cover = { src: coverField.src, ...dimensions(coverField) };
   }
 
   // ── Documents joints ──────────────────────────────────────────────────────
-  const remote = (entries: readonly unknown[]): Attachment[] =>
-    entries.flatMap((entry): Attachment[] => {
-      if (!isRecord(entry) || typeof entry.url !== 'string' || entry.url === '' || isOriginal(entry.url)) return [];
+  const remote = (entries: readonly unknown[], origin: string): Attachment[] =>
+    entries.flatMap((entry, i): Attachment[] => {
+      if (!isRecord(entry) || typeof entry.url !== 'string' || entry.url === '') return [];
+      if (refused(entry.url, `${origin}\`files[${i}].url\``) || isOriginal(entry.url)) return [];
       const target = isRelativeReference(entry.url) ? resolveReference('', entry.url) : null;
       if (isRelativeReference(entry.url) && target === null) return [];
       const clean = stripQuery(entry.url);
@@ -450,6 +514,10 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
   if (Array.isArray(attachmentsField)) {
     attachmentsField.forEach((entry, i) => {
       const file = isRecord(entry) ? entry.file : undefined;
+      if (typeof file === 'string' && referenceProblem(file, escapesRoot) !== null) {
+        report('reference-unsafe', `\`attachments[${i}].file\` ${JSON.stringify(file)} : ${REFUSED['reference-unsafe']}`);
+        return;
+      }
       const target = typeof file === 'string' && isRelativeReference(file) ? resolveReference('', file) : null;
       if (target === null || dirname(target) !== 'media') {
         report('attachment-not-found', `\`attachments[${i}]\` (« ${String(file)} ») ne désigne pas un fichier de \`media/\`.`);
@@ -474,9 +542,9 @@ export function resolveSeriesMedia(input: ResolveSeriesMediaInput): ResolvedSeri
   let attachments: Attachment[] = [];
   const frontFiles = field(fm, 'files');
   if (Array.isArray(frontFiles) && frontFiles.length > 0) {
-    attachments = remote(frontFiles);
+    attachments = remote(frontFiles, '');
   } else if (manifest?.files !== undefined && manifest.files.length > 0) {
-    attachments = remote(manifest.files);
+    attachments = remote(manifest.files, 'images.json ');
   } else if (listing !== null) {
     attachments = [...listing.keys()]
       .filter((name) => classifyAttachment(name) !== null)

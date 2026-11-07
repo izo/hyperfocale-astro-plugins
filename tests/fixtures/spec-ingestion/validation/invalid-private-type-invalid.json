@@ -1,0 +1,27 @@
+{
+  "description": "`private` doit être un booléen YAML (§1.12). `bretagne-2024` : la chaîne `\"true\"` ; `normandie-2023/index.en.md` : `yes`, une chaîne en YAML 1.2 (le `index.md` voisin est sain) ; `musique` : un entier dans une page de section. `alsace-2022` (`True`, booléen du schéma core) et `loire-2021` (`null` vaut absent) n'en produisent aucun.",
+  "corpus": "invalid-private-type-invalid",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "private-type-invalid",
+      "severity": "error",
+      "path": "series/bretagne-2024/index.md"
+    },
+    {
+      "code": "private-type-invalid",
+      "severity": "error",
+      "path": "series/musique/index.md"
+    },
+    {
+      "code": "private-type-invalid",
+      "severity": "error",
+      "path": "series/normandie-2023/index.en.md"
+    }
+  ]
+}

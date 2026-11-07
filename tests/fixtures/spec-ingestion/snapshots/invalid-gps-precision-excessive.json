@@ -1,0 +1,54 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:45ee40c26b062db2868b4ac19a4266795c9b5cb0580c9585fdcc875251adfbd0",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/alsace-2022/index.md",
+      "kind": "content",
+      "size": 125,
+      "hashes": {
+        "dropbox": "ec61ad9ad2990c5133b6a47b712f13ee4e71a3ed4461e4d667be698519b5e48f",
+        "sha256": "c811ee191734f3cd84c50cf6de14154feee47f102ef2a353e537417366ede071"
+      }
+    },
+    {
+      "path": "series/bretagne-2024/index.md",
+      "kind": "content",
+      "size": 135,
+      "hashes": {
+        "dropbox": "44715a1d8992a1f68772414a4afed3b99e09ecbde2ec0f665bbc73de65a06d3a",
+        "sha256": "76ab0a75cfe7b5f536a80ac63d56a9f28a50ab6abb717c3788d8a20291f24dfb"
+      }
+    },
+    {
+      "path": "series/loire-2021/index.md",
+      "kind": "content",
+      "size": 121,
+      "hashes": {
+        "dropbox": "d1b7c2593562ff8fd533b4886c56039b5374ae729ac2269131926c6bca7ae8bc",
+        "sha256": "c6d77cc51ddc230ce54b9e2449f455e77d5e6701dffd5bf597fc0db62f7e91b9"
+      }
+    },
+    {
+      "path": "series/normandie-2023/index.md",
+      "kind": "content",
+      "size": 130,
+      "hashes": {
+        "dropbox": "aedb38516e07d37b8b16fe44b3d39b50141d88e328cd02dec866d327188b6f81",
+        "sha256": "e00e7cff15c1a90ea5128a76145b2b87eaa3d81da31b2f25724e4de9acf0e65a"
+      }
+    },
+    {
+      "path": "series/provence-2020/index.md",
+      "kind": "content",
+      "size": 139,
+      "hashes": {
+        "dropbox": "3fdb1a54dd87ff2c73c224e7d222ea735dcfa380de9eaec5319b10779e92998e",
+        "sha256": "deb0ac67580c3a0ad48dc206ebe6ff0044a22f5bc1a464fe8ee66e94084f2836"
+      }
+    }
+  ]
+}

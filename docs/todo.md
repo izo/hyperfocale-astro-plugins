@@ -2,7 +2,7 @@
 kanban-plugin: board
 project: hyperfocale
 version: "0.26.0"
-updated: 2026-11-01
+updated: 2026-11-06
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -28,6 +28,12 @@ prefixes:
 
 ## Backlog
 
+- [ ] #EP-03-SPEC-PRIVE [P1] Série privée dont l'index disparaît, `media/` laissé en place : la garde se tait #spec
+  Constat F6 de la revue d'EP-03. Depuis la 2.17, un lien symbolique est ignoré (`entry-symlink`, avertissement) et non plus `snapshot-incomplete`. Combiné à « la suppression d'une série privée n'est pas une exposition » (§4.11), remplacer l'`index.md` d'une série `private: true` par un lien, le supprimer ou le renommer `Index.md` laisse `a/media/` dans `target` sans fichier index : `guardChangeSet` rend `[]`, `validateSnapshot` rend seulement `media-orphan` (avertissement). Avant la 2.17, le lien bloquait. À porter dans `izo/hyperfocale-spec` (§4.11, définition de l'exposition) : un dossier privé en base dont le fichier index disparaît alors qu'il reste des entrées sous son `media/` doit être une erreur de la garde. Le plugin ne la code pas d'avance (« la spec fait foi ») ; en attendant, un consumer traite `entry-symlink` sur un chemin présent en base comme bloquant. Reproduit avec des snapshots en mémoire (base `a/index.md` privé + `a/media/01.jpg`, target sans `a/index.md`).
+
+- [ ] #EP-03-RESTE [P2] Conformité 2.17 : ce que les fixtures n'exercent pas #spec
+  Non couvert par #EP-03, à décider ou à relever : assainissement du HTML rendu depuis le body (§1.12) ; récupération d'URL au build — liste blanche d'hôtes vide par défaut, adresse résolue vérifiée (§1.12) —, dont les fixtures `fixtures/security/` que `fixtures:sync` ne copie pas encore ; exigences de §4.0 sur les providers (portée en lecture seule, secrets, webhook : signature en temps constant, horodatage refusé au-delà de 5 minutes), à revérifier ; `routes.json` de la couche 1, non rejoué faute de fonction pure de résolution d'URL. À la release, relever §0.5 et le README de `izo/hyperfocale-spec`.
+
 ## Todo
 
 ## In Progress
@@ -40,6 +46,9 @@ prefixes:
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
 
 ## Review
+
+- [ ] #EP-03 [P1] Conformité 2.17-draft : fixtures resynchronisées sur `8a55709`, couches 1 et 4 alignées #spec
+  Sur la branche `claude/multi-repo-backlog-epics-ip0d2i`, sans PR. Les 17 tests de conformité en échec (`conformance`, `loader`, `media`) passent, avec les tests propres de chaque commit ; `test:unit` est vert. Fait : schémas d'URL et références sûres, `index.mdx` interdit, bornes de lecture, `private` strict, contenu actif, précision GPS, liens symboliques (`entry-symlink`), `publishable()` sans `source`, seuils de garde par défaut, jour écrit des dates, identifiants d'embed, `iptc.gps` et `country_code`, `--hf-lightbox-bg`, fixtures de la couche 1 (`fixtures:sync` les copie). **Rupture** : les seuils de la garde sont actifs par défaut (CHANGELOG, *Non publié*). **Reste** (humain) : ouvrir la PR et la relire, choisir la version — une rupture, donc mineure en 0.x — puis pousser le tag (`docs/publication.md`). Ce qui n'est pas couvert : #EP-03-RESTE.
 
 ## Done
 

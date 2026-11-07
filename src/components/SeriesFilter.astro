@@ -46,7 +46,7 @@ const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix;
 const allTags = [...new Set(series.flatMap((s) => (d(s).tags as string[] | undefined) ?? []))].sort();
 const allYears = [...new Set(
   series
-    .map((s) => (d(s).date instanceof Date ? (d(s).date as Date).getFullYear() : null))
+    .map((s) => (d(s).date instanceof Date ? (d(s).date as Date).getUTCFullYear() : null))
     .filter((y): y is number => y !== null),
 )].sort((a, b) => b - a);
 const allCollections = [...new Set(series.map((s) => s.collection).filter((c): c is string => !!c))].sort();
@@ -68,7 +68,7 @@ const items: ItemData[] = series.map((s) => ({
   id: s.id,
   title: String(s.data.title),
   description: typeof d(s).description === 'string' ? (d(s).description as string) : null,
-  date: d(s).date instanceof Date ? (d(s).date as Date).getFullYear() : null,
+  date: d(s).date instanceof Date ? (d(s).date as Date).getUTCFullYear() : null,
   tags: (d(s).tags as string[] | undefined) ?? [],
   location: (d(s).location as string | undefined) ?? null,
   url: `${normalizedPrefix}/${s.id}/`,

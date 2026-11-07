@@ -1,0 +1,251 @@
+{
+  "description": "Une série privée dans `base` (`private: true`) dont le `private` de `target` n'est pas le booléen `true` n'y est plus privée : chaine-2024 (`\"true\"`), oui-2024 (`yes`), un-2024 (`1`), casse-2024 (clé `Private`) → exposées. reste-2024 garde `private: true` : aucun diagnostic.",
+  "base": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:c41b601f539c6176136fee757a9ccda618f1b99606d2fb31108016b9be745979",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/casse-2024/index.md",
+        "kind": "content",
+        "size": 99,
+        "hashes": {
+          "dropbox": "7331fe30d1c5aba4b6401053e7eb0c454354df8541fe90db453beb9fea52cea4",
+          "sha256": "3e232c529d87dee705bf7f3d1620a1cd53ab9978a2295af3eb1fb6c8a19d54e1"
+        }
+      },
+      {
+        "path": "series/chaine-2024/index.md",
+        "kind": "content",
+        "size": 101,
+        "hashes": {
+          "dropbox": "34a0a9f32c9883ce99e66b3b037772038305acd79c97fcd20506bfd9fa0c81f4",
+          "sha256": "03d6173f9250491bf20e0e6e792764f083f60b70478465c03783bdd2e454ef93"
+        }
+      },
+      {
+        "path": "series/oui-2024/index.md",
+        "kind": "content",
+        "size": 97,
+        "hashes": {
+          "dropbox": "36aa95eaff59b376fdb754735c9926d2944afc46dbd4eecaa2fd4d1970f8c7ed",
+          "sha256": "ce5de5677e4691ed6d3438ad42f5cb8ae4ad77857de20da52883856713ac050c"
+        }
+      },
+      {
+        "path": "series/reste-2024/index.md",
+        "kind": "content",
+        "size": 99,
+        "hashes": {
+          "dropbox": "83ff4ab0f93abd18f0fb09f0eb847c9791f32a91be34b0afe676392d8a11aea9",
+          "sha256": "258dd8e53692cdc5cef47ab59273d8c48c6fe0d5f5b304ef5919e238f9af3793"
+        }
+      },
+      {
+        "path": "series/un-2024/index.md",
+        "kind": "content",
+        "size": 96,
+        "hashes": {
+          "dropbox": "1c16b4c5302fc13c2b16c0df8f771499632e53fbc3420597023ae5c1b542c072",
+          "sha256": "839de4a2d68ac13d6b92158305e27697f2c4581d1553d77c2086acf1b4ff7f5c"
+        }
+      }
+    ]
+  },
+  "target": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:ab019799151266bea9931c7f9d2dc7d607b88b4776b8dccc09829f7ac50491ad",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/casse-2024/index.md",
+        "kind": "content",
+        "size": 99,
+        "hashes": {
+          "dropbox": "d42b52f9a3f7a31cb4c24a8eeae600ca01b67e6af8206e8c753436088d01c533",
+          "sha256": "e5c194d9bf83c970cf433671290801e6ba65efc316c4510235c3a96c3112a208"
+        }
+      },
+      {
+        "path": "series/chaine-2024/index.md",
+        "kind": "content",
+        "size": 103,
+        "hashes": {
+          "dropbox": "89ce9ab183d91728aa4fd5ab4cd0cb4ddb123bf8bb6787cc26372f4d3030b049",
+          "sha256": "02d5cebe2600e312221eae05a8865b4f6cc46e2b9249b944d1626611aa8596be"
+        }
+      },
+      {
+        "path": "series/oui-2024/index.md",
+        "kind": "content",
+        "size": 96,
+        "hashes": {
+          "dropbox": "d555974ec45d2319fb8689854263654702b10f54b217ac1b2a0f585bcc8c546d",
+          "sha256": "368d8c6a22b996fdd80dab58647750959f76eef2d09c471155042ec83ec17fe6"
+        }
+      },
+      {
+        "path": "series/reste-2024/index.md",
+        "kind": "content",
+        "size": 99,
+        "hashes": {
+          "dropbox": "83ff4ab0f93abd18f0fb09f0eb847c9791f32a91be34b0afe676392d8a11aea9",
+          "sha256": "258dd8e53692cdc5cef47ab59273d8c48c6fe0d5f5b304ef5919e238f9af3793"
+        }
+      },
+      {
+        "path": "series/un-2024/index.md",
+        "kind": "content",
+        "size": 93,
+        "hashes": {
+          "dropbox": "43668a95eeeaafd9521cb3afebfcf3e197d33115ebde36832ef2a26e3cd4d44e",
+          "sha256": "753b83672144be5b678c9510aa82c152d342cda9d6bcdc3f93f092b193b8d79b"
+        }
+      }
+    ]
+  },
+  "changeSet": {
+    "format": "hyperfocale.changeset",
+    "version": 1,
+    "base": "sha256:c41b601f539c6176136fee757a9ccda618f1b99606d2fb31108016b9be745979",
+    "target": "sha256:ab019799151266bea9931c7f9d2dc7d607b88b4776b8dccc09829f7ac50491ad",
+    "added": [],
+    "modified": [
+      {
+        "path": "series/casse-2024/index.md",
+        "before": {
+          "path": "series/casse-2024/index.md",
+          "kind": "content",
+          "size": 99,
+          "hashes": {
+            "dropbox": "7331fe30d1c5aba4b6401053e7eb0c454354df8541fe90db453beb9fea52cea4",
+            "sha256": "3e232c529d87dee705bf7f3d1620a1cd53ab9978a2295af3eb1fb6c8a19d54e1"
+          }
+        },
+        "after": {
+          "path": "series/casse-2024/index.md",
+          "kind": "content",
+          "size": 99,
+          "hashes": {
+            "dropbox": "d42b52f9a3f7a31cb4c24a8eeae600ca01b67e6af8206e8c753436088d01c533",
+            "sha256": "e5c194d9bf83c970cf433671290801e6ba65efc316c4510235c3a96c3112a208"
+          }
+        }
+      },
+      {
+        "path": "series/chaine-2024/index.md",
+        "before": {
+          "path": "series/chaine-2024/index.md",
+          "kind": "content",
+          "size": 101,
+          "hashes": {
+            "dropbox": "34a0a9f32c9883ce99e66b3b037772038305acd79c97fcd20506bfd9fa0c81f4",
+            "sha256": "03d6173f9250491bf20e0e6e792764f083f60b70478465c03783bdd2e454ef93"
+          }
+        },
+        "after": {
+          "path": "series/chaine-2024/index.md",
+          "kind": "content",
+          "size": 103,
+          "hashes": {
+            "dropbox": "89ce9ab183d91728aa4fd5ab4cd0cb4ddb123bf8bb6787cc26372f4d3030b049",
+            "sha256": "02d5cebe2600e312221eae05a8865b4f6cc46e2b9249b944d1626611aa8596be"
+          }
+        }
+      },
+      {
+        "path": "series/oui-2024/index.md",
+        "before": {
+          "path": "series/oui-2024/index.md",
+          "kind": "content",
+          "size": 97,
+          "hashes": {
+            "dropbox": "36aa95eaff59b376fdb754735c9926d2944afc46dbd4eecaa2fd4d1970f8c7ed",
+            "sha256": "ce5de5677e4691ed6d3438ad42f5cb8ae4ad77857de20da52883856713ac050c"
+          }
+        },
+        "after": {
+          "path": "series/oui-2024/index.md",
+          "kind": "content",
+          "size": 96,
+          "hashes": {
+            "dropbox": "d555974ec45d2319fb8689854263654702b10f54b217ac1b2a0f585bcc8c546d",
+            "sha256": "368d8c6a22b996fdd80dab58647750959f76eef2d09c471155042ec83ec17fe6"
+          }
+        }
+      },
+      {
+        "path": "series/un-2024/index.md",
+        "before": {
+          "path": "series/un-2024/index.md",
+          "kind": "content",
+          "size": 96,
+          "hashes": {
+            "dropbox": "1c16b4c5302fc13c2b16c0df8f771499632e53fbc3420597023ae5c1b542c072",
+            "sha256": "839de4a2d68ac13d6b92158305e27697f2c4581d1553d77c2086acf1b4ff7f5c"
+          }
+        },
+        "after": {
+          "path": "series/un-2024/index.md",
+          "kind": "content",
+          "size": 93,
+          "hashes": {
+            "dropbox": "43668a95eeeaafd9521cb3afebfcf3e197d33115ebde36832ef2a26e3cd4d44e",
+            "sha256": "753b83672144be5b678c9510aa82c152d342cda9d6bcdc3f93f092b193b8d79b"
+          }
+        }
+      }
+    ],
+    "deleted": [],
+    "moved": [],
+    "diagnostics": []
+  },
+  "files": {
+    "base": {
+      "series/chaine-2024/index.md": "---\ntitle: \"Chaîne 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/oui-2024/index.md": "---\ntitle: \"Oui 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/un-2024/index.md": "---\ntitle: \"Un 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/casse-2024/index.md": "---\ntitle: \"Casse 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/reste-2024/index.md": "---\ntitle: \"Reste 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n"
+    },
+    "target": {
+      "series/chaine-2024/index.md": "---\ntitle: \"Chaîne 2024\"\ndate: 2024-06-15\nprivate: \"true\"\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/oui-2024/index.md": "---\ntitle: \"Oui 2024\"\ndate: 2024-06-15\nprivate: yes\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/un-2024/index.md": "---\ntitle: \"Un 2024\"\ndate: 2024-06-15\nprivate: 1\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/casse-2024/index.md": "---\ntitle: \"Casse 2024\"\ndate: 2024-06-15\nPrivate: true\n---\n\nTexte libre affiché avant la galerie.\n",
+      "series/reste-2024/index.md": "---\ntitle: \"Reste 2024\"\ndate: 2024-06-15\nprivate: true\n---\n\nTexte libre affiché avant la galerie.\n"
+    }
+  },
+  "policy": {
+    "maxDeletedSeries": null,
+    "maxDeletedMediaRatio": null,
+    "maxMovedSeries": null,
+    "maxFileBytes": null
+  },
+  "expected": [
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/casse-2024"
+    },
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/chaine-2024"
+    },
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/oui-2024"
+    },
+    {
+      "code": "guard-private-exposed",
+      "severity": "error",
+      "path": "series/un-2024"
+    }
+  ]
+}

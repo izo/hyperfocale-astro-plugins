@@ -1,3 +1,4 @@
+import { exceedsReadBytes, jsonExceedsDepth, measureStructure } from './bounds.js';
 import { basename, compareCanonical, dirname, isImagePath, isRelativeReference, joinPath, resolveReference } from './paths.js';
 import type { ContentSnapshot, SnapshotEntry } from './types.js';
 
@@ -11,8 +12,12 @@ export interface ImagesManifestDocument {
   readonly files?: readonly unknown[];
 }
 
-/** Motif pour lequel un `images.json` est inutilisable (§1.5.1, « Robustesse »). */
-export type ManifestProblem = 'json' | 'not-object' | 'images';
+/**
+ * Motif pour lequel un `images.json` est inutilisable (§1.5.1, « Robustesse ») :
+ * `limits` quand une borne de lecture est franchie — plus de 1 Mio, plus de 32
+ * niveaux d'imbrication (§1.12).
+ */
+export type ManifestProblem = 'json' | 'not-object' | 'images' | 'limits';
 
 /** Résultat de `readImagesManifest`. */
 export type ManifestReadResult =
@@ -24,23 +29,27 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 /**
- * Lit un `images.json` (§1.5.1) sans jamais lever : JSON illisible, racine qui
- * n'est pas un objet, clé `images` absente ou non tableau rendent `ok: false` —
- * l'appelant se rabat alors sur `media/`. Une clé `files` qui n'est pas un
- * tableau est ignorée, sans invalider le manifeste.
+ * Lit un `images.json` (§1.5.1) sans jamais lever : JSON illisible, bornes de
+ * lecture franchies (§1.12), racine qui n'est pas un objet, clé `images` absente
+ * ou non tableau rendent `ok: false` — l'appelant se rabat alors sur `media/`.
+ * Une clé `files` qui n'est pas un tableau est ignorée, sans invalider le
+ * manifeste.
  *
  * `input` est le texte du fichier, ou sa valeur déjà parsée : une chaîne est
  * toujours lue comme du texte JSON (une racine chaîne serait de toute façon
- * invalide).
+ * invalide). La taille et la profondeur d'un texte se mesurent avant le parse.
  */
 export function readImagesManifest(input: unknown): ManifestReadResult {
   let parsed: unknown = input;
   if (typeof input === 'string') {
+    if (exceedsReadBytes(input) || jsonExceedsDepth(input)) return { ok: false, problem: 'limits' };
     try {
       parsed = JSON.parse(input);
     } catch {
       return { ok: false, problem: 'json' };
     }
+  } else if (measureStructure(input, { maxNodes: Infinity }) !== null) {
+    return { ok: false, problem: 'limits' };
   }
   if (!isRecord(parsed)) return { ok: false, problem: 'not-object' };
   if (!Array.isArray(parsed.images)) return { ok: false, problem: 'images' };

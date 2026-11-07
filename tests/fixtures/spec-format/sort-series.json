@@ -1,0 +1,192 @@
+{
+  "description": "Tri des séries d'un listing (§1.6, *Tri des séries*) : date calendaire décroissante, sans date en dernier, puis titre, puis chemin — comparaisons sur les octets UTF-8 du texte en NFC.",
+  "cases": [
+    {
+      "name": "date-decroissante",
+      "description": "Date décroissante (§1.6) : les plus récentes en premier.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "a",
+          "title": "A",
+          "date": "2023-05-01"
+        },
+        {
+          "path": "b",
+          "title": "B",
+          "date": "2024-06-15"
+        },
+        {
+          "path": "c",
+          "title": "C",
+          "date": "2022-12-31"
+        }
+      ],
+      "expected": [
+        "b",
+        "a",
+        "c"
+      ]
+    },
+    {
+      "name": "heure-ignoree",
+      "description": "Seule la date calendaire compte : l'heure est ignorée. Les trois séries ont le même jour, elles se départagent par titre.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "x",
+          "title": "Zèbre",
+          "date": "2024-06-15T09:00:00Z"
+        },
+        {
+          "path": "y",
+          "title": "Alpaga",
+          "date": "2024-06-15T18:30:00Z"
+        },
+        {
+          "path": "z",
+          "title": "Marmotte",
+          "date": "2024-06-15"
+        }
+      ],
+      "expected": [
+        "y",
+        "z",
+        "x"
+      ]
+    },
+    {
+      "name": "fuseau-ecrit",
+      "description": "Le jour calendaire est celui **écrit**, sans conversion de fuseau (§1.3, §1.6, v2.17) : `a` est le 15 juin (`23:30-05:00`, soit le 16 en UTC), `b` le 16 juin (`00:30+02:00`, soit le 15 en UTC). Décroissant : `b` avant `a`. Un lecteur qui convertit en UTC les inverse.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "a",
+          "title": "A",
+          "date": "2026-06-15T23:30:00-05:00"
+        },
+        {
+          "path": "b",
+          "title": "B",
+          "date": "2026-06-16T00:30:00+02:00"
+        }
+      ],
+      "expected": [
+        "b",
+        "a"
+      ]
+    },
+    {
+      "name": "egalite-titre-puis-chemin",
+      "description": "À date égale : titre croissant, puis chemin (§1.6). `b/zoo` et `a/zoo` ont le même titre : le chemin les départage.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "b/zoo",
+          "title": "Zoo",
+          "date": "2024-01-01"
+        },
+        {
+          "path": "a/zoo",
+          "title": "Zoo",
+          "date": "2024-01-01"
+        },
+        {
+          "path": "c/avant",
+          "title": "Avant",
+          "date": "2024-01-01"
+        }
+      ],
+      "expected": [
+        "c/avant",
+        "a/zoo",
+        "b/zoo"
+      ]
+    },
+    {
+      "name": "octets-utf8",
+      "description": "Titres comparés sur les octets UTF-8 du texte en NFC (§1.6, §4.1) : `B` (0x42) avant `a` (0x61), `a` avant `é` (0xC3 0xA9) ; un titre en forme NFD égale son équivalent NFC, le chemin départage.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "t4",
+          "title": "école",
+          "date": "2024-01-01"
+        },
+        {
+          "path": "t1",
+          "title": "a",
+          "date": "2024-01-01"
+        },
+        {
+          "path": "t2",
+          "title": "B",
+          "date": "2024-01-01"
+        },
+        {
+          "path": "t3",
+          "title": "école",
+          "date": "2024-01-01"
+        }
+      ],
+      "expected": [
+        "t2",
+        "t1",
+        "t3",
+        "t4"
+      ]
+    },
+    {
+      "name": "sans-date",
+      "description": "Collection `dateRequired: false` (§1.3, §1.6) : les séries sans `date` viennent après les séries datées, triées par titre puis chemin.",
+      "dateRequired": false,
+      "series": [
+        {
+          "path": "s2",
+          "title": "Sans date B"
+        },
+        {
+          "path": "d1",
+          "title": "Datée",
+          "date": "2000-01-01"
+        },
+        {
+          "path": "s1",
+          "title": "Sans date A"
+        },
+        {
+          "path": "d2",
+          "title": "Datée récente",
+          "date": "2024-01-01"
+        }
+      ],
+      "expected": [
+        "d2",
+        "d1",
+        "s1",
+        "s2"
+      ]
+    },
+    {
+      "name": "chemin-numerique",
+      "description": "Le chemin se compare sur les octets, sans tri « naturel » : `s10` précède `s9`.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "s9",
+          "title": "Même titre",
+          "date": "2024-01-01"
+        },
+        {
+          "path": "s10",
+          "title": "Même titre",
+          "date": "2024-01-01"
+        }
+      ],
+      "expected": [
+        "s10",
+        "s9"
+      ]
+    }
+  ]
+}

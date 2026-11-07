@@ -1,5 +1,6 @@
 // Séparé de manifest.ts : lire le frontmatter tire js-yaml, et manifest.ts est
 // importé par le sous-chemin /media, qui doit rester sans dépendance externe.
+import { MAX_READ_BYTES } from './bounds.js';
 import { parseFrontmatter } from './frontmatter.js';
 import { buildImagesManifest } from './manifest.js';
 import type { BuildImagesManifestOptions, ImagesManifest } from './manifest.js';
@@ -29,11 +30,12 @@ export interface BuildSeriesImagesManifestOptions extends BuildImagesManifestOpt
  * d'exclusivité (`images-conflict`, §4.10). C'est là que vit l'ordre éditorial
  * d'une source distante.
  *
- * Lit le fichier index de référence du dossier (`index.md`, sinon `index.mdx`,
- * sinon le premier `index.<lang>.md`). `null` aussi quand le dossier ne porte
- * aucun fichier index, ou que son frontmatter est absent ou illisible : on ne
- * sait pas alors s'il porte `images:`, et la validation bloque de toute façon
- * la publication (`frontmatter-missing`, `frontmatter-invalid`).
+ * Lit le fichier index de référence du dossier (`index.md`, sinon le premier
+ * `index.<lang>.md`). `null` aussi quand le dossier ne porte
+ * aucun fichier index, ou que son frontmatter est absent ou illisible — de plus
+ * de 1 Mio, il n'est même pas lu (§1.12) : on ne sait pas alors s'il porte
+ * `images:`, et la validation bloque de toute façon la publication
+ * (`frontmatter-missing`, `frontmatter-invalid`).
  *
  * Sinon, le manifeste de `buildImagesManifest` — que l'appelant n'écrit pas
  * non plus s'il est vide, s'il le souhaite.
@@ -48,7 +50,9 @@ export async function buildSeriesImagesManifest(
     .map((entry) => entry.path)
     .sort(compareCanonical);
   if (indexPaths.length === 0) return null;
-  const parsed = parseFrontmatter(await options.read(primaryIndex(indexPaths)));
+  const index = primaryIndex(indexPaths);
+  if ((snapshot.entries.find((entry) => entry.path === index)?.size ?? 0) > MAX_READ_BYTES) return null;
+  const parsed = parseFrontmatter(await options.read(index));
   if (parsed.status !== 'ok' || declaresImages(parsed.data)) return null;
   return buildImagesManifest(snapshot, seriesDir, options);
 }

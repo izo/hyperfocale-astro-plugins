@@ -244,16 +244,21 @@ export function countKind(entries: readonly SnapshotEntry[], kind: EntryKind): n
 }
 
 /**
- * Projection publiable (§4.11, v2.11) : le snapshot à l'identique — format,
- * version, `createdAt`, `complete`, `source`, champs inconnus — sans ses
- * entrées originales (§1.9), `id` recalculé (§4.6). Un snapshot sans original
- * est rendu tel quel, au même `id`.
+ * Projection publiable (§4.11) : le snapshot à l'identique — format, version,
+ * `createdAt`, `complete`, champs inconnus, `identity` des entrées — sans
+ * `source` (v2.17 : racine du dossier source et révision du provider ne se
+ * publient pas) et sans ses entrées originales (§1.9, v2.11), `id` recalculé
+ * (§4.6). Un snapshot sans original garde son `id`, `source` étant hors `id`.
+ * Le snapshot reçu n'est pas modifié.
  *
  * Ce qui se publie est `publishable(target)` : le diff de publication et la
  * garde partent de cette projection, la validation porte sur `target` brut.
+ * `identity` reste, car le diff en a besoin ; un consommateur qui versionne le
+ * snapshot publié dans un dépôt public la retire de son exemplaire (§4.0).
  */
 export async function publishable(snapshot: ContentSnapshot): Promise<ContentSnapshot> {
+  const { source: _source, ...projection } = snapshot;
   const entries = snapshot.entries.filter((entry) => !isOriginalEntry(entry));
-  if (entries.length === snapshot.entries.length) return snapshot;
-  return { ...snapshot, id: await computeSnapshotId(entries), entries };
+  if (entries.length === snapshot.entries.length) return projection;
+  return { ...projection, id: await computeSnapshotId(entries), entries };
 }

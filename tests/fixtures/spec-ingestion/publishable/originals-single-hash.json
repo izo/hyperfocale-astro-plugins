@@ -1,0 +1,73 @@
+{
+  "description": "Les entrées originales (`.RAF`, `.xmp`) ne portent qu'un seul algorithme (§4.4, *Coût et cache*) : `dropbox` pour l'une, `sha256` pour l'autre. Elles sont retirées de la projection, dont l'`id` est recalculé sur les entrées restantes, qui portent toutes `sha256` et `dropbox`.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:0602b05c75dd3e6c748cf876ce9c7b1fbbf4742dcdf597414d2de9cc850cd6a2",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 48,
+        "hashes": {
+          "dropbox": "3ec9708e270fa587eaa85e588c2c39096418e3cf118591594512b98be783d9ad",
+          "sha256": "630e955d56a5a6b5adf1653875afec9513b9df1cf647dffc6ea13b1072826f29"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 34,
+        "hashes": {
+          "dropbox": "3264895753e7729482386b537099020f94ac5fd20cc43f45f67212f0970ab275",
+          "sha256": "19eebcd5ebdfb7fbcbaa87b5b7a0029f66c71c9e60d7105b79ad15ed758c011c"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/DSCF0001.RAF",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "dropbox": "9109c138cf9d8fc71eb604159df577fd2ab7f7688a371b88fd141cac8a5c7c6b"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/DSCF0001.xmp",
+        "kind": "media",
+        "size": 6,
+        "hashes": {
+          "sha256": "a3c73a6855387a7c69d4b58bc9331ea320add7c8e19c624a8362268e5c8fc679"
+        }
+      }
+    ]
+  },
+  "expected": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:21f03b863858bbe599220f178cfa235d5a444cef779dc9140f18129489c63c79",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "series/bretagne-2024/index.md",
+        "kind": "content",
+        "size": 48,
+        "hashes": {
+          "dropbox": "3ec9708e270fa587eaa85e588c2c39096418e3cf118591594512b98be783d9ad",
+          "sha256": "630e955d56a5a6b5adf1653875afec9513b9df1cf647dffc6ea13b1072826f29"
+        }
+      },
+      {
+        "path": "series/bretagne-2024/media/01.jpg",
+        "kind": "media",
+        "size": 34,
+        "hashes": {
+          "dropbox": "3264895753e7729482386b537099020f94ac5fd20cc43f45f67212f0970ab275",
+          "sha256": "19eebcd5ebdfb7fbcbaa87b5b7a0029f66c71c9e60d7105b79ad15ed758c011c"
+        }
+      }
+    ]
+  }
+}

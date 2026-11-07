@@ -197,6 +197,66 @@ describe('SeriesEmbeds', () => {
   });
 });
 
+describe('SeriesEmbeds — identifiant refusé (§1.12)', () => {
+  const embed = (platform: string, id: unknown) => ({
+    url: `https://${platform}.example/media/1`,
+    playable: true,
+    platform,
+    id,
+    title: 'Vidéo',
+  });
+
+  const REFUSED: Array<[string, string]> = [
+    ['remontée', '../../admin'],
+    ['séparateur', '1/../2'],
+    ['espace', '123 456'],
+    ['129 caractères', 'a'.repeat(129)],
+    ['non ASCII', 'vidéo'],
+    ['saut de ligne final', '123\n'],
+    ['pourcentage', '%2e%2e'],
+    ['paramètre', '1&autoplay=0'],
+    ['vide', ''],
+  ];
+
+  for (const [reason, id] of REFUSED) {
+    for (const platform of ['vimeo', 'youtube', 'dailymotion', 'soundcloud', 'bandcamp', 'spotify']) {
+      it(`${platform}, ${reason} : un lien, ni iframe ni URL de lecture`, async () => {
+        const html = await render(SeriesEmbeds, { embeds: [embed(platform, id)] });
+        expect(html).toContain('class="hf-embeds__link"');
+        expect(html).toContain(`href="https://${platform}.example/media/1"`);
+        expect(html).not.toContain('hf-embeds__facade');
+        expect(html).not.toContain('data-hf-embed=');
+        expect(html).not.toContain('iframe');
+        expect(html).not.toMatch(/player\.vimeo|youtube-nocookie|dailymotion\.com\/embed|w\.soundcloud|EmbeddedPlayer|open\.spotify/);
+      });
+    }
+  }
+
+  it('un id qui n\'est pas une chaîne dégrade en lien', async () => {
+    const html = await render(SeriesEmbeds, { embeds: [embed('vimeo', 123831041)] });
+    expect(html).toContain('class="hf-embeds__link"');
+    expect(html).not.toContain('data-hf-embed=');
+  });
+
+  it('un id de 128 caractères construit le lecteur', async () => {
+    const id = 'a'.repeat(128);
+    const html = await render(SeriesEmbeds, { embeds: [embed('vimeo', id)] });
+    expect(html).toContain(`data-hf-embed="https://player.vimeo.com/video/${id}?autoplay=1"`);
+    expect(html).not.toContain('class="hf-embeds__link"');
+  });
+
+  it('un id conforme garde sa façade, intact', async () => {
+    const html = await render(SeriesEmbeds, { embeds: [embed('youtube', 'dQw4w9WgXcQ_-')] });
+    expect(html).toContain('data-hf-embed="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ_-?autoplay=1"');
+  });
+
+  it('mêlés à un id valide, seuls les refusés dégradent', async () => {
+    const html = await render(SeriesEmbeds, { embeds: [embed('vimeo', '1'), embed('vimeo', '../x'), embed('vimeo', '2')] });
+    expect(html.match(/hf-embeds__facade"/g)).toHaveLength(2);
+    expect(html.match(/hf-embeds__link"/g)).toHaveLength(1);
+  });
+});
+
 describe('SeriesCard', () => {
   it('fr : date longue et libellés', async () => {
     const html = await render(SeriesCard, { series: SERIES[0] });
@@ -397,6 +457,19 @@ describe('SeriesFilter (#138)', () => {
     expect(raw).not.toContain('</script>');
     expect(raw).toContain('\\u003c/script>');
     expect(data.items[1].title).toBe('Alpes </script><b>x</b>');
+  });
+
+  it('l\'année est celle du jour écrit, quel que soit le fuseau de la machine', async () => {
+    const previous = process.env.TZ;
+    try {
+      process.env.TZ = 'America/New_York';
+      const nouvelAn = series('an', { date: new Date('2024-01-01T00:00:00Z') });
+      const { data } = filterData(await render(SeriesFilter, { series: [nouvelAn] }));
+      expect(data.items[0].date).toBe(2024);
+    } finally {
+      if (previous === undefined) delete process.env.TZ;
+      else process.env.TZ = previous;
+    }
   });
 
   it('fr / en : libellés des contrôles et formes plurielles', async () => {
