@@ -25,6 +25,11 @@ export default defineConfig({
     'components/image-fallback': 'src/components/image-fallback.ts',
     // Script client de SeriesLightbox : dialog natif, API `window.hfLightbox` (#136, P1).
     'components/lightbox-client': 'src/components/lightbox-client.ts',
+    // Profil Livraison : primitives pures du sondage (ni node:*, ni astro, ni zod)
+    // et script client de SeriesPoll — publié (`/components/poll-client`) pour
+    // les sites qui montent le formulaire depuis leur propre îlot.
+    delivery: 'src/delivery.ts',
+    'components/poll-client': 'src/components/poll-client.ts',
     // Flux de syndication et sitemap (Annexe E, #155) : constructeurs purs, collecte,
     // et les routes injectées par `feeds: true`.
     feeds: 'src/feeds.ts',

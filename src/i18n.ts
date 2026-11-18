@@ -128,6 +128,30 @@ export interface HyperfocaleLabels {
   'map.empty': string;
   /** Résumé de la carte, pluriel sur `{count}`. */
   'map.count': HfPluralForms;
+
+  // ─── SeriesPoll (profil Livraison) ────────────────────────────────────
+  'poll.heading': string;
+  'poll.intro': string;
+  'poll.start': string;
+  'poll.edit': string;
+  /** Légende du groupe de notes d'une photo ; `{n}`, `{total}`. */
+  'poll.scoreLegend': string;
+  /** Alternative textuelle de repli d'une photo ; `{n}`, `{total}`. */
+  'poll.imageAlt': string;
+  /** Avancement ; `{done}`, `{total}`. */
+  'poll.progress': string;
+  'poll.submit': string;
+  'poll.sending': string;
+  'poll.thanks': string;
+  'poll.error': string;
+  // Rendu lisible d'une réponse (`renderPoll`, `/delivery`).
+  /** Titre du rendu ; `{title}`. */
+  'poll.reportTitle': string;
+  'poll.reportSeries': string;
+  'poll.reportSubmitted': string;
+  'poll.reportUpdated': string;
+  'poll.reportScore': string;
+  'poll.reportFile': string;
 }
 
 /** Clé de libellé. */
@@ -192,6 +216,23 @@ const fr: HyperfocaleLabels = {
     one: '{count} série géolocalisée',
     other: '{count} séries géolocalisées',
   },
+  'poll.heading': 'Vos photos préférées',
+  'poll.intro': 'Notez chaque photo de 1 à 5, puis envoyez vos notes.',
+  'poll.start': 'Noter les photos',
+  'poll.edit': 'Modifier mes notes',
+  'poll.scoreLegend': 'Note de la photo {n} sur {total}',
+  'poll.imageAlt': 'Photo {n} sur {total}',
+  'poll.progress': '{done} / {total} photos notées',
+  'poll.submit': 'Envoyer mes notes',
+  'poll.sending': 'Envoi en cours…',
+  'poll.thanks': 'Merci, vos notes sont enregistrées.',
+  'poll.error': 'L’envoi a échoué. Réessayez.',
+  'poll.reportTitle': 'Sondage — {title}',
+  'poll.reportSeries': 'Série',
+  'poll.reportSubmitted': 'Envoyé le',
+  'poll.reportUpdated': 'Modifié le',
+  'poll.reportScore': 'Note',
+  'poll.reportFile': 'Photo',
 };
 
 const en: HyperfocaleLabels = {
@@ -253,6 +294,23 @@ const en: HyperfocaleLabels = {
     one: '{count} geotagged series',
     other: '{count} geotagged series',
   },
+  'poll.heading': 'Your favourite photos',
+  'poll.intro': 'Rate each photo from 1 to 5, then send your ratings.',
+  'poll.start': 'Rate the photos',
+  'poll.edit': 'Edit my ratings',
+  'poll.scoreLegend': 'Rating for photo {n} of {total}',
+  'poll.imageAlt': 'Photo {n} of {total}',
+  'poll.progress': '{done} / {total} photos rated',
+  'poll.submit': 'Send my ratings',
+  'poll.sending': 'Sending…',
+  'poll.thanks': 'Thank you, your ratings are saved.',
+  'poll.error': 'Sending failed. Please try again.',
+  'poll.reportTitle': 'Poll — {title}',
+  'poll.reportSeries': 'Series',
+  'poll.reportSubmitted': 'Sent on',
+  'poll.reportUpdated': 'Edited on',
+  'poll.reportScore': 'Rating',
+  'poll.reportFile': 'Photo',
 };
 
 /** Dictionnaires livrés par le plugin. */

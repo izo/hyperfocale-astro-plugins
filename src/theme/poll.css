@@ -1,0 +1,174 @@
+/**
+ * Feuille de `SeriesPoll` (profil Livraison) — `@regrets/hyperfocale/styles/poll.css`.
+ *
+ * Même régime que `attachments.css` : émise par le composant, une fois par page,
+ * sauf `componentStyles: 'none'` ou la prop `unstyled` ; un site qui monte le
+ * formulaire lui-même (`mountSeriesPoll`) l'importe dans sa feuille. Sélecteurs
+ * d'une classe, hors couche, sans `:where()`. Aucune couleur en dur : jetons
+ * `--hf-*` seulement.
+ */
+
+.hf-poll {
+  font-family: var(--hf-font-sans, system-ui);
+  color: var(--hf-color-text);
+}
+
+.hf-poll__heading {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}
+
+.hf-poll__status,
+.hf-poll__intro {
+  font-size: 0.9rem;
+  color: var(--hf-color-text-muted);
+  margin: 0 0 1rem;
+}
+
+.hf-poll__list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+
+.hf-poll__group {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.hf-poll__legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.hf-poll__figure {
+  aspect-ratio: 3 / 2;
+  background: var(--hf-color-surface);
+  margin-bottom: 0.5rem;
+}
+
+/* La photo entière, jamais recadrée : le client note ce qu'il voit. */
+.hf-poll__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.hf-poll__scores {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.hf-poll__number {
+  margin-right: auto;
+  font-family: var(--hf-font-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--hf-color-text-muted);
+}
+
+.hf-poll__score {
+  position: relative;
+  cursor: pointer;
+}
+
+.hf-poll__radio {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.hf-poll__score-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--hf-color-border);
+  font-family: var(--hf-font-mono, monospace);
+  font-size: 0.8rem;
+  color: var(--hf-color-text-muted);
+  transition: background var(--hf-transition, 200ms ease), border-color var(--hf-transition, 200ms ease);
+}
+
+.hf-poll__score:hover .hf-poll__score-text {
+  border-color: var(--hf-color-accent);
+}
+
+.hf-poll__radio:checked + .hf-poll__score-text {
+  background: var(--hf-color-accent);
+  border-color: var(--hf-color-accent);
+  color: var(--hf-color-on-accent);
+}
+
+.hf-poll__radio:focus-visible + .hf-poll__score-text {
+  outline: 2px solid var(--hf-color-accent);
+  outline-offset: 2px;
+}
+
+.hf-poll__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.hf-poll__button {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--hf-color-border);
+  border-radius: var(--hf-card-radius, 4px);
+  background: transparent;
+  color: var(--hf-color-text);
+  cursor: pointer;
+}
+
+.hf-poll__button--primary {
+  background: var(--hf-color-accent);
+  border-color: var(--hf-color-accent);
+  color: var(--hf-color-on-accent);
+}
+
+.hf-poll__button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.hf-poll__button:focus-visible {
+  outline: 2px solid var(--hf-color-accent);
+  outline-offset: 2px;
+}
+
+.hf-poll__progress {
+  margin: 0;
+  font-family: var(--hf-font-mono, monospace);
+  font-size: 0.75rem;
+  color: var(--hf-color-text-muted);
+}
+
+.hf-poll__error {
+  margin: 1rem 0 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--hf-color-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hf-poll__score-text {
+    transition: none;
+  }
+}

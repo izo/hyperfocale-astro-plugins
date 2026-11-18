@@ -853,6 +853,48 @@ Line-up des sous-séries d'un conteneur (spec §1.8) : un titre (`lineup.heading
 | `columns` | `number` | `3` | Colonnes de la liste |
 | `cardProps` | `(series, index) => Record<string, unknown>` | — | Voir `SeriesList` |
 
+### `<SeriesPoll series="clients/dupont" images={imgs} endpoint="/api/poll" />`
+
+Sondage de notation d'une série livrée à un client (spec, Annexe G — profil Livraison, bloc `delivery:`). Le client appuie sur « Noter les photos », donne une note de 1 à 5 à **chaque** image, puis envoie ; l'envoi reste désactivé tant qu'il en manque une, et rien ne part avant l'appui sur le bouton. Une réponse déjà enregistrée est reprise au chargement et se corrige.
+
+| Prop | Type | Défaut | Description |
+|------|------|--------|-------------|
+| `series` | `string` | — | Chemin de la série dans le corpus : la clé de la réponse |
+| `images` | `{ file, src, alt? }[]` | — | Images à noter, dans l'ordre de la galerie ; `file` = chemin relatif à la série (`media/a.jpg`), comme dans `images.json` |
+| `endpoint` | `string` | — | Route du site qui lit et enregistre la réponse |
+| `headers` | `Record<string, string>` | — | En-têtes des deux requêtes (authentification du site). Écrits dans la page : jamais un secret durable |
+| `headingLevel` | `1`–`6` | `2` | Niveau du titre |
+| `unstyled` | `boolean` | selon `componentStyles` | Ne pas émettre la feuille |
+
+Le composant n'émet que sa racine (`[data-hf-poll]`) et ses données : le formulaire est construit par son script client, et rien ne s'affiche sans image. Sa feuille (`@regrets/hyperfocale/styles/poll.css`) suit le régime de `SeriesAttachments`.
+
+**Ce que le site fournit.** Le plugin ne connaît ni l'authentification ni le stockage. La route `endpoint` répond :
+
+- `GET <endpoint>?series=<chemin>` → `{ "submitted": boolean, "scores": { "media/a.jpg": 4 } }` ;
+- `POST <endpoint>`, corps `{ "series": "…", "scores": { "media/a.jpg": 4 } }` → 2xx une fois la réponse enregistrée.
+
+Côté serveur, `@regrets/hyperfocale/delivery` (pur : ni `node:*`, ni astro, ni zod — chargeable dans un Worker) porte la règle : `validateScores(files, input)` (une note entière de 1 à 5 par image, rien d'autre), `buildPollDocument` / `parsePollDocument` (document de réponse v1, date du premier envoi conservée), `scoresByFile`, `readDelivery(frontmatter)`, `renderPoll` (rendu markdown, images classées par note), `pollResponsePath(series)` → `_responses/<série>/poll.json`. **La spec exige que le téléchargement d'une série `delivery.poll: true` soit refusé côté serveur tant qu'aucune réponse n'existe** : c'est au site de le faire, le composant ne fait qu'afficher.
+
+**Événement.** `hf:poll-submitted` sur la racine (remonte), `detail: { series, scores, restored }` — à l'envoi, et quand une réponse existante est retrouvée (`restored: true`). C'est le signal pour afficher le lien de téléchargement.
+
+**Images connues après authentification.** Un site qui ne peut pas rendre les images au build (série privée) monte le formulaire depuis son propre îlot :
+
+```ts
+import { mountSeriesPoll } from '@regrets/hyperfocale/components/poll-client';
+import { resolveLabels } from '@regrets/hyperfocale/i18n';
+
+const l = resolveLabels('fr');
+const poll = mountSeriesPoll(element, {
+  series, images, endpoint: '/api/poll', headers: { 'X-Private-Token': token },
+  labels: { heading: l['poll.heading'], intro: l['poll.intro'], start: l['poll.start'], edit: l['poll.edit'],
+    scoreLegend: l['poll.scoreLegend'], imageAlt: l['poll.imageAlt'], progress: l['poll.progress'],
+    submit: l['poll.submit'], sending: l['poll.sending'], thanks: l['poll.thanks'], error: l['poll.error'] },
+});
+// poll?.destroy() au démontage
+```
+
+Classes stables : `hf-poll`, `__heading`, `__closed`, `__status`, `__form`, `__intro`, `__list`, `__item`, `__group`, `__legend`, `__figure`, `__image`, `__scores`, `__number`, `__score`, `__radio`, `__score-text`, `__actions`, `__button` (`--primary`), `__progress`, `__error`.
+
 ---
 
 ## Helpers
@@ -1348,7 +1390,7 @@ Mesuré dans Chrome sur la sortie réelle de Tailwind 4.3 (`@tailwindcss/node`) 
 
 Pourquoi la feuille n'est ni en `@layer` d'office ni en `:where()` : hors couche et à spécificité nulle, une règle d'élément du site (`h2 { margin: 0 }`, `ul { list-style: disc }`) battrait le composant — c'est ce que donne la même mesure sur un site sans couches, et le rendu par défaut des sites existants changerait ; mise en couche d'office, la feuille perdrait contre **tout** CSS hors couche du site, pour la même raison. Le choix de la couche revient donc au site, au moment de l'import — `@import … layer(…)` le permet sans rien changer à la feuille.
 
-Les huit autres composants gardent leur `<style>` scopé en 0.24.0.
+Les huit autres composants gardent leur `<style>` scopé en 0.24.0. `SeriesPoll` suit le même régime que `SeriesAttachments` : feuille `@regrets/hyperfocale/styles/poll.css`, `<style data-hf-styles="poll">` une fois par page.
 
 ### Jetons par composant (`theme: 'none'`)
 
@@ -1365,6 +1407,7 @@ Pour un site qui écrit son propre thème, voici les jetons `--hf-*` que chaque 
 | `SeriesLineup` | `--hf-color-text` | `--hf-lineup-gap`, `--hf-lineup-heading-size` |
 | `SeriesList` | `--hf-color-text-muted` | `--hf-font-sans`, `--hf-gallery-gap` |
 | `SeriesMap` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-text`, `--hf-color-text-muted`, `--hf-map-bg`, `--hf-map-marker-hover`, `--hf-map-stroke` | `--hf-card-radius`, `--hf-filter-border`, `--hf-font-sans`, `--hf-map-marker`, `--hf-transition` |
+| `SeriesPoll` | `--hf-color-accent`, `--hf-color-border`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted` | `--hf-card-radius`, `--hf-font-mono`, `--hf-font-sans`, `--hf-transition` |
 | `SeriesMasonry` | — | `--hf-card-radius`, `--hf-gallery-gap`, `--hf-masonry-gap`, `--hf-transition` |
 | `SeriesPagination` | `--hf-color-accent`, `--hf-color-on-accent`, `--hf-color-surface`, `--hf-color-text`, `--hf-color-text-muted` | `--hf-card-radius`, `--hf-font-sans`, `--hf-transition` |
 
