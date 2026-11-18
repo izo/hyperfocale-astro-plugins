@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "series": "series/mariage-2026",
+  "submitted_at": "2026-06-25T09:12:00.000Z",
+  "updated_at": "2026-06-26T18:40:00.000Z",
+  "scores": [
+    { "file": "media/01.jpg", "score": 4 },
+    { "file": "media/02.jpg", "score": 2 }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:730a81a5b417a73c83e0ff99624653f43b10aea59d3e3d75a7124620cf96b379",
+  "createdAt": "1970-01-01T00:00:00.000Z",
+  "complete": true,
+  "entries": [
+    {
+      "path": "series/mariage-2026/index.md",
+      "kind": "content",
+      "size": 141,
+      "hashes": {
+        "dropbox": "07fbbe821ff2990e74964b9455504634bcfe32578ec3003d903ef44801ece7de",
+        "sha256": "c5c43ad2473ba54b85eb2fb022b7b7f7d4af524be9d9002ea8670f952259e4ca"
+      }
+    },
+    {
+      "path": "series/mariage-2026/media/01.jpg",
+      "kind": "media",
+      "size": 33,
+      "hashes": {
+        "dropbox": "e5e7f3317189245113c41b981957683e3f829e549777d65eabc2cac29a3f3de1",
+        "sha256": "df3b579b727484dd08f19c7597b4be72601e8584357221af8d18f9b8e85ec8cf"
+      }
+    },
+    {
+      "path": "series/mariage-2026/media/02.jpg",
+      "kind": "media",
+      "size": 33,
+      "hashes": {
+        "dropbox": "74b207a8e2b444ea51dd964a9b6139229e840ea84722084cbbde834ccae2edef",
+        "sha256": "d1af84f8ad8e22d00173e43e80aa8fa438adc8cb2cb7b4b18d2c0436c25b0156"
+      }
+    }
+  ]
+}

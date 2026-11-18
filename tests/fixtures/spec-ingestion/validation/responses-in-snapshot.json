@@ -1,0 +1,78 @@
+{
+  "description": "Entr\u00e9es sous `_responses/` dans un snapshot (\u00a74.2, \u00a74.5, v2.18) : un chemin exclu n'a pas sa place dans un snapshot et produit `entry-path-invalid`, quelle que soit la casse du premier segment (`_Responses`). L'`id` d\u00e9clar\u00e9 est coh\u00e9rent avec les entr\u00e9es telles que d\u00e9clar\u00e9es (r\u00e8gle 2) : pas de `snapshot-id-mismatch`. `series/mariage-2026/_responses/note.txt` n'est pas \u00e0 la racine : entr\u00e9e `other` ordinaire, sans diagnostic. Le bloc `delivery:` et `private: true` de la s\u00e9rie ne produisent rien. Seul le fichier index est lu : une lecture de `poll.json` est un d\u00e9faut d'impl\u00e9mentation.",
+  "snapshot": {
+    "format": "hyperfocale.snapshot",
+    "version": 1,
+    "id": "sha256:046f9848a858b27eaaf84dce03ee742899e15ff6cec72b89acb16c3b46f8b0d5",
+    "createdAt": "1970-01-01T00:00:00.000Z",
+    "complete": true,
+    "entries": [
+      {
+        "path": "_Responses/series/mariage-2026/poll.md",
+        "kind": "content",
+        "size": 10,
+        "hashes": {
+          "dropbox": "fee9918936dba5183a77b070feedfa67914b0d5307c6747e0057310dc29e5dff",
+          "sha256": "bc5d95c84b62b9358998e2fab5ecf396a2bbeddcf84cd87ebcbecc9625c22174"
+        }
+      },
+      {
+        "path": "_responses/series/mariage-2026/poll.json",
+        "kind": "other",
+        "size": 172,
+        "hashes": {
+          "dropbox": "493d91c54861abca11485b4a32aef77265017dfbaee89d23b9fe6bb49a8a66a0",
+          "sha256": "2aebe7168646f66eedfc1199110e9a42a8d7b43c047d7efbe32290220da4031a"
+        }
+      },
+      {
+        "path": "series/mariage-2026/_responses/note.txt",
+        "kind": "other",
+        "size": 40,
+        "hashes": {
+          "dropbox": "40b610f1e70233fba92237bc6494fad60ad0113f49fca48999a02f0a548b2776",
+          "sha256": "ed86631b2d00764499e8eec03214c0482b99a6437c9a0da3ffa3fb967ebf1a46"
+        }
+      },
+      {
+        "path": "series/mariage-2026/index.md",
+        "kind": "content",
+        "size": 141,
+        "hashes": {
+          "dropbox": "07fbbe821ff2990e74964b9455504634bcfe32578ec3003d903ef44801ece7de",
+          "sha256": "c5c43ad2473ba54b85eb2fb022b7b7f7d4af524be9d9002ea8670f952259e4ca"
+        }
+      },
+      {
+        "path": "series/mariage-2026/media/01.jpg",
+        "kind": "media",
+        "size": 33,
+        "hashes": {
+          "dropbox": "e5e7f3317189245113c41b981957683e3f829e549777d65eabc2cac29a3f3de1",
+          "sha256": "df3b579b727484dd08f19c7597b4be72601e8584357221af8d18f9b8e85ec8cf"
+        }
+      }
+    ]
+  },
+  "files": {
+    "series/mariage-2026/index.md": "---\ntitle: \"Mariage 2026\"\ndate: 2026-06-20\nprivate: true\ndelivery:\n  download: true\n  poll: true\n---\n\nTexte libre affich\u00e9 avant la galerie.\n"
+  },
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": [
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "_Responses/series/mariage-2026/poll.md"
+    },
+    {
+      "code": "entry-path-invalid",
+      "severity": "error",
+      "path": "_responses/series/mariage-2026/poll.json"
+    }
+  ]
+}

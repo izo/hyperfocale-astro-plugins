@@ -1,0 +1,48 @@
+{
+  "description": "Dossier de retour (§4.2, v2.18) : un provider filesystem n'énumère rien sous le dossier `_responses/` de la racine du corpus — ni le document de réponse `poll.json`, ni son rendu `poll.md`, ni un média qu'on y aurait posé —, quelle que soit la casse du segment (`_Responses`), et ne produit aucun diagnostic pour eux. Un `_responses` qui n'est pas le premier segment (`series/bretagne-2024/_responses/`) et un nom qui ne fait que commencer ainsi (`_responses-2025/`) sont énumérés comme des fichiers ordinaires. Aucun lien symbolique : le cas tourne sur toute plateforme.",
+  "outside": [],
+  "files": [
+    {
+      "path": "series/bretagne-2024/index.md",
+      "content": "---\ntitle: \"Bretagne 2024\"\ndate: 2024-06-15\n---\n\nTexte libre affiché avant la galerie.\n"
+    },
+    {
+      "path": "series/bretagne-2024/media/01.jpg",
+      "content": "series/bretagne-2024/media/01.jpg\n"
+    },
+    {
+      "path": "_responses/series/bretagne-2024/poll.json",
+      "content": "{\"version\":1,\"series\":\"series/bretagne-2024\",\"submitted_at\":\"2026-06-25T09:12:00.000Z\",\"updated_at\":\"2026-06-25T09:12:00.000Z\",\"scores\":[{\"file\":\"media/01.jpg\",\"score\":4}]}\n"
+    },
+    {
+      "path": "_responses/series/bretagne-2024/poll.md",
+      "content": "# Sondage — Bretagne 2024\n"
+    },
+    {
+      "path": "_responses/series/bretagne-2024/media/01.jpg",
+      "content": "_responses/series/bretagne-2024/media/01.jpg\n"
+    },
+    {
+      "path": "_Responses/note.txt",
+      "content": "_Responses/note.txt\n"
+    },
+    {
+      "path": "_responses-2025/note.txt",
+      "content": "_responses-2025/note.txt\n"
+    },
+    {
+      "path": "series/bretagne-2024/_responses/note.txt",
+      "content": "series/bretagne-2024/_responses/note.txt\n"
+    }
+  ],
+  "symlinks": [],
+  "expected": {
+    "entries": [
+      "_responses-2025/note.txt",
+      "series/bretagne-2024/_responses/note.txt",
+      "series/bretagne-2024/index.md",
+      "series/bretagne-2024/media/01.jpg"
+    ],
+    "diagnostics": []
+  }
+}

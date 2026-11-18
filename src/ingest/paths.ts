@@ -170,6 +170,24 @@ export type ExclusionRule = string | RegExp | ((path: string) => boolean);
 // de macOS : son nom se termine réellement par un retour chariot.
 const EXCLUDED_BASENAMES = new Set(['Thumbs.db', 'desktop.ini', 'Icon\r']);
 
+/** Dossier réservé aux données de retour, à la racine du corpus (§4.2, v2.18). */
+export const RESPONSES_DIR = '_responses';
+
+/**
+ * Vrai si le chemin est le dossier de retour ou vit dessous : son **premier**
+ * segment vaut `_responses` après minuscule simple (§4.1) — `_Responses` aussi,
+ * car sur un provider insensible à la casse une écriture vers `_responses/`
+ * atterrit dans un `_Responses` créé à la main. Un `_responses` plus bas dans
+ * l'arborescence, ou un nom qui ne fait que commencer ainsi, n'est pas réservé.
+ *
+ * Exclusion par défaut, ni configurable ni levable : les réponses de clients
+ * n'entrent jamais dans un snapshot, donc jamais dans une publication.
+ */
+export function isResponsePath(path: string): boolean {
+  const first = path.split('/', 1)[0] as string;
+  return collisionKey(first) === RESPONSES_DIR;
+}
+
 /**
  * Le chemin est-il exclu de tout snapshot (§4.2) ?
  *
@@ -187,6 +205,7 @@ export function isExcluded(path: string, rules: readonly ExclusionRule[] = []): 
   const folders = directory ? segments : segments.slice(0, -1);
   if (segments.some((segment) => segment.startsWith('.'))) return true;
   if (EXCLUDED_BASENAMES.has(segments[segments.length - 1] as string)) return true;
+  if (isResponsePath(path)) return true;
 
   for (const rule of rules) {
     if (typeof rule === 'function') {

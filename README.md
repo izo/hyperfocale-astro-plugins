@@ -1517,12 +1517,26 @@ source éditoriale ── provider ──► ContentSnapshot N+1 ── diffSnap
 
 | Import | Contenu | Runtime |
 |---|---|---|
-| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `publishable`, `isOriginalPath`, `isOriginalEntry`, `ORIGINAL_EXTENSIONS`, `urlFieldProblem`, `referenceProblem`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `DEFAULT_GUARD_POLICY`, `resolveGuardPolicy`, `summarizeChangeSet`, `buildImagesManifest`, `buildSeriesImagesManifest`, `declaresImages`, `waitForQuiescence`, `isPublicationTransition` | agnostique — WebCrypto, aucun `node:*` |
+| `@regrets/hyperfocale/ingest` | types du contrat, `normalizePath`, `classifyPath`, `isExcluded`, `compareCanonical`, `computeSnapshotId`, `createSnapshot`, `parseSnapshot`, `publishable`, `isOriginalPath`, `isOriginalEntry`, `ORIGINAL_EXTENSIONS`, `urlFieldProblem`, `referenceProblem`, `applyDelta`, `diffSnapshots`, `validateSnapshot`, `guardChangeSet`, `DEFAULT_GUARD_POLICY`, `resolveGuardPolicy`, `summarizeChangeSet`, `buildImagesManifest`, `buildSeriesImagesManifest`, `declaresImages`, `waitForQuiescence`, `isPublicationTransition`, `RESPONSES_DIR`, `isResponsePath`, `writeResponse` | agnostique — WebCrypto, aucun `node:*` |
 | `@regrets/hyperfocale/ingest/fs` | `FilesystemProvider`, `hashFile`, `hashBytes`, `materializeSnapshot` | Node |
 | `@regrets/hyperfocale/ingest/dropbox` | `DropboxClient`, `DropboxProvider`, `verifyDropboxSignature`, `dropboxChallenge` | agnostique — `fetch` + WebCrypto, importable dans un Worker |
 | `@regrets/hyperfocale/ingest/webdav` | `WebDAVProvider` | agnostique — `fetch` |
 
 L'entrée racine n'importe rien de ces sous-chemins ; un test le vérifie sur les sources et sur `dist/`.
+
+### Données de retour — `_responses/` (spec 2.18)
+
+Le dossier `_responses/` à la **racine** du corpus est réservé aux données qu'un site dépose dans la source — les réponses d'un sondage de livraison (`_responses/<série>/poll.json`, voir `SeriesPoll`). Il est **exclu par défaut**, sans règle `ignore` : jamais énuméré par un provider, jamais dans un snapshot ni dans `publishable()`, et un delta qui ne porte que lui ne signale aucun changement. Le premier segment se compare casse ignorée (`_Responses` aussi) ; un `_responses` plus bas dans l'arborescence ou un nom voisin (`_responses-2025/`) est un dossier ordinaire. **Un corpus qui rangeait autre chose dans un `_responses/` racine le voit sortir du snapshot.**
+
+Pour y écrire, passer par `writeResponse(provider, chemin, octets)` plutôt que par `provider.write()` : elle refuse tout chemin hors de `_responses/` (`ResponsePathError`) — une faute de chemin ne peut pas écrire dans une série. Un provider sans capacité d'écriture, ou un jeton Dropbox sans la portée `files.content.write`, lève `ResponseWriteUnsupportedError` : l'ingestion n'a besoin que de `files.metadata.read` et `files.content.read`, seule l'écriture de retour demande la portée de plus, et son absence ne doit jamais bloquer une publication.
+
+```ts
+import { writeResponse } from '@regrets/hyperfocale/ingest';
+import { pollResponsePath, pollReportPath, renderPoll } from '@regrets/hyperfocale/delivery';
+
+await writeResponse(provider, pollResponsePath(series), new TextEncoder().encode(JSON.stringify(doc, null, 2)));
+await writeResponse(provider, pollReportPath(series), new TextEncoder().encode(renderPoll(doc, { title })));
+```
 
 ### Le contrat en bref
 
