@@ -41,7 +41,7 @@ prefixes:
 ## Blocked
 
 - [ ] #RELEASE-0.27.0 [P1] Publier la 0.27.0 (la 0.26.0 n'a jamais été taguée : npm est resté en 0.25.1) #publication
-  Prête sur `main` (version, CHANGELOG, paquet vérifié). **Reste** (humain) : pousser le tag sur le commit `19ad58d`, qui porte aussi le correctif PERF-012 : `git fetch origin && git tag v0.26.0 19ad58d && git push origin v0.26.0`. Une session Claude Code ne peut pas le faire (contrôle de permissions). Procédure : `docs/publication.md`.
+  Prête sur `main` (version, CHANGELOG, paquet vérifié). **Reste** (humain) : pousser le tag sur le commit de release de `main`, celui dont le sujet est `chore(release): 0.27.0` : `git fetch origin && git tag v0.27.0 <sha> && git push origin v0.27.0`. Une session Claude Code ne peut pas le faire (contrôle de permissions). Procédure : `docs/publication.md`. Puis : relever §0.5 et l'en-tête de la spec, `PLUGIN.version` de hyperfocale.app, et monter mdr-monorepo (mdr-monorepo#421).
 - [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.
 
