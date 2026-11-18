@@ -1,8 +1,8 @@
 ---
 kanban-plugin: board
 project: hyperfocale
-version: "0.26.0"
-updated: 2026-11-06
+version: "0.27.0"
+updated: 2026-11-18
 priorities:
   P0: Critique (bloquant)
   P1: Élevée (important)
@@ -40,7 +40,7 @@ prefixes:
 
 ## Blocked
 
-- [ ] #RELEASE-0.26.0 [P1] Publier la 0.26.0 #publication
+- [ ] #RELEASE-0.27.0 [P1] Publier la 0.27.0 (la 0.26.0 n'a jamais été taguée : npm est resté en 0.25.1) #publication
   Prête sur `main` (version, CHANGELOG, paquet vérifié). **Reste** (humain) : pousser le tag sur le commit `19ad58d`, qui porte aussi le correctif PERF-012 : `git fetch origin && git tag v0.26.0 19ad58d && git push origin v0.26.0`. Une session Claude Code ne peut pas le faire (contrôle de permissions). Procédure : `docs/publication.md`.
 - [ ] #154 [P1] Publication npm : jeton long, aucune provenance, devDependencies auto-mises à jour #sécurité
   Workflow scindé, provenance, actions épinglées, Renovate sans automerge : fait. **Reste** (Mathieu) : configurer le Trusted Publisher sur npmjs.com, puis supprimer le secret `NPM_TOKEN`.

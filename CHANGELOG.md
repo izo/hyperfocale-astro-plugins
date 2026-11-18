@@ -9,6 +9,8 @@ Versioning : [Semantic Versioning](https://semver.org/lang/fr/)
 
 ## [Non publié]
 
+## [0.27.0] — 2026-11-18 — spec 2.17 et 2.18 : confiance, bornes, profil Livraison, données de retour
+
 ### Modifié (rupture)
 
 - **`_responses/` à la racine du corpus est exclu par défaut** (spec 2.18, §4.2 ; #180). Le dossier est réservé aux données de retour — réponses de clients à un sondage de livraison : `isExcluded` l'écarte sans règle `ignore`, casse du premier segment ignorée (`_Responses`), donc aucun provider ne l'énumère, il n'entre dans aucun snapshot, une entrée de snapshot à ce chemin produit `entry-path-invalid`, et un delta qui ne porte que lui ne signale aucun changement. Un `_responses` plus bas dans l'arborescence et un nom voisin (`_responses-2025/`) restent ordinaires. **Un corpus qui rangeait autre chose dans un `_responses/` racine le voit sortir du snapshot** — donc ses fichiers passer en `deleted` au diff suivant.
