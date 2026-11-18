@@ -31,10 +31,11 @@ src/
   i18n.ts           ← libellés fr/en (HF_LABELS), formats Intl (dates, pluriels, tailles) — pur
   media.ts          ← résolveur de médias pur (galerie, couverture, documents joints) + primitives partagées avec helpers/
   loader.ts         ← loader Content Layer pour un corpus hors de src/content/ (repli index.<locale>.md → index.md)
-  components/       ← 11 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
+  components/       ← 12 composants Astro (SeriesCard, SeriesList, SeriesGallery, SeriesLightbox,
                        SeriesAttachments, SeriesEmbeds, SeriesFilter, SeriesMap, SeriesMasonry,
-                       SeriesPagination, SeriesLineup)
+                       SeriesPagination, SeriesLineup, SeriesPoll)
                        + runtime.ts (outils internes : attributs passés, headingLevel, pagination, JSON de script)
+  delivery.ts       ← profil Livraison (Annexe G) : primitives pures du sondage de notation (validation, document de réponse, rendu) et chemins sous `_responses/`
   feeds.ts          ← constructeurs purs RSS 2.0, JSON Feed 1.1 et sitemap (Annexe E, #155) ; helpers/feeds.ts collecte
   routes/           ← pages Astro injectées via injectRoute() (+ endpoints feed-*.ts et sitemap.ts, avec `feeds: true`)
   theme/            ← base.css avec custom properties --hf-*
@@ -44,7 +45,7 @@ src/
 tests/
   __mocks__/        ← mocks astro:content et astro:assets (modules virtuels hors runtime)
   unit/             ← tests helpers + schéma Zod ; unit/ingest/ = contrat d'ingestion
-  components/       ← rendu des 11 composants (API container d'Astro, vitest.components.config.ts)
+  components/       ← rendu des 12 composants (API container d'Astro, vitest.components.config.ts)
   e2e/              ← tests routes via astro build statique
   fixtures/spec-ingestion/ ← copie épinglée des fixtures de la spec (npm run fixtures:sync / fixtures:check)
   fixtures/spec-format/    ← copie épinglée des fixtures de la couche 1 (même commit, mêmes commandes) ; rejouées par unit/format-conformance.test.ts
@@ -70,7 +71,7 @@ dist/               ← build tsup (gitignored)
 
 **Feuilles émises à la demande** (#136, 0.24.0) : `SeriesAttachments` n'a pas de `<style>` scopé. Sa feuille vit dans `src/theme/attachments.css` (publiée `@regrets/hyperfocale/styles/attachments.css`, importée en `?raw` par le composant) et part dans un `<style data-hf-styles="attachments">` une fois par page (`claimStyles(Astro.request, …)` de `runtime.ts`), seulement si le composant rend quelque chose, sauf `componentStyles: 'none'` / `unstyled`. Sélecteurs d'une classe, hors couche, sans `:where()` — mesures et raison au README (*Thème → Feuilles des composants et cascade layers*) : ne pas les passer en `:where()` ni en `@layer` d'office. Une feuille de `src/theme/` (hors `base.css`) doit avoir son entrée `./styles/<nom>.css` dans `exports` (test). `vitest.components.config.ts` a `css: true`, sans quoi `?raw` d'un `.css` rend `''`. Un balisage de titre dynamique (`<Heading>`) dans un composant à `<style>` scopé reçoit `data-astro-cid-…="true"` (Astro le traite en composant) — inoffensif, encore présent sur `SeriesEmbeds`/`SeriesCard`.
 
-**Gardes des composants** : `tests/components/labels-sentinel.test.ts` rend les 11 composants avec un dictionnaire sentinelle — un texte lisible écrit en dur dans un `.astro` le fait échouer ; ajouter un composant ou une branche qui émet du texte = l'ajouter aux `CASES`. Le JS client de `SeriesFilter` vit dans `components/filter-client.ts`, celui de `SeriesLightbox` dans `components/lightbox-client.ts`, le repli d'image dans `components/image-fallback.ts` : entrées tsup comme `runtime`, testées en happy-dom (`tests/components/*-client.test.ts`, `filter-client.test.ts`).
+**Gardes des composants** : `tests/components/labels-sentinel.test.ts` rend les 12 composants avec un dictionnaire sentinelle — un texte lisible écrit en dur dans un `.astro` le fait échouer ; ajouter un composant ou une branche qui émet du texte = l'ajouter aux `CASES`. Le JS client de `SeriesFilter` vit dans `components/filter-client.ts`, celui de `SeriesLightbox` dans `components/lightbox-client.ts`, celui de `SeriesPoll` dans `components/poll-client.ts` (seul script client **publié**, `/components/poll-client` : un site le monte depuis son propre îlot quand les images ne sont connues qu'après authentification ; le formulaire y est construit en entier, ses libellés se vérifient dans `poll-client.test.ts`, pas par la sentinelle), le repli d'image dans `components/image-fallback.ts` : entrées tsup comme `runtime`, testées en happy-dom (`tests/components/*-client.test.ts`, `filter-client.test.ts`).
 
 ## CLI
 
@@ -99,6 +100,8 @@ Déclaré dans `package.json` : `"bin": { "hyperfocale": "./dist/cli/init.js" }`
 | `import { ... } from '@regrets/hyperfocale/components'` | `src/components/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/helpers'` | `src/helpers/index.ts` |
 | `import { ... } from '@regrets/hyperfocale/i18n'` | `src/i18n.ts` — `HF_LABELS`, `resolveLabels`, `formatDate`, `formatFileSize`, `pluralLabel` — pur (aussi réexporté par `/components`) |
+| `import { ... } from '@regrets/hyperfocale/delivery'` | `src/delivery.ts` — `validateScores`, `buildPollDocument`, `parsePollDocument`, `renderPoll`, `readDelivery`, `pollResponsePath` — pur (ni `node:*`, ni astro, ni zod) |
+| `import { mountSeriesPoll } from '@regrets/hyperfocale/components/poll-client'` | `src/components/poll-client.ts` — formulaire de `SeriesPoll`, navigateur |
 | `import { ... } from '@regrets/hyperfocale/media'` | `src/media.ts` — `resolveSeriesMedia` et primitives de médias, purs (ni `node:*`, ni astro, ni zod) |
 | `@import "@regrets/hyperfocale/styles/attachments.css" layer(components);` | `src/theme/attachments.css` — feuille de `SeriesAttachments`, pour `componentStyles: 'none'` |
 | `import { ... } from '@regrets/hyperfocale/loader'` | `src/loader.ts` — `seriesLoader` (Content Layer, repli de locale, `prepare` avant `parseData`, `sections`), `fallbackField`, `stringifyTags`, `readSeriesMedia` (Node) |
@@ -120,4 +123,5 @@ Les **vocabulaires** du schéma — `CONTENT_TYPES`, `ATTACHMENT_KINDS`, `EMBED_
 - **Originaux** (§1.9, v2.11) : la liste fermée vit en trois endroits — `ORIGINAL_EXTENSIONS` de `schema.ts`, sa copie dans `ingest/paths.ts` (le sous-chemin n'importe pas zod) et le motif littéral du glob des documents joints dans `helpers/index.ts` (Vite n'accepte qu'un littéral), écrit sous forme insensible à la casse — une classe par lettre, `[rR][aA][fF]` : Vite compare à la casse près, et nommer `raf` et `RAF` laissait passer `.Raf` (#125). `tests/unit/originals.test.ts` vérifie que les trois concordent avec la spec, et que le motif est exactement la forme dérivée de la liste. L'exclusion se fait dans le glob : filtré au rendu seulement, un `.RAF` serait quand même émis au build.
 - **Projection publiable** : le diff de publication part de `publishable(target)`, la validation de `target`. `guardChangeSet` garde la signature de la spec (`target` = la source).
 - **Incomplet ≠ suppression** : `createSnapshot` exige `complete` sans défaut ; `applyDelta` lève `CursorResetError` sur un curseur expiré.
+- **Données de retour** (§4.2, §4.8, v2.18) : `_responses/` à la racine est exclu par défaut dans `isExcluded` (`isResponsePath`, premier segment, casse ignorée) — ni configurable ni levable, c'est ce qui empêche des réponses de clients de partir en publication. `RESPONSES_DIR` existe en deux exemplaires (`ingest/paths.ts` et `delivery.ts`, qui doit rester sans dépendance) ; `tests/unit/ingest/responses.test.ts` vérifie qu'ils concordent. Écrire dans la source passe par `writeResponse` (`ingest/responses.ts`), jamais par `provider.write()` nu.
 - **Confinement** : `materializeSnapshot` et `FilesystemProvider.read/write` refusent tout chemin qui traverse un lien symbolique sous leur racine (`UnsafePathError`) ; le listing filesystem ne suit jamais un lien (§4.0) : il l'ignore et le signale par `entry-symlink` dans `ProviderListing.diagnostics`, sans rendre le listing incomplet (`followSymlinks` est obsolète et sans effet). `materializeSnapshot` lit et vérifie tout avant d'appliquer. Toute évolution de ces fonctions garde ces tests (`tests/unit/ingest/fs.test.ts`).

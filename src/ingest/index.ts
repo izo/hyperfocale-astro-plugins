@@ -46,12 +46,16 @@ export {
   isIndexFile,
   isOriginalEntry,
   isOriginalPath,
+  isResponsePath,
   normalizePath,
   ORIGINAL_EXTENSIONS,
   referenceProblem,
+  RESPONSES_DIR,
   urlFieldProblem,
 } from './paths.js';
 export type { ExclusionRule, NormalizedPath, UrlFieldOptions, UrlFieldProblem } from './paths.js';
+
+export { ResponsePathError, ResponseWriteUnsupportedError, writeResponse } from './responses.js';
 
 export {
   DROPBOX_BLOCK_SIZE,

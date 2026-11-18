@@ -1,0 +1,90 @@
+---
+/**
+ * Sondage de notation d'une série livrée à un client (profil Livraison).
+ *
+ * N'émet que la racine et ses données : le formulaire est construit par
+ * `poll-client.ts`, parce qu'il n'a de sens qu'avec JavaScript et un serveur
+ * (`endpoint`) qui enregistre la réponse. Un site dont les images ne sont
+ * connues qu'après authentification appelle `mountSeriesPoll` depuis son propre
+ * îlot au lieu de rendre ce composant.
+ */
+import {
+  resolveLabels,
+  passthroughAttrs,
+  scriptJson,
+  claimStyles,
+  compactCss,
+  componentStylesMode,
+  type InstanceProps,
+  type HeadingLevel,
+} from './runtime.js';
+import type { PollImage, PollOptions } from './poll-client.js';
+import STYLES from '../theme/poll.css?raw';
+
+interface Props extends InstanceProps {
+  /** Chemin de la série dans le corpus — la clé de la réponse. */
+  series: string;
+  /** Images à noter, dans l'ordre de la galerie ; `file` = chemin relatif à la série. */
+  images: PollImage[];
+  /** Route du site qui lit (`GET`) et enregistre (`POST`) la réponse. */
+  endpoint: string;
+  /** En-têtes des requêtes (authentification du site). Publiés dans la page : jamais un secret durable. */
+  headers?: Record<string, string>;
+  /** @default 2 */
+  headingLevel?: HeadingLevel;
+  /** Ne pas émettre la feuille (le site importe `/styles/poll.css`). */
+  unstyled?: boolean;
+}
+
+const {
+  series,
+  images,
+  endpoint,
+  headers,
+  headingLevel = 2,
+  unstyled = componentStylesMode() === 'none',
+  locale = 'fr',
+  labels: labelOverrides,
+  class: className,
+  ...rest
+} = Astro.props;
+
+const labels = resolveLabels(locale, labelOverrides);
+const rootAttrs = passthroughAttrs(rest);
+const visible = images.length > 0;
+const emitStyles = visible && !unstyled && claimStyles(Astro.request, 'poll');
+
+const options: PollOptions = {
+  series,
+  images: images.map(({ file, src, alt }) => ({ file, src, ...(alt ? { alt } : {}) })),
+  endpoint,
+  headingLevel,
+  ...(headers ? { headers } : {}),
+  labels: {
+    heading: labels['poll.heading'],
+    intro: labels['poll.intro'],
+    start: labels['poll.start'],
+    edit: labels['poll.edit'],
+    scoreLegend: labels['poll.scoreLegend'],
+    imageAlt: labels['poll.imageAlt'],
+    progress: labels['poll.progress'],
+    submit: labels['poll.submit'],
+    sending: labels['poll.sending'],
+    thanks: labels['poll.thanks'],
+    error: labels['poll.error'],
+  },
+};
+---
+
+{emitStyles && <style is:inline data-hf-styles="poll" set:html={compactCss(STYLES)}></style>}
+{visible && (
+  <div class:list={['hf-poll', className]} data-hf-poll {...rootAttrs}>
+    <script type="application/json" is:inline set:html={scriptJson(options)}></script>
+  </div>
+)}
+
+<script>
+  // Logique testée en happy-dom : tests/components/poll-client.test.ts.
+  import { initSeriesPolls } from './poll-client.js';
+  initSeriesPolls();
+</script>

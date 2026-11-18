@@ -40,7 +40,13 @@
     "./components/SeriesMasonry.astro": "./dist/components/SeriesMasonry.astro",
     "./components/SeriesPagination.astro": "./dist/components/SeriesPagination.astro",
     "./components/SeriesLineup.astro": "./dist/components/SeriesLineup.astro",
+    "./components/SeriesPoll.astro": "./dist/components/SeriesPoll.astro",
+    "./components/poll-client": {
+      "types": "./dist/components/poll-client.d.ts",
+      "import": "./dist/components/poll-client.js"
+    },
     "./styles/attachments.css": "./dist/theme/attachments.css",
+    "./styles/poll.css": "./dist/theme/poll.css",
     "./helpers": {
       "types": "./dist/helpers/index.d.ts",
       "import": "./dist/helpers/index.js"
@@ -52,6 +58,10 @@
     "./i18n": {
       "types": "./dist/i18n.d.ts",
       "import": "./dist/i18n.js"
+    },
+    "./delivery": {
+      "types": "./dist/delivery.d.ts",
+      "import": "./dist/delivery.js"
     },
     "./loader": {
       "types": "./dist/loader.d.ts",

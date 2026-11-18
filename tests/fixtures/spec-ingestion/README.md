@@ -17,7 +17,7 @@ fixtures/ingestion/
 ├── guard/<cas>.json           diagnostics attendus de la garde de publication
 ├── snapshot-id/<cas>.json     identifiant attendu d'une liste d'entrées
 ├── paths/<cas>.json           normalisation, validité, exclusion, classification, collisions
-├── providers/<cas>.json       comportement d'un provider filesystem à l'énumération (liens symboliques)
+├── providers/<cas>.json       comportement d'un provider filesystem à l'énumération (liens symboliques, dossier de retour)
 └── hashes/vectors.json        vecteurs de hash sha256 et dropbox
 ```
 
@@ -44,6 +44,7 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `attachments` | documents joints §1.9, fichier vide | aucun |
 | `embeds` | contenus embarqués §1.11, plateforme inconnue, poster en couverture | aucun |
 | `originals` | dossier de travail (ex-profil `project` G.12, repris par Hyperfocus) : RAW `.RAF`, sidecars `.xmp`, JPEG de l'appareil (extensions en majuscules), devis PDF | aucun |
+| `responses` | dossier de retour `_responses/` à la racine du corpus (§4.2, v2.18) : `poll.json` et son rendu `poll.md` n'entrent pas au snapshot, qui ne compte que les trois fichiers de la série ; la série porte `private: true` et un bloc `delivery:` (G.13), que la couche 4 ne valide pas | aucun |
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
 | `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
@@ -130,6 +131,8 @@ Pour chaque chaîne de `input`, dans le même ordre :
 
 `valid` et `excluded` sont **indépendants** : un segment `..` rend un chemin invalide *et* exclu (il commence par un point). Un outil d'ingestion applique d'abord l'exclusion — l'entrée disparaît sans diagnostic —, puis la validité : un chemin non exclu et invalide produit `entry-path-invalid`. Dans un snapshot, une entrée DOIT être `valid` et non `excluded` (§4.5).
 
+`paths/responses.json` *(v2.18)* couvre le dossier réservé `_responses/` (§4.2) : exclu quand il est le **premier segment** du chemin, comparé après minuscule simple (`_Responses`, `_RESPONSES`) ; non exclu plus bas dans l'arborescence (`a/_responses/x`), ni pour un nom qui ne fait que commencer ainsi (`_responsesX`), ni pour un autre nom (`_sondages`).
+
 `collisions` : parmi les chemins de `expected` valides et non exclus, triés dans l'ordre canonique, chaque chemin qui suit le premier de son groupe de collision (égalité après NFC puis minuscule simple, §4.1), sans doublon, dans l'ordre canonique. C'est l'ensemble des chemins qui recevraient `entry-path-collision`.
 
 ### `providers/<cas>.json`
@@ -139,7 +142,12 @@ Pour chaque chaîne de `input`, dans le même ordre :
   "symlinks": [ { "path", "target" } ], "expected": { "entries": ["…"], "diagnostics": [ { "code", "severity", "path" } ] } }
 ```
 
-Un provider filesystem se teste sur un arbre que **le test crée** : un dépôt Git, une archive ou un checkout Windows ne conservent pas les liens symboliques de façon portable, et la fixture mentirait, comme pour les collisions de casse (voir plus bas). Le test crée, dans un dossier temporaire `T`, le corpus dans `T/corpus/` (`files`, chemins relatifs, contenu UTF-8), les fichiers de `outside` dans `T/outside/`, puis chaque lien de `symlinks` au chemin `path` (relatif au corpus) avec la cible `target` **écrite telle quelle** (relative au dossier du lien). Il énumère `T/corpus/` avec son provider. `expected.entries` est la liste, triée dans l'ordre canonique, des chemins qui entrent au snapshot ; `expected.diagnostics` les diagnostics du provider, comparés comme ceux de `validation/` (`code` + `severity` + `path`, triés). Une plateforme qui ne peut pas créer de lien symbolique saute le cas et le dit.
+Un provider filesystem se teste sur un arbre que **le test crée** : un dépôt Git, une archive ou un checkout Windows ne conservent pas les liens symboliques de façon portable, et la fixture mentirait, comme pour les collisions de casse (voir plus bas). Le test crée, dans un dossier temporaire `T`, le corpus dans `T/corpus/` (`files`, chemins relatifs, contenu UTF-8), les fichiers de `outside` dans `T/outside/`, puis chaque lien de `symlinks` au chemin `path` (relatif au corpus) avec la cible `target` **écrite telle quelle** (relative au dossier du lien). Il énumère `T/corpus/` avec son provider. `expected.entries` est la liste, triée dans l'ordre canonique, des chemins qui entrent au snapshot ; `expected.diagnostics` les diagnostics du provider, comparés comme ceux de `validation/` (`code` + `severity` + `path`, triés). Une plateforme qui ne peut pas créer de lien symbolique saute le cas et le dit — sauf s'il n'en déclare aucun (`symlinks: []`), auquel cas il tourne partout.
+
+| Cas | Ce qu'il couvre |
+|---|---|
+| `symlink` | liens symboliques : jamais suivis, signalés par `entry-symlink` (§4.0) |
+| `responses` | dossier de retour *(v2.18)* : rien de ce qui se trouve sous `_responses/` à la racine n'est énuméré, casse comprise, sans diagnostic ; `series/…/_responses/` et `_responses-2025/` le sont (§4.2) |
 
 ### `hashes/vectors.json`
 
@@ -170,7 +178,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `snapshot-incomplete` | `validation/snapshot-incomplete.json` |
 | `snapshot-empty` | `validation/snapshot-empty.json`, `validation/snapshot-empty-no-content.json` |
 | `entry-invalid` | `validation/entry-invalid.json` |
-| `entry-path-invalid` | `validation/entry-path-invalid.json` |
+| `entry-path-invalid` | `validation/entry-path-invalid.json`, `validation/responses-in-snapshot.json` (entrée sous `_responses/`, exclue par défaut depuis la v2.18) |
 | `entry-path-collision` | `validation/entry-path-collision.json` |
 | `entry-kind-mismatch` | `validation/entry-kind-mismatch.json` |
 | `entry-hash-missing` | `validation/entry-hash-missing.json` |
@@ -203,6 +211,15 @@ Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au co
 | Bornes de lecture (§1.12) | Fixture |
 |---|---|
 | Alias exponentiels, profondeur 32 / 33, fichier de plus de 1 Mio (jamais lu), JSON à 33 niveaux | `validation/frontmatter-limits.json` (snapshot inline ; les deux fichiers de plus de 1 Mio sont déclarés par leur `size` et n'ont aucune entrée dans `files`) |
+
+| Dossier de retour `_responses/` (§4.2, v2.18) | Fixture |
+|---|---|
+| Exclusion par le chemin : racine seulement, casse ignorée | `paths/responses.json` |
+| Absent du snapshot d'un corpus qui en porte un, sans diagnostic | corpus `responses`, `snapshots/responses.json`, `validation/responses.json` |
+| Non énuméré par un provider filesystem | `providers/responses.json` |
+| Présent dans un snapshot : `entry-path-invalid` | `validation/responses-in-snapshot.json` |
+
+Aucune famille de fixtures ne décrit un lot de changements d'un provider (§4.8) : qu'un lot ne portant que des chemins sous `_responses/` ne change rien découle de l'exclusion — ces chemins n'entrent dans aucun snapshot, donc deux listings pris avant et après une écriture de retour ont le même `id`, et leur diff est vide (`diff/idempotence.json`). Le document de réponse lui-même (`poll.json`, G.13) n'est validé par aucune fixture : la couche 4 ne le lit pas.
 
 ## Diffs couverts
 

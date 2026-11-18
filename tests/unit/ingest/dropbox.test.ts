@@ -412,6 +412,23 @@ describe('DropboxProvider', () => {
     expect(await provider.changes('cur-2')).toEqual({ upserts: [], deletions: [], cursor: 'cur-2', reset: true });
   });
 
+  it('changes : un delta qui ne porte que des données de retour (_responses/) ne signale rien (§4.8, v2.18)', async () => {
+    const server = fakeDropbox({
+      '/2/files/list_folder/continue': json({
+        entries: [
+          folder('/MDR Content/_responses'),
+          file('/MDR Content/_responses/series/a/poll.json'),
+          file('/mdr content/_Responses/series/a/poll.md'),
+          { '.tag': 'deleted', name: 'poll.json', path_lower: '/mdr content/_responses/series/b/poll.json', path_display: '/MDR Content/_responses/series/b/poll.json' },
+        ],
+        cursor: 'cur-9',
+        has_more: false,
+      }),
+    });
+    const provider = new DropboxProvider({ client: new DropboxClient({ accessToken: 't', fetch: server.fetch }), root: '/MDR Content' });
+    expect(await provider.changes('cur-8')).toEqual({ upserts: [], deletions: [], cursor: 'cur-9' });
+  });
+
   it('read, write et latestCursor adressent le chemin absolu', async () => {
     const server = fakeDropbox({
       '/2/files/download': () => new Response('abc'),

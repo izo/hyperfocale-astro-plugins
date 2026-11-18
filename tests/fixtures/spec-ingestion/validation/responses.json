@@ -1,0 +1,11 @@
+{
+  "description": "Corpus qui porte un dossier de retour `_responses/` à sa racine (§4.2, v2.18) et une série de livraison (`private: true`, bloc `delivery:`, G.13) : `_responses/` n'entre pas au snapshot et le bloc de profil n'est pas validé par la couche 4 — aucun diagnostic.",
+  "corpus": "responses",
+  "roots": [
+    {
+      "path": "",
+      "dateRequired": true
+    }
+  ],
+  "expected": []
+}

@@ -1,0 +1,106 @@
+{
+  "description": "Dossier r\u00e9serv\u00e9 `_responses/` (\u00a74.2, v2.18) : exclu par d\u00e9faut quand il est le PREMIER segment du chemin, c'est-\u00e0-dire \u00e0 la racine du corpus seulement. Le segment se compare apr\u00e8s minuscule simple (\u00a74.1) : `_Responses` et `_RESPONSES` sont exclus aussi. Un nom qui ne fait que commencer par `_responses` (`_responsesX`, `_responses-2025`), un `_responses` plus bas dans l'arborescence et tout autre nom (`_sondages`) ne sont pas exclus. Jamais une erreur.",
+  "input": [
+    "_responses/series/mariage-2026/poll.json",
+    "_responses/series/mariage-2026/poll.md",
+    "_responses/series/mariage-2026/media/01.jpg",
+    "_responses/x",
+    "_responses",
+    "_Responses/x",
+    "_RESPONSES/series/mariage-2026/poll.json",
+    "_responsesX/x",
+    "_responses-2025/series/mariage-2026/poll.json",
+    "responses/poll.json",
+    "a/_responses/x",
+    "series/mariage-2026/_responses/poll.json",
+    "series/_responses/index.md",
+    "_sondages/mariage-2026.md"
+  ],
+  "expected": [
+    {
+      "path": "_responses/series/mariage-2026/poll.json",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_responses/series/mariage-2026/poll.md",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_responses/series/mariage-2026/media/01.jpg",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_responses/x",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_responses",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_Responses/x",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_RESPONSES/series/mariage-2026/poll.json",
+      "valid": true,
+      "kind": null,
+      "excluded": true
+    },
+    {
+      "path": "_responsesX/x",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "_responses-2025/series/mariage-2026/poll.json",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "responses/poll.json",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "a/_responses/x",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/mariage-2026/_responses/poll.json",
+      "valid": true,
+      "kind": "other",
+      "excluded": false
+    },
+    {
+      "path": "series/_responses/index.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    },
+    {
+      "path": "_sondages/mariage-2026.md",
+      "valid": true,
+      "kind": "content",
+      "excluded": false
+    }
+  ],
+  "collisions": []
+}

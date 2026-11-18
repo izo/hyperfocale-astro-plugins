@@ -17,6 +17,7 @@ export { default as SeriesFilter } from './SeriesFilter.astro';
 export { default as SeriesMap } from './SeriesMap.astro';
 export { default as SeriesPagination } from './SeriesPagination.astro';
 export { default as SeriesLineup } from './SeriesLineup.astro';
+export { default as SeriesPoll } from './SeriesPoll.astro';
 
 export type {
   Series,
@@ -46,6 +47,7 @@ export type { HyperfocaleLabels, HyperfocaleLabelKey, HfPluralForms, HeadingLeve
 // JSON à injecter dans un `<script>` via `set:html` : `<` échappé en `\u003c` (#138).
 // Pour les layouts de site, qui reçoivent `schema` en objet (README, *Layout du site*).
 export { scriptJson } from './runtime.js';
+export type { PollImage, PollOptions, PollClientLabels, PollHandle } from './poll-client.js';
 export type {
   InstanceProps as HyperfocaleInstanceProps,
   SeriesAttachmentItem,

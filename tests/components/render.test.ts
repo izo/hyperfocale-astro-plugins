@@ -20,6 +20,7 @@ import SeriesMap from '../../src/components/SeriesMap.astro';
 import SeriesMasonry from '../../src/components/SeriesMasonry.astro';
 import SeriesPagination from '../../src/components/SeriesPagination.astro';
 import SeriesLineup from '../../src/components/SeriesLineup.astro';
+import SeriesPoll from '../../src/components/SeriesPoll.astro';
 import TwoAttachments from './fixtures/TwoAttachments.astro';
 import { HF_LABELS } from '../../src/i18n.js';
 
@@ -94,11 +95,12 @@ const CASES: Array<[string, AnyComponent, Record<string, unknown>]> = [
   ['SeriesMasonry', SeriesMasonry, { images: IMAGES }],
   ['SeriesPagination', SeriesPagination, { page: 2, totalPages: 5, baseUrl: '/s/b' }],
   ['SeriesLineup', SeriesLineup, { series: SERIES }],
+  ['SeriesPoll', SeriesPoll, { series: 'clients/dupont', endpoint: '/api/poll', images: [{ file: 'media/a.jpg', src: '/a.jpg' }] }],
 ];
 
-describe('options par instance — les 11 composants', () => {
-  it('couvre les 11 composants', () => {
-    expect(CASES).toHaveLength(11);
+describe('options par instance — les 12 composants', () => {
+  it('couvre les 12 composants', () => {
+    expect(CASES).toHaveLength(12);
   });
 
   for (const [name, component, props] of CASES) {

@@ -169,3 +169,27 @@ describe('/i18n (#136)', () => {
     }
   });
 });
+
+describe('/delivery (profil Livraison)', () => {
+  it('./delivery et ./components/poll-client sont exportés avec leurs types', () => {
+    expect(pkg.exports['./delivery']).toEqual({ types: './dist/delivery.d.ts', import: './dist/delivery.js' });
+    expect(pkg.exports['./components/poll-client']).toEqual({
+      types: './dist/components/poll-client.d.ts',
+      import: './dist/components/poll-client.js',
+    });
+  });
+
+  it('src/delivery.ts et le script client : ni node:*, ni astro, ni zod — chargeables dans un Worker et un navigateur', () => {
+    for (const file of ['src/delivery.ts', 'src/components/poll-client.ts']) {
+      const { external } = graph(resolve(ROOT, file), fromSource);
+      expect([...external.keys()], file).toEqual([]);
+    }
+  });
+
+  it('dist/delivery.js et dist/components/poll-client.js : aucune dépendance externe (après build)', () => {
+    for (const file of ['dist/delivery.js', 'dist/components/poll-client.js']) {
+      const { external } = graph(resolve(ROOT, file), fromDist);
+      expect([...external.keys()], file).toEqual([]);
+    }
+  });
+});
